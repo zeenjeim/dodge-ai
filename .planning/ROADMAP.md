@@ -12,7 +12,7 @@ Dodge AI is a working browser bullet hell game (~2800 lines, single HTML file) w
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Gameplay Polish** - Mobile and death experience feel right
+- [x] **Phase 1: Gameplay Polish** - Mobile and death experience feel right
 - [ ] **Phase 2: AI Intelligence** - The AI visibly learns, adapts, and feels fair
 - [ ] **Phase 3: Growth Foundation** - Game is discoverable, shareable, and measured
 - [ ] **Phase 4: Retention** - Daily challenge and streaks give players a reason to return
@@ -32,8 +32,8 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Game canvas respects device safe areas (notch, home indicator) with no content clipped on iOS or Android
 
 Plans:
-- [ ] 01-01-PLAN.md — Death context capture, freeze-frame kill indicator, and game-over kill text
-- [ ] 01-02-PLAN.md — Mobile touch offset, gesture prevention, and safe area integration
+- [x] 01-01-PLAN.md — Death context capture, freeze-frame kill indicator, and game-over kill text
+- [x] 01-02-PLAN.md — Mobile touch offset, gesture prevention, and safe area integration
 
 ### Phase 2: AI Intelligence
 **Goal**: The AI visibly learns player patterns, adapts its attacks, and stays fair
@@ -105,7 +105,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
-| 1. Gameplay Polish | 0/2 | Planned | - |
+| 1. Gameplay Polish | 2/2 | Complete | 2026-02-18 |
 | 2. AI Intelligence | 0/3 | Not started | - |
 | 3. Growth Foundation | 0/3 | Not started | - |
 | 4. Retention | 0/2 | Not started | - |
