@@ -1596,6 +1596,7 @@ class Game {
     this.bossLevel = 0;
     this._lastAnnouncedPhase = -1;
     this.forceFieldFlash = 0;
+    this.deathContext = null;
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -1748,6 +1749,7 @@ class Game {
     this.effects.overclock = { active: false, remaining: 0, duration: 0 };
     this.forceFieldFlash = 0;
     this.lastPowerupType = null;
+    this.deathContext = null;
 
     this.player.x = this.w / 2;
     this.player.y = this.h / 2;
@@ -1929,6 +1931,20 @@ class Game {
           this.dodgedCount++;
           continue;
         }
+        this.deathContext = {
+          type: 'projectile',
+          subtype: p.type,
+          homing: p.homing || false,
+          color: p.color,
+          x: p.x,
+          y: p.y,
+          vx: p.vx,
+          vy: p.vy,
+          angle: Math.atan2(p.y - this.player.y, p.x - this.player.x),
+          playerX: this.player.x,
+          playerY: this.player.y,
+          bossName: null,
+        };
         this.die();
         return;
       }
@@ -2015,6 +2031,20 @@ class Game {
             continue;
           }
         } else {
+          this.deathContext = {
+            type: 'boss',
+            subtype: boss.bossType?.shape || 'boss',
+            homing: false,
+            color: boss.color,
+            x: boss.x,
+            y: boss.y,
+            vx: 0,
+            vy: 0,
+            angle: Math.atan2(boss.y - this.player.y, boss.x - this.player.x),
+            playerX: this.player.x,
+            playerY: this.player.y,
+            bossName: boss.bossType?.name || 'Unknown Boss',
+          };
           this.die();
           return;
         }
