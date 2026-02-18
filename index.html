@@ -2568,21 +2568,28 @@ class Game {
       localStorage.setItem('dodge-ai-best', this.bestTime.toFixed(1));
     }
 
-    setTimeout(() => this.showGameOver(isNewBest), 600);
+    // 300ms freeze with indicator, then 500ms particle fade, then game over
+    setTimeout(() => this.startDeathParticles(), 300);
+    setTimeout(() => this.showGameOver(isNewBest), 800);
   }
 
   renderDeathFrame() {
-    // Render one more frame without the player for death effect
+    // Freeze frame: dim the scene and show prominent death indicator
     const ctx = this.ctx;
     ctx.fillStyle = '#06060f';
     ctx.fillRect(0, 0, this.w, this.h);
     for (const p of this.projectiles) p.draw(ctx);
     for (const sw of this.shockwaves) sw.draw(ctx);
-    for (const p of this.particles) p.draw(ctx);
-    // Draw death indicator on the initial frame
+    // Dark overlay so indicator pops
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(0, 0, this.w, this.h);
+    // Draw death indicator prominently on the frozen frame
     this.renderDeathIndicator(ctx);
-    // Animate remaining particles
-    let deathIndicatorFrames = 20;
+  }
+
+  startDeathParticles() {
+    if (this.running) return;
+    const ctx = this.ctx;
     const deathAnim = () => {
       if (this.running) return;
       ctx.fillStyle = 'rgba(6,6,15,0.15)';
@@ -2597,11 +2604,6 @@ class Game {
         this.shockwaves[i].draw(ctx);
         if (this.shockwaves[i].isDead()) this.shockwaves.splice(i, 1);
       }
-      // Keep death indicator visible during particle fade-out
-      if (deathIndicatorFrames > 0) {
-        this.renderDeathIndicator(ctx);
-        deathIndicatorFrames--;
-      }
       if (this.particles.length > 0 || this.shockwaves.length > 0) requestAnimationFrame(deathAnim);
     };
     requestAnimationFrame(deathAnim);
@@ -2613,42 +2615,50 @@ class Game {
 
     ctx.save();
 
-    // 1. Pulsing white ring around the killer
-    const ringRadius = d.type === 'boss' ? 35 : 15;
+    // 1. Bright ring around the killer
+    const ringRadius = d.type === 'boss' ? 40 : 22;
     ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 3;
-    ctx.globalAlpha = 0.8;
+    ctx.lineWidth = 4;
+    ctx.globalAlpha = 1;
+    ctx.shadowColor = '#fff';
+    ctx.shadowBlur = 12;
     ctx.beginPath();
     ctx.arc(d.x, d.y, ringRadius, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.shadowBlur = 0;
 
     // 2. Arrow line from player position to killer position
     ctx.strokeStyle = '#ff3355';
-    ctx.lineWidth = 2;
-    ctx.globalAlpha = 0.6;
+    ctx.lineWidth = 3;
+    ctx.globalAlpha = 0.9;
     ctx.beginPath();
     ctx.moveTo(d.playerX, d.playerY);
     ctx.lineTo(d.x, d.y);
     ctx.stroke();
 
     // 3. Arrowhead at the killer end
-    const headLen = 12;
+    const headLen = 16;
     const spread = 0.4;
     const angle = d.angle;
+    ctx.fillStyle = '#ff3355';
+    ctx.globalAlpha = 0.9;
     ctx.beginPath();
     ctx.moveTo(d.x, d.y);
     ctx.lineTo(d.x - headLen * Math.cos(angle - spread), d.y - headLen * Math.sin(angle - spread));
-    ctx.moveTo(d.x, d.y);
     ctx.lineTo(d.x - headLen * Math.cos(angle + spread), d.y - headLen * Math.sin(angle + spread));
-    ctx.stroke();
+    ctx.closePath();
+    ctx.fill();
 
     // 4. Label above the killer
     const label = d.bossName || d.subtype.toUpperCase();
-    ctx.globalAlpha = 0.9;
+    ctx.globalAlpha = 1;
     ctx.fillStyle = d.color;
-    ctx.font = 'bold 11px Courier New';
+    ctx.font = 'bold 14px Courier New';
     ctx.textAlign = 'center';
-    ctx.fillText(label, d.x, d.y - ringRadius - 8);
+    ctx.shadowColor = d.color;
+    ctx.shadowBlur = 8;
+    ctx.fillText(label, d.x, d.y - ringRadius - 10);
+    ctx.shadowBlur = 0;
 
     ctx.restore();
   }
