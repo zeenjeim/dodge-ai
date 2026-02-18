@@ -2,12 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>DODGE AI</title>
   <meta name="description" content="An AI that learns how you dodge and uses it against you. Maximum effort required.">
   <meta property="og:title" content="DODGE AI — It's Like Bullet Hell Had a Baby With Skynet">
   <meta property="og:description" content="I survived {X}s against an AI that literally learns my moves. It's basically my ex but with better aim.">
   <style>
+    :root {
+      --sa-top: env(safe-area-inset-top, 0px);
+      --sa-bottom: env(safe-area-inset-bottom, 0px);
+      --sa-left: env(safe-area-inset-left, 0px);
+      --sa-right: env(safe-area-inset-right, 0px);
+    }
+
+    html {
+      overscroll-behavior: none;
+    }
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
@@ -20,6 +31,7 @@
       -webkit-user-select: none;
       user-select: none;
       cursor: default;
+      overscroll-behavior: none;
     }
 
     canvas {
@@ -32,7 +44,8 @@
     /* --- HUD --- */
     #hud {
       position: fixed;
-      top: 16px; left: 16px;
+      top: max(16px, calc(8px + var(--sa-top)));
+      left: max(16px, calc(8px + var(--sa-left)));
       z-index: 10;
       pointer-events: none;
     }
@@ -62,7 +75,7 @@
     /* --- Power-up HUD --- */
     #hud-powerups {
       position: fixed;
-      bottom: 16px;
+      bottom: max(16px, calc(8px + var(--sa-bottom)));
       left: 50%;
       transform: translateX(-50%);
       display: flex;
@@ -114,8 +127,8 @@
     /* --- AI Brain Panel --- */
     #brain-panel {
       position: fixed;
-      top: 16px;
-      right: 16px;
+      top: max(16px, calc(8px + var(--sa-top)));
+      right: max(16px, calc(8px + var(--sa-right)));
       width: 200px;
       background: rgba(10, 10, 30, 0.85);
       border: 1px solid rgba(139, 92, 246, 0.3);
@@ -575,11 +588,11 @@
 
     /* Mobile adjustments */
     @media (max-width: 600px) {
-      #brain-panel { width: 150px; padding: 8px; top: 8px; right: 8px; }
+      #brain-panel { width: 150px; padding: 8px; top: max(8px, calc(4px + var(--sa-top))); right: max(8px, calc(4px + var(--sa-right))); }
       #brain-panel h3 { font-size: 9px; }
       .brain-row { font-size: 10px; }
       #brain-bias { width: 54px; height: 54px; }
-      #hud { top: 8px; left: 8px; }
+      #hud { top: max(8px, calc(4px + var(--sa-top))); left: max(8px, calc(4px + var(--sa-left))); }
       #hud-time { font-size: 24px; }
       #phase-announce .phase-name { font-size: 28px; }
     }
@@ -1615,6 +1628,8 @@ class Game {
     this._lastAnnouncedPhase = -1;
     this.forceFieldFlash = 0;
     this.deathContext = null;
+    this.touchOffsetY = 50;
+    this.safeArea = { top: 0, bottom: 0, left: 0, right: 0 };
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -1656,13 +1671,40 @@ class Game {
     this.canvas.height = window.innerHeight;
     this.w = this.canvas.width;
     this.h = this.canvas.height;
+
+    // Read safe area insets for canvas-side clamping
+    const style = getComputedStyle(document.documentElement);
+    this.safeArea = {
+      top: parseFloat(style.getPropertyValue('--sa-top')) || 0,
+      bottom: parseFloat(style.getPropertyValue('--sa-bottom')) || 0,
+      left: parseFloat(style.getPropertyValue('--sa-left')) || 0,
+      right: parseFloat(style.getPropertyValue('--sa-right')) || 0,
+    };
   }
 
   setupInput() {
     const onMove = (x, y) => { this.targetX = x; this.targetY = y; };
     this.canvas.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
-    this.canvas.addEventListener('touchmove', e => { e.preventDefault(); onMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
-    this.canvas.addEventListener('touchstart', e => { e.preventDefault(); onMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+    this.canvas.addEventListener('touchmove', e => {
+      e.preventDefault();
+      onMove(e.touches[0].clientX, e.touches[0].clientY - this.touchOffsetY);
+    }, { passive: false });
+    this.canvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      onMove(e.touches[0].clientX, e.touches[0].clientY - this.touchOffsetY);
+    }, { passive: false });
+
+    // iOS Safari pinch-to-zoom prevention
+    document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
+    document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
+    document.addEventListener('gestureend', e => e.preventDefault(), { passive: false });
+
+    // Additional pinch prevention via multi-touch scale check
+    document.addEventListener('touchmove', e => {
+      if (e.scale !== undefined && e.scale !== 1) {
+        e.preventDefault();
+      }
+    }, { passive: false });
 
     document.getElementById('btn-start').onclick = () => this.start();
     document.getElementById('btn-retry').onclick = () => this.start();
@@ -1859,8 +1901,9 @@ class Game {
     this.player.vy = this.player.y - prevY;
 
     const pr = this.getPlayerRadius();
-    this.player.x = Math.max(pr, Math.min(this.w - pr, this.player.x));
-    this.player.y = Math.max(pr, Math.min(this.h - pr, this.player.y));
+    const sa = this.safeArea;
+    this.player.x = Math.max(pr + sa.left, Math.min(this.w - pr - sa.right, this.player.x));
+    this.player.y = Math.max(pr + sa.top, Math.min(this.h - pr - sa.bottom, this.player.y));
 
     this.brain.trackPosition(this.player.x, this.player.y, this.gameTime * 1000, this.w, this.h);
 
@@ -2129,8 +2172,9 @@ class Game {
     } while (type === this.lastPowerupType && types.length > 1);
     this.lastPowerupType = type;
     const margin = 60;
-    const x = margin + Math.random() * (this.w - margin * 2);
-    const y = margin + Math.random() * (this.h - margin * 2);
+    const sa = this.safeArea;
+    const x = margin + sa.left + Math.random() * (this.w - 2 * margin - sa.left - sa.right);
+    const y = margin + sa.top + Math.random() * (this.h - 2 * margin - sa.top - sa.bottom);
     this.powerups.push(new PowerUp(x, y, type, this.gameTime));
   }
 
