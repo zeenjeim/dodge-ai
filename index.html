@@ -1,0 +1,2771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>DODGE AI</title>
+  <meta name="description" content="An AI that learns how you dodge and uses it against you. Maximum effort required.">
+  <meta property="og:title" content="DODGE AI — It's Like Bullet Hell Had a Baby With Skynet">
+  <meta property="og:description" content="I survived {X}s against an AI that literally learns my moves. It's basically my ex but with better aim.">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #06060f;
+      overflow: hidden;
+      font-family: 'Courier New', monospace;
+      color: #e0e0e0;
+      touch-action: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      cursor: default;
+    }
+
+    canvas {
+      display: block;
+      position: fixed;
+      top: 0; left: 0;
+      cursor: none;
+    }
+
+    /* --- HUD --- */
+    #hud {
+      position: fixed;
+      top: 16px; left: 16px;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    #hud-time {
+      font-size: 32px;
+      font-weight: bold;
+      color: #00f0ff;
+      text-shadow: 0 0 20px rgba(0,240,255,0.5);
+      letter-spacing: 2px;
+    }
+
+    #hud-phase {
+      font-size: 13px;
+      color: #8b5cf6;
+      margin-top: 4px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    #hud-dodged {
+      font-size: 11px;
+      color: #555;
+      margin-top: 2px;
+    }
+
+    /* --- Power-up HUD --- */
+    #hud-powerups {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .powerup-indicator {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .powerup-indicator.active { display: flex; }
+
+    .powerup-indicator .pu-bar {
+      width: 40px; height: 4px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .powerup-indicator .pu-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.1s linear;
+    }
+
+    #pu-slowmo { background: rgba(59,130,246,0.2); color: #3b82f6; border: 1px solid rgba(59,130,246,0.3); }
+    #pu-slowmo .pu-bar-fill { background: #3b82f6; }
+    #pu-shield { background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
+    #pu-shield .pu-bar-fill { background: #10b981; }
+    #pu-shrink { background: rgba(236,72,153,0.2); color: #ec4899; border: 1px solid rgba(236,72,153,0.3); }
+    #pu-shrink .pu-bar-fill { background: #ec4899; }
+    #pu-ghost { background: rgba(148,163,184,0.2); color: #94a3b8; border: 1px solid rgba(148,163,184,0.3); }
+    #pu-ghost .pu-bar-fill { background: #94a3b8; }
+    #pu-magnet { background: rgba(249,115,22,0.2); color: #f97316; border: 1px solid rgba(249,115,22,0.3); }
+    #pu-magnet .pu-bar-fill { background: #f97316; }
+    #pu-overclock { background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+    #pu-overclock .pu-bar-fill { background: #ef4444; }
+
+    /* --- AI Brain Panel --- */
+    #brain-panel {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      width: 200px;
+      background: rgba(10, 10, 30, 0.85);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      border-radius: 8px;
+      padding: 12px;
+      z-index: 10;
+      pointer-events: none;
+      backdrop-filter: blur(8px);
+    }
+
+    #brain-panel h3 {
+      font-size: 10px;
+      color: #8b5cf6;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #brain-panel h3::before {
+      content: '';
+      width: 6px; height: 6px;
+      background: #8b5cf6;
+      border-radius: 50%;
+      display: inline-block;
+      animation: pulse-dot 1.5s infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; box-shadow: 0 0 4px #8b5cf6; }
+      50% { opacity: 0.4; box-shadow: none; }
+    }
+
+    .brain-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 6px;
+    }
+
+    .brain-label { color: #666; }
+    .brain-value { color: #ccc; }
+
+    #brain-bias {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: 1fr 1fr 1fr;
+      gap: 2px;
+      width: 72px;
+      height: 72px;
+      margin: 8px auto;
+    }
+
+    .bias-cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      border-radius: 3px;
+    }
+
+    .bias-cell.active {
+      background: rgba(139, 92, 246, 0.15);
+      color: #8b5cf6;
+    }
+
+    .bias-center {
+      background: rgba(0, 240, 255, 0.1);
+      border-radius: 50%;
+    }
+
+    #brain-insight {
+      font-size: 10px;
+      color: #8b5cf6;
+      margin-top: 8px;
+      font-style: italic;
+      min-height: 28px;
+      line-height: 1.3;
+    }
+
+    /* --- Announcements --- */
+    #phase-announce, #boss-announce {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 20;
+      text-align: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    #phase-announce.show, #boss-announce.show { opacity: 1; }
+
+    #phase-announce .phase-num {
+      font-size: 14px;
+      color: #8b5cf6;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+    }
+
+    #phase-announce .phase-name {
+      font-size: 36px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 0 0 40px rgba(139, 92, 246, 0.6);
+      margin-top: 4px;
+    }
+
+    #phase-announce .phase-desc {
+      font-size: 13px;
+      color: #888;
+      margin-top: 8px;
+    }
+
+    #boss-announce .boss-title {
+      font-size: 28px;
+      font-weight: bold;
+      color: #ff3355;
+      letter-spacing: 4px;
+      text-shadow: 0 0 40px rgba(255,51,85,0.6);
+      animation: boss-pulse 0.5s ease-in-out infinite alternate;
+    }
+
+    #boss-announce .boss-sub {
+      font-size: 12px;
+      color: #ff6633;
+      margin-top: 6px;
+      letter-spacing: 2px;
+    }
+
+    @keyframes boss-pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.05); }
+    }
+
+    #pickup-announce {
+      position: fixed;
+      top: 40%;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      text-align: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+      font-size: 18px;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+
+    #pickup-announce.show { opacity: 1; }
+
+    /* --- Start Screen --- */
+    #start-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(6, 6, 15, 0.88);
+    }
+
+    #start-screen.hidden { display: none; }
+
+    #start-screen h1 {
+      font-size: 52px;
+      font-weight: bold;
+      color: #fff;
+      letter-spacing: 6px;
+      text-shadow: 0 0 40px rgba(0, 240, 255, 0.4);
+    }
+
+    #start-screen h1 span { color: #8b5cf6; }
+
+    #start-screen .tagline {
+      color: #666;
+      font-size: 14px;
+      margin-top: 8px;
+      letter-spacing: 1px;
+    }
+
+    #start-screen .best-time {
+      color: #8b5cf6;
+      font-size: 13px;
+      margin-top: 20px;
+      min-height: 18px;
+    }
+
+    .menu-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 28px;
+      align-items: center;
+    }
+
+    .menu-btn {
+      padding: 12px 40px;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #888;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      letter-spacing: 2px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+      min-width: 220px;
+      text-align: center;
+    }
+
+    .menu-btn:hover {
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(255,255,255,0.3);
+      color: #ccc;
+    }
+
+    .menu-btn.primary {
+      padding: 14px 48px;
+      border-color: rgba(0, 240, 255, 0.4);
+      color: #00f0ff;
+      font-size: 16px;
+      letter-spacing: 3px;
+    }
+
+    .menu-btn.primary:hover {
+      background: rgba(0, 240, 255, 0.1);
+      border-color: #00f0ff;
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+    }
+
+    .menu-btn.small {
+      padding: 8px 20px;
+      font-size: 10px;
+      color: #555;
+      border-color: rgba(255,255,255,0.08);
+      min-width: auto;
+      margin-top: 20px;
+    }
+
+    .menu-btn.small:hover {
+      color: #ff3355;
+      border-color: rgba(255,51,85,0.3);
+    }
+
+    .start-hint { color: #444; font-size: 11px; margin-top: 16px; }
+
+    /* --- Modals --- */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(6, 6, 15, 0.92);
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-overlay.show { display: flex; }
+
+    .modal-content {
+      background: rgba(15, 15, 35, 0.95);
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      border-radius: 8px;
+      padding: 28px;
+      max-width: 480px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    .modal-content h2 {
+      font-size: 16px;
+      color: #8b5cf6;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .modal-content p, .modal-content li {
+      font-size: 12px;
+      color: #999;
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+
+    .modal-content h3 {
+      font-size: 12px;
+      color: #00f0ff;
+      letter-spacing: 1px;
+      margin-top: 16px;
+      margin-bottom: 8px;
+    }
+
+    .modal-content ul { list-style: none; padding-left: 0; }
+    .modal-content li::before { content: '\203A'; color: #8b5cf6; margin-right: 8px; }
+
+    .modal-close {
+      position: absolute;
+      top: 12px; right: 12px;
+      background: none;
+      border: none;
+      color: #555;
+      font-size: 18px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      transition: color 0.2s;
+    }
+
+    .modal-close:hover { color: #fff; }
+
+    .feedback-area {
+      width: 100%;
+      min-height: 100px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      border-radius: 4px;
+      color: #ccc;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      padding: 10px;
+      resize: vertical;
+      margin-bottom: 12px;
+    }
+
+    .feedback-area:focus { outline: none; border-color: rgba(139, 92, 246, 0.5); }
+
+    .feedback-submit {
+      padding: 8px 24px;
+      background: rgba(139, 92, 246, 0.2);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      color: #8b5cf6;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      letter-spacing: 1px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .feedback-submit:hover { background: rgba(139, 92, 246, 0.3); border-color: #8b5cf6; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .stat-item {
+      text-align: center;
+      padding: 12px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .stat-val { font-size: 20px; font-weight: bold; color: #fff; }
+    .stat-label { font-size: 9px; color: #666; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+
+    /* --- Game Over --- */
+    #gameover-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(6, 6, 15, 0.95);
+      backdrop-filter: blur(4px);
+    }
+
+    #gameover-screen.show { display: flex; }
+
+    #gameover-screen .go-title {
+      font-size: 14px;
+      color: #ff3355;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+    }
+
+    #gameover-screen .go-time {
+      font-size: 56px;
+      font-weight: bold;
+      color: #fff;
+      margin-top: 8px;
+      text-shadow: 0 0 30px rgba(255, 51, 85, 0.3);
+    }
+
+    #gameover-screen .go-time span { font-size: 20px; color: #888; }
+    #gameover-screen .go-phase { font-size: 13px; color: #8b5cf6; margin-top: 4px; }
+
+    .go-stats { display: flex; gap: 32px; margin-top: 24px; }
+    .go-stat { text-align: center; }
+    .go-stat-val { font-size: 24px; font-weight: bold; color: #fff; }
+    .go-stat-label { font-size: 10px; color: #666; margin-top: 2px; text-transform: uppercase; letter-spacing: 1px; }
+    .go-new-best { color: #00f0ff; font-size: 12px; margin-top: 12px; letter-spacing: 2px; }
+    .go-buttons { display: flex; gap: 12px; margin-top: 28px; }
+
+    .go-btn {
+      padding: 12px 32px;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #ccc;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      letter-spacing: 2px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .go-btn:hover { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.4); }
+    .go-btn.primary { border-color: rgba(0, 240, 255, 0.4); color: #00f0ff; }
+    .go-btn.primary:hover { background: rgba(0, 240, 255, 0.1); border-color: #00f0ff; }
+
+    .go-ai-learned {
+      color: #444;
+      font-size: 11px;
+      margin-top: 20px;
+      max-width: 320px;
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    /* --- Ad Zone Placeholder --- */
+    .ad-zone {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 60px;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+      border-top: 1px solid #1a1a2e;
+    }
+
+    .ad-zone span { color: #333; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
+
+    /* Mobile adjustments */
+    @media (max-width: 600px) {
+      #brain-panel { width: 150px; padding: 8px; top: 8px; right: 8px; }
+      #brain-panel h3 { font-size: 9px; }
+      .brain-row { font-size: 10px; }
+      #brain-bias { width: 54px; height: 54px; }
+      #hud { top: 8px; left: 8px; }
+      #hud-time { font-size: 24px; }
+      #phase-announce .phase-name { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="hud-time">0.0s</div>
+  <div id="hud-phase">PHASE 1 — SCANNING</div>
+  <div id="hud-dodged">Dodged: 0</div>
+</div>
+
+<!-- Power-up indicators -->
+<div id="hud-powerups">
+  <div class="powerup-indicator" id="pu-slowmo">BULLET TIME <div class="pu-bar"><div class="pu-bar-fill" id="pu-slowmo-bar"></div></div></div>
+  <div class="powerup-indicator" id="pu-shield">PLOT ARMOR <div class="pu-bar"><div class="pu-bar-fill" id="pu-shield-bar"></div></div></div>
+  <div class="powerup-indicator" id="pu-shrink">SMOL MODE <div class="pu-bar"><div class="pu-bar-fill" id="pu-shrink-bar"></div></div></div>
+  <div class="powerup-indicator" id="pu-ghost">NOPE <div class="pu-bar"><div class="pu-bar-fill" id="pu-ghost-bar"></div></div></div>
+  <div class="powerup-indicator" id="pu-magnet">PERSONAL SPACE <div class="pu-bar"><div class="pu-bar-fill" id="pu-magnet-bar"></div></div></div>
+  <div class="powerup-indicator" id="pu-overclock">MAXIMUM EFFORT <div class="pu-bar"><div class="pu-bar-fill" id="pu-overclock-bar"></div></div></div>
+</div>
+
+<!-- AI Brain Panel -->
+<div id="brain-panel">
+  <h3>The AI's Diary</h3>
+  <div class="brain-row">
+    <span class="brain-label">How Sure I Am</span>
+    <span class="brain-value" id="brain-confidence">0%</span>
+  </div>
+  <div class="brain-row">
+    <span class="brain-label">Your Reflexes</span>
+    <span class="brain-value" id="brain-reaction">—</span>
+  </div>
+  <div class="brain-row">
+    <span class="brain-label">Moves Stolen</span>
+    <span class="brain-value" id="brain-samples">0</span>
+  </div>
+  <div id="brain-bias">
+    <div class="bias-cell"></div>
+    <div class="bias-cell active" id="bias-up"></div>
+    <div class="bias-cell"></div>
+    <div class="bias-cell active" id="bias-left"></div>
+    <div class="bias-cell bias-center"></div>
+    <div class="bias-cell active" id="bias-right"></div>
+    <div class="bias-cell"></div>
+    <div class="bias-cell active" id="bias-down"></div>
+    <div class="bias-cell"></div>
+  </div>
+  <div id="brain-insight">Sizing you up...</div>
+</div>
+
+<!-- Phase Announcement -->
+<div id="phase-announce">
+  <div class="phase-num"></div>
+  <div class="phase-name"></div>
+  <div class="phase-desc"></div>
+</div>
+
+<!-- Boss Announcement -->
+<div id="boss-announce">
+  <div class="boss-title">BOSS INCOMING</div>
+  <div class="boss-sub">Survive or EMP it</div>
+</div>
+
+<!-- Powerup Pickup -->
+<div id="pickup-announce"></div>
+
+<!-- Start Screen / Menu -->
+<div id="start-screen">
+  <h1>DODGE <span>AI</span></h1>
+  <div class="tagline">Maximum effort. Minimum survival.</div>
+  <div class="best-time" id="start-best"></div>
+  <div class="menu-buttons">
+    <button class="menu-btn primary" id="btn-start">PLAY</button>
+    <button class="menu-btn" id="btn-howto">HOW TO PLAY</button>
+    <button class="menu-btn" id="btn-stats">STATS</button>
+    <button class="menu-btn" id="btn-contact">CONTACT</button>
+    <button class="menu-btn" id="btn-feedback">FEEDBACK</button>
+  </div>
+  <button class="menu-btn small" id="btn-reset-ai">RESET AI</button>
+  <div class="start-hint">Mouse or touch. Try not to cry.</div>
+</div>
+
+<!-- How to Play Modal -->
+<div class="modal-overlay" id="modal-howto">
+  <div class="modal-content">
+    <button class="modal-close" data-close="modal-howto">&times;</button>
+    <h2>The Briefing</h2>
+    <p>Oh hey. So you want instructions. Adorable.</p>
+    <p><strong>Move</strong> your mouse. <strong>Don't die.</strong> That's the whole TED talk. You're welcome.</p>
+    <p>The AI is watching everything you do. Every panicky little dodge, every predictable little pattern. It's basically your browser history but weaponized.</p>
+    <p>See those <strong style="color:#facc15">shiny floating orbs</strong>? Grab them. They do cool stuff. I'm not gonna hold your hand through every single one — this isn't a Marvel movie where they explain the plot three times.</p>
+    <p>Every 25 seconds a <strong style="color:#ff3355">boss</strong> rolls in like it owns the place. Each one's different. Each one thinks you're its personal piñata.</p>
+    <p style="color:#666; margin-top:12px;">Spoiler alert: you're going to die. A lot. But like a beautiful, regenerating phoenix... you'll hit retry.</p>
+  </div>
+</div>
+
+<!-- Stats Modal -->
+<div class="modal-overlay" id="modal-stats">
+  <div class="modal-content">
+    <button class="modal-close" data-close="modal-stats">&times;</button>
+    <h2>Stats</h2>
+    <div class="stats-grid" id="stats-grid"></div>
+  </div>
+</div>
+
+<!-- Feedback Modal -->
+<div class="modal-overlay" id="modal-feedback">
+  <div class="modal-content">
+    <button class="modal-close" data-close="modal-feedback">&times;</button>
+    <h2>Talk to Me</h2>
+    <p>Go ahead, roast me. Compliment me. Tell me the AI killed you unfairly. I'll pretend to care. (Saved locally — I'm not that kind of app.)</p>
+    <textarea class="feedback-area" id="feedback-text" placeholder="Your hot take goes here..."></textarea>
+    <button class="feedback-submit" id="btn-submit-feedback">SEND IT</button>
+    <div id="feedback-status" style="font-size:11px;color:#10b981;margin-top:8px;display:none">Filed under 'stuff I'll actually read.' Thanks.</div>
+  </div>
+</div>
+
+<!-- Game Over Screen -->
+<div id="gameover-screen">
+  <div class="go-title">Wow. That happened.</div>
+  <div class="go-time" id="go-time">12.4<span>s</span></div>
+  <div class="go-phase" id="go-phase">Reached Phase 3 — PREDICTING</div>
+  <div class="go-stats">
+    <div class="go-stat">
+      <div class="go-stat-val" id="go-dodged">47</div>
+      <div class="go-stat-label">Near-Death Experiences</div>
+    </div>
+    <div class="go-stat">
+      <div class="go-stat-val" id="go-closest">—</div>
+      <div class="go-stat-label">Closest Call</div>
+    </div>
+    <div class="go-stat">
+      <div class="go-stat-val" id="go-games">1</div>
+      <div class="go-stat-label">Lives Wasted</div>
+    </div>
+  </div>
+  <div class="go-new-best" id="go-new-best" style="display:none">NEW PERSONAL BEST. I'M GENUINELY IMPRESSED.</div>
+  <div class="go-buttons">
+    <button class="go-btn" id="btn-share">SHARE</button>
+    <button class="go-btn primary" id="btn-retry">RETRY</button>
+    <button class="go-btn" id="btn-menu">MENU</button>
+  </div>
+  <div class="go-ai-learned" id="go-ai-learned"></div>
+</div>
+
+<!-- Ad Zone Placeholder -->
+<div class="ad-zone" id="ad-zone" style="display:none">
+  <span>Ad Space</span>
+</div>
+
+<script>
+// ============================================================
+// DODGE AI — Survive the Learning Machine (v3)
+// ============================================================
+
+const PHASE_DEFS = [
+  { name: 'SCANNING',    dur: 20, color: '#ff3355', desc: 'The AI is taking notes. Like a really creepy diary.',
+    spawnRate: 1.2,  count: 2, speed: 3.5,  aimPct: 0.25, burstChance: 0,    homingChance: 0,    splitterChance: 0,    bouncerChance: 0,    waveChance: 0,    accelChance: 0 },
+  { name: 'TARGETING',   dur: 20, color: '#ff6633', desc: 'It knows your name now. And your dodging habits.',
+    spawnRate: 0.8,  count: 2, speed: 3.8,  aimPct: 0.7,  burstChance: 0.25, homingChance: 0,    splitterChance: 0,    bouncerChance: 0.15, waveChance: 0,    accelChance: 0 },
+  { name: 'PREDICTING',  dur: 20, color: '#8b5cf6', desc: 'Shooting where you WILL be. Basically precrime.',
+    spawnRate: 0.65, count: 3, speed: 4.5,  aimPct: 0.8,  burstChance: 0.3,  homingChance: 0.1,  splitterChance: 0.2,  bouncerChance: 0.15, waveChance: 0,    accelChance: 0.1 },
+  { name: 'TIMING',      dur: 20, color: '#3b82f6', desc: 'It timed your reflexes. This is getting personal.',
+    spawnRate: 0.55, count: 3, speed: 5.0,  aimPct: 0.85, burstChance: 0.35, homingChance: 0.15, splitterChance: 0.2,  bouncerChance: 0.15, waveChance: 0.1,  accelChance: 0.2 },
+  { name: 'HUNTING',     dur: 30, color: '#14b8a6', desc: 'Homing missiles. Because regular death was too boring.',
+    spawnRate: 0.45, count: 4, speed: 5.5,  aimPct: 0.9,  burstChance: 0.4,  homingChance: 0.25, splitterChance: 0.25, bouncerChance: 0.2,  waveChance: 0.15, accelChance: 0.2 },
+  { name: 'EVOLVED',     dur: Infinity, color: '#e879f9', desc: 'Full Skynet mode. You had a good run. Emphasis on had.',
+    spawnRate: 0.35, count: 4, speed: 6.0,  aimPct: 0.95, burstChance: 0.45, homingChance: 0.3,  splitterChance: 0.3,  bouncerChance: 0.2,  waveChance: 0.2,  accelChance: 0.25 },
+];
+
+// Deep-copy for evolved ramp so we don't mutate the originals
+const EVOLVED_BASE = { ...PHASE_DEFS[5] };
+
+const PLAYER_RADIUS = 10;
+const PROJECTILE_RADIUS = 5;
+const PLAYER_LERP = 0.12;
+const WARNING_DURATION = 350;
+const PHASE_ANNOUNCE_DURATION = 2000;
+const BOSS_ANNOUNCE_DURATION = 1500;
+const BOSS_INTERVAL = 25; // seconds between bosses
+const BOSS_LIFETIME = 12; // seconds a boss lives
+
+const POWERUP_TYPES = {
+  slowmo:    { name: 'BULLET TIME',    color: '#3b82f6', duration: 4,   icon: 'S' },
+  emp:       { name: 'KABOOM',        color: '#facc15', duration: 0,   icon: 'E' },
+  shield:    { name: 'PLOT ARMOR',    color: '#10b981', duration: 3,   icon: 'F' },
+  shrink:    { name: 'SMOL MODE',     color: '#ec4899', duration: 5,   icon: 'K' },
+  ghost:     { name: 'NOPE',          color: '#94a3b8', duration: 2.5, icon: 'G' },
+  magnet:    { name: 'PERSONAL SPACE', color: '#f97316', duration: 3.5, icon: 'R' },
+  blink:     { name: 'YOINK',         color: '#c084fc', duration: 0,   icon: 'B' },
+  overclock: { name: 'MAXIMUM EFFORT', color: '#ef4444', duration: 4,   icon: 'O' },
+};
+
+const POWERUP_SPAWN_MIN = 7;
+const POWERUP_SPAWN_MAX = 13;
+const POWERUP_LIFETIME = 6;
+const POWERUP_RADIUS = 16;
+
+// ============================================================
+// AI Brain
+// ============================================================
+class AIBrain {
+  constructor() {
+    this.dodgeDirections = [];
+    this.positionLog = [];
+    this.reactionSamples = [];
+    this.directionBias = { left: 0, right: 0, up: 0, down: 0 };
+    this.totalSamples = 0;
+    this.lastPlayerPos = null;
+    this.lastProjectileTime = 0;
+    this.playerMovedSinceShot = false;
+    this.zoneVisits = new Array(9).fill(0);
+    this.load();
+  }
+
+  reset() {
+    this.positionLog = [];
+    this.lastPlayerPos = null;
+    this.lastProjectileTime = 0;
+    this.playerMovedSinceShot = false;
+  }
+
+  trackPosition(x, y, time, w, h) {
+    this.positionLog.push({ x, y, time });
+    if (this.positionLog.length > 150) this.positionLog.shift();
+    const zx = Math.min(2, Math.floor((x / w) * 3));
+    const zy = Math.min(2, Math.floor((y / h) * 3));
+    this.zoneVisits[zy * 3 + zx]++;
+    if (this.lastPlayerPos) {
+      const dx = x - this.lastPlayerPos.x;
+      const dy = y - this.lastPlayerPos.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 3) {
+        if (!this.playerMovedSinceShot && this.lastProjectileTime > 0) {
+          const reactionMs = time - this.lastProjectileTime;
+          if (reactionMs > 50 && reactionMs < 2000) {
+            this.reactionSamples.push(reactionMs);
+            if (this.reactionSamples.length > 30) this.reactionSamples.shift();
+          }
+          this.playerMovedSinceShot = true;
+        }
+        const angle = Math.atan2(dy, dx);
+        if (angle > -0.785 && angle <= 0.785) this.directionBias.right++;
+        else if (angle > 0.785 && angle <= 2.356) this.directionBias.down++;
+        else if (angle > -2.356 && angle <= -0.785) this.directionBias.up++;
+        else this.directionBias.left++;
+        this.totalSamples++;
+        this.dodgeDirections.push({ dx: dx / dist, dy: dy / dist, time });
+        if (this.dodgeDirections.length > 80) this.dodgeDirections.shift();
+      }
+    }
+    this.lastPlayerPos = { x, y };
+  }
+
+  onProjectileFired(time) { this.lastProjectileTime = time; this.playerMovedSinceShot = false; }
+
+  getAvgReaction() {
+    if (this.reactionSamples.length < 3) return null;
+    return Math.round(this.reactionSamples.reduce((a, b) => a + b, 0) / this.reactionSamples.length);
+  }
+
+  getDominantDodge() {
+    const b = this.directionBias;
+    const total = b.left + b.right + b.up + b.down;
+    if (total < 8) return null;
+    const entries = Object.entries(b);
+    entries.sort((a, c) => c[1] - a[1]);
+    return { direction: entries[0][0], pct: Math.round((entries[0][1] / total) * 100) };
+  }
+
+  getBiasPercentages() {
+    const b = this.directionBias;
+    const total = b.left + b.right + b.up + b.down || 1;
+    return {
+      up: Math.round((b.up / total) * 100),
+      down: Math.round((b.down / total) * 100),
+      left: Math.round((b.left / total) * 100),
+      right: Math.round((b.right / total) * 100),
+    };
+  }
+
+  getFavoriteZone(w, h) {
+    let maxIdx = 0;
+    for (let i = 1; i < 9; i++) if (this.zoneVisits[i] > this.zoneVisits[maxIdx]) maxIdx = i;
+    const zx = maxIdx % 3;
+    const zy = Math.floor(maxIdx / 3);
+    return { x: (zx + 0.5) * (w / 3), y: (zy + 0.5) * (h / 3) };
+  }
+
+  getPredictedDodgeTarget(px, py, w, h) {
+    const dom = this.getDominantDodge();
+    if (!dom) return null;
+    const offset = 100 + Math.random() * 60;
+    switch (dom.direction) {
+      case 'left':  return { x: Math.max(20, px - offset), y: py + (Math.random() - 0.5) * 40 };
+      case 'right': return { x: Math.min(w - 20, px + offset), y: py + (Math.random() - 0.5) * 40 };
+      case 'up':    return { x: px + (Math.random() - 0.5) * 40, y: Math.max(20, py - offset) };
+      case 'down':  return { x: px + (Math.random() - 0.5) * 40, y: Math.min(h - 20, py + offset) };
+    }
+    return null;
+  }
+
+  getPredictedFuturePos(px, py, vx, vy, t) {
+    return { x: px + vx * t, y: py + vy * t };
+  }
+
+  getConfidence() {
+    const s = this.totalSamples;
+    if (s < 5) return Math.round(s * 5);
+    if (s < 30) return Math.round(25 + (s - 5) * 2);
+    return Math.min(97, Math.round(75 + (s - 30) * 0.22));
+  }
+
+  getInsight() {
+    const dom = this.getDominantDodge();
+    const reaction = this.getAvgReaction();
+    const conf = this.getConfidence();
+    if (conf < 15) return 'Sizing you up...';
+    if (conf < 30) return 'Ooh, I see what you did there...';
+    const msgs = [];
+    if (dom && dom.pct > 30) msgs.push(`You dodge ${dom.direction} ${dom.pct}% of the time. Adorable.`);
+    if (reaction) {
+      if (reaction < 200) msgs.push(`${reaction}ms reflexes. Okay, I'm mildly threatened.`);
+      else if (reaction > 500) msgs.push(`${reaction}ms reaction. My grandma dodges faster.`);
+      else msgs.push(`${reaction}ms. Filed that away for later. You're welcome.`);
+    }
+    if (conf > 60) msgs.push('I know your moves better than you do.');
+    if (conf > 80) msgs.push('At this point I\'m just showing off.');
+    return msgs[Math.floor(Date.now() / 2500) % msgs.length] || 'Processing your failures...';
+  }
+
+  save() {
+    try {
+      localStorage.setItem('dodge-ai-brain', JSON.stringify({
+        directionBias: this.directionBias,
+        totalSamples: this.totalSamples,
+        reactionSamples: this.reactionSamples.slice(-20),
+        zoneVisits: this.zoneVisits,
+      }));
+    } catch (e) {}
+  }
+
+  load() {
+    try {
+      const data = JSON.parse(localStorage.getItem('dodge-ai-brain'));
+      if (data) {
+        this.directionBias = data.directionBias || this.directionBias;
+        this.totalSamples = data.totalSamples || 0;
+        this.reactionSamples = data.reactionSamples || [];
+        this.zoneVisits = data.zoneVisits || new Array(9).fill(0);
+      }
+    } catch (e) {}
+  }
+}
+
+// ============================================================
+// Particle
+// ============================================================
+class Particle {
+  constructor(x, y, vx, vy, life, color, radius) {
+    this.x = x; this.y = y; this.vx = vx; this.vy = vy;
+    this.life = life; this.maxLife = life; this.color = color; this.radius = radius;
+  }
+  update(dt) {
+    this.x += this.vx * dt; this.y += this.vy * dt;
+    this.vx *= 0.97; this.vy *= 0.97; this.life -= dt;
+  }
+  draw(ctx) {
+    ctx.globalAlpha = Math.max(0, this.life / this.maxLife) * 0.8;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, Math.max(0, this.radius * (this.life / this.maxLife)), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ============================================================
+// Shape Drawing Helper
+// ============================================================
+function drawShape(ctx, x, y, radius, shape, angle) {
+  switch (shape) {
+    case 'circle':
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      break;
+    case 'diamond': {
+      const a = angle || 0;
+      const c = Math.cos(a), s = Math.sin(a);
+      const pts = [{x:0,y:-radius},{x:radius,y:0},{x:0,y:radius},{x:-radius,y:0}];
+      for (let i = 0; i < pts.length; i++) {
+        const px = x + pts[i].x * c - pts[i].y * s;
+        const py = y + pts[i].x * s + pts[i].y * c;
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      break;
+    }
+    case 'triangle': {
+      const a = angle || 0;
+      const c = Math.cos(a), s = Math.sin(a);
+      const pts = [{x:radius*1.2,y:0},{x:-radius*0.7,y:-radius*0.8},{x:-radius*0.7,y:radius*0.8}];
+      for (let i = 0; i < pts.length; i++) {
+        const px = x + pts[i].x * c - pts[i].y * s;
+        const py = y + pts[i].x * s + pts[i].y * c;
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      break;
+    }
+    case 'hexagon': {
+      const a = angle || 0;
+      for (let i = 0; i < 6; i++) {
+        const ha = (i / 6) * Math.PI * 2 + a;
+        const px = x + Math.cos(ha) * radius;
+        const py = y + Math.sin(ha) * radius;
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      break;
+    }
+    case 'arrow': {
+      const a = angle || 0;
+      const c = Math.cos(a), s = Math.sin(a);
+      const pts = [{x:radius*1.3,y:0},{x:-radius*0.3,y:-radius*0.8},{x:0,y:0},{x:-radius*0.3,y:radius*0.8}];
+      for (let i = 0; i < pts.length; i++) {
+        const px = x + pts[i].x * c - pts[i].y * s;
+        const py = y + pts[i].x * s + pts[i].y * c;
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      break;
+    }
+    case 'star': {
+      const a = angle || 0;
+      for (let i = 0; i < 10; i++) {
+        const sa = (i / 10) * Math.PI * 2 - Math.PI / 2 + a;
+        const r = i % 2 === 0 ? radius : radius * 0.45;
+        const px = x + Math.cos(sa) * r;
+        const py = y + Math.sin(sa) * r;
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      break;
+    }
+  }
+}
+
+// ============================================================
+// Boss Type Definitions
+// ============================================================
+const BOSS_TYPES = [
+  { name: 'Sentinel',    shape: 'circle',   color: '#ff3355', behavior: 'homing', special: 'none',    shootInterval: 0 },
+  { name: 'Shatterer',   shape: 'triangle', color: '#ff6633', behavior: 'homing', special: 'scatter', shootInterval: 2 },
+  { name: 'Pulsar',      shape: 'hexagon',  color: '#a855f7', behavior: 'orbit',  special: 'ring',    shootInterval: 3 },
+  { name: 'Mr Wiggles',  shape: 'diamond',  color: '#10b981', behavior: 'snake',  special: 'none',    shootInterval: 0 },
+  { name: 'The Void',    shape: 'star',     color: '#f43f5e', behavior: 'homing', special: 'both',    shootInterval: 2.5 },
+];
+
+// ============================================================
+// Shockwave (for EMP, shield, etc.)
+// ============================================================
+class Shockwave {
+  constructor(x, y, maxRadius, color, life) {
+    this.x = x; this.y = y;
+    this.maxRadius = maxRadius;
+    this.radius = 0;
+    this.color = color;
+    this.life = life;
+    this.maxLife = life;
+  }
+  update(dt) {
+    this.life -= dt;
+    const t = 1 - (this.life / this.maxLife);
+    this.radius = this.maxRadius * t;
+  }
+  draw(ctx) {
+    const alpha = Math.max(0, this.life / this.maxLife);
+    ctx.globalAlpha = alpha * 0.6;
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = 3 * alpha + 1;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    // Inner glow ring
+    ctx.globalAlpha = alpha * 0.2;
+    ctx.lineWidth = 12 * alpha;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 1;
+  }
+  isDead() { return this.life <= 0; }
+}
+
+// ============================================================
+// Projectile — supports normal, splitter, bouncer, wave, accel
+// ============================================================
+class Projectile {
+  constructor(x, y, vx, vy, color, opts = {}) {
+    this.x = x; this.y = y; this.vx = vx; this.vy = vy;
+    this.color = color;
+    this.radius = opts.radius || PROJECTILE_RADIUS;
+    this.trail = [];
+    this.age = 0;
+    this.homing = opts.homing || false;
+    this.homingStrength = 0.015;
+    // Special types
+    this.type = opts.type || 'normal'; // normal, splitter, bouncer, wave, accel
+    this.hasSplit = false;
+    this.bounces = 0;
+    this.maxBounces = 1;
+    this.waveAmplitude = 30;
+    this.waveFreq = 3;
+    this.baseVx = vx; this.baseVy = vy;
+    this.accelRate = opts.accelRate || 1.5; // multiplier per second
+    this.splitChildren = opts.splitChildren || false; // true = this is a child from a split
+  }
+
+  update(dt, playerX, playerY, slowMod) {
+    this.trail.push({ x: this.x, y: this.y });
+    if (this.trail.length > 8) this.trail.shift();
+    const speed = slowMod;
+
+    // Homing
+    if (this.homing && this.age < 3) {
+      const dx = playerX - this.x;
+      const dy = playerY - this.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      this.vx += (dx / dist) * this.homingStrength * 60 * dt;
+      this.vy += (dy / dist) * this.homingStrength * 60 * dt;
+      const currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+      if (currentSpeed > 0) {
+        const cap = 7;
+        this.vx = (this.vx / currentSpeed) * Math.min(currentSpeed, cap);
+        this.vy = (this.vy / currentSpeed) * Math.min(currentSpeed, cap);
+      }
+    }
+
+    // Wave: oscillate perpendicular to travel direction
+    if (this.type === 'wave') {
+      const dir = Math.atan2(this.baseVy, this.baseVx);
+      const perpX = -Math.sin(dir);
+      const perpY = Math.cos(dir);
+      const wave = Math.sin(this.age * this.waveFreq * Math.PI * 2) * this.waveAmplitude * dt * 4;
+      this.x += this.baseVx * dt * 60 * speed + perpX * wave;
+      this.y += this.baseVy * dt * 60 * speed + perpY * wave;
+    }
+    // Accel: speed increases over time
+    else if (this.type === 'accel') {
+      const mult = 1 + this.age * this.accelRate;
+      this.x += this.vx * dt * 60 * speed * mult;
+      this.y += this.vy * dt * 60 * speed * mult;
+    }
+    // Default movement
+    else {
+      this.x += this.vx * dt * 60 * speed;
+      this.y += this.vy * dt * 60 * speed;
+    }
+
+    this.age += dt;
+  }
+
+  // Returns array of child projectiles if this should split
+  checkSplit(w, h) {
+    if (this.type !== 'splitter' || this.hasSplit || this.splitChildren) return null;
+    // Split at ~40-60% of screen traverse
+    if (this.age > 0.6 + Math.random() * 0.4) {
+      this.hasSplit = true;
+      const angle = Math.atan2(this.vy, this.vx);
+      const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy) * 1.1;
+      const spread = 0.4 + Math.random() * 0.3;
+      const children = [];
+      for (let i = -1; i <= 1; i += 2) {
+        const a = angle + spread * i;
+        children.push(new Projectile(this.x, this.y,
+          Math.cos(a) * speed, Math.sin(a) * speed,
+          '#ff69b4', { radius: 3.5, type: 'normal', splitChildren: true }
+        ));
+      }
+      return children;
+    }
+    return null;
+  }
+
+  // Returns true if bounced
+  checkBounce(w, h) {
+    if (this.type !== 'bouncer' || this.bounces >= this.maxBounces) return false;
+    let bounced = false;
+    if (this.x <= 0 || this.x >= w) { this.vx *= -1; bounced = true; }
+    if (this.y <= 0 || this.y >= h) { this.vy *= -1; bounced = true; }
+    if (bounced) {
+      this.bounces++;
+      this.x = Math.max(1, Math.min(w - 1, this.x));
+      this.y = Math.max(1, Math.min(h - 1, this.y));
+    }
+    return bounced;
+  }
+
+  draw(ctx) {
+    const angle = Math.atan2(this.vy, this.vx);
+
+    // Determine shape
+    let shape = 'circle';
+    if (this.homing && this.type === 'normal') shape = 'star';
+    else if (this.type === 'splitter') shape = 'diamond';
+    else if (this.type === 'bouncer') shape = 'triangle';
+    else if (this.type === 'wave') shape = 'hexagon';
+    else if (this.type === 'accel') shape = 'arrow';
+    if (this.splitChildren) shape = 'triangle';
+
+    // Trail
+    for (let i = 0; i < this.trail.length; i++) {
+      const t = this.trail[i];
+      const alpha = (i / this.trail.length) * 0.25;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = this.color;
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, this.radius * (i / this.trail.length), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Main body — shaped
+    ctx.globalAlpha = 1;
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = this.homing ? 18 : 10;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    drawShape(ctx, this.x, this.y, this.radius, shape, angle);
+    ctx.fill();
+
+    // Type-specific effects
+    if (this.homing && this.age < 3) {
+      ctx.strokeStyle = this.color;
+      ctx.lineWidth = 1;
+      ctx.globalAlpha = 0.4;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius + 4 + Math.sin(this.age * 8) * 2, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    if (this.type === 'splitter' && !this.hasSplit) {
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = '#ff69b4';
+      ctx.lineWidth = 1;
+      const s = this.radius + 3;
+      ctx.beginPath();
+      ctx.moveTo(this.x - s, this.y); ctx.lineTo(this.x + s, this.y);
+      ctx.moveTo(this.x, this.y - s); ctx.lineTo(this.x, this.y + s);
+      ctx.stroke();
+    }
+    if (this.type === 'bouncer') {
+      ctx.globalAlpha = 0.4;
+      ctx.strokeStyle = '#00ff88';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius + 3, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    if (this.type === 'wave') {
+      ctx.globalAlpha = 0.2;
+      ctx.fillStyle = '#a78bfa';
+      ctx.beginPath();
+      drawShape(ctx, this.x, this.y, this.radius + 2, 'hexagon', angle);
+      ctx.fill();
+    }
+    if (this.type === 'accel') {
+      const mult = 1 + this.age * this.accelRate;
+      ctx.globalAlpha = Math.min(0.5, mult * 0.1);
+      ctx.fillStyle = '#ff4400';
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius + mult * 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+  }
+
+  isOffscreen(w, h) {
+    const margin = 80;
+    return this.x < -margin || this.x > w + margin || this.y < -margin || this.y > h + margin;
+  }
+}
+
+// ============================================================
+// Boss — Unique types per level
+// ============================================================
+class Boss {
+  constructor(x, y, w, h, level) {
+    this.x = x; this.y = y;
+    this.w = w; this.h = h;
+    this.level = level;
+    this.bossType = BOSS_TYPES[(level - 1) % BOSS_TYPES.length];
+    this.radius = 22 + level * 3;
+    this.speed = 1.2 + level * 0.2;
+    this.hp = 3;
+    this.maxHp = 3;
+    this.age = 0;
+    this.lifetime = BOSS_LIFETIME;
+    this.color = this.bossType.color;
+    this.trail = [];
+    this.pulsePhase = 0;
+    this.rotationAngle = 0;
+    this.shootTimer = this.bossType.shootInterval > 0 ? this.bossType.shootInterval : Infinity;
+    this.pendingProjectiles = [];
+
+    // Serpent segments
+    this.segments = [];
+    this.posHistory = [];
+    if (this.bossType.behavior === 'snake') {
+      this.segments.push({ x: x, y: y });
+      this.segments.push({ x: x, y: y });
+    }
+
+    // Pulsar orbit
+    this.orbitAngle = Math.random() * Math.PI * 2;
+    this.orbitDist = 150;
+  }
+
+  update(dt, playerX, playerY) {
+    this.age += dt;
+    this.pulsePhase += dt * 3;
+    this.rotationAngle += dt * 2;
+    this.pendingProjectiles = [];
+
+    if (this.bossType.behavior === 'orbit') {
+      // Circular orbit around player
+      this.orbitAngle += dt * 1.5;
+      const targetX = playerX + Math.cos(this.orbitAngle) * this.orbitDist;
+      const targetY = playerY + Math.sin(this.orbitAngle) * this.orbitDist;
+      this.x += (targetX - this.x) * 0.03 * 60 * dt;
+      this.y += (targetY - this.y) * 0.03 * 60 * dt;
+    } else if (this.bossType.behavior === 'snake') {
+      // Snake-like with wave motion
+      const dx = playerX - this.x;
+      const dy = playerY - this.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const perpX = -dy / dist;
+      const perpY = dx / dist;
+      const wave = Math.sin(this.age * 3) * 30 * dt;
+      this.x += (dx / dist) * this.speed * dt * 60 + perpX * wave;
+      this.y += (dy / dist) * this.speed * dt * 60 + perpY * wave;
+    } else {
+      // Homing toward player
+      const dx = playerX - this.x;
+      const dy = playerY - this.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      this.x += (dx / dist) * this.speed * dt * 60;
+      this.y += (dy / dist) * this.speed * dt * 60;
+    }
+
+    // Clamp to screen
+    this.x = Math.max(this.radius, Math.min(this.w - this.radius, this.x));
+    this.y = Math.max(this.radius, Math.min(this.h - this.radius, this.y));
+
+    this.trail.push({ x: this.x, y: this.y });
+    if (this.trail.length > 20) this.trail.shift();
+
+    // Serpent segment tracking
+    if (this.bossType.behavior === 'snake') {
+      this.posHistory.push({ x: this.x, y: this.y });
+      if (this.posHistory.length > 40) this.posHistory.shift();
+      if (this.posHistory.length > 5) {
+        for (let i = 0; i < this.segments.length; i++) {
+          const histIdx = Math.max(0, this.posHistory.length - 1 - (i + 1) * 10);
+          this.segments[i].x = this.posHistory[histIdx].x;
+          this.segments[i].y = this.posHistory[histIdx].y;
+        }
+      }
+    }
+
+    // Shooting
+    if (this.bossType.shootInterval > 0) {
+      this.shootTimer -= dt;
+      if (this.shootTimer <= 0) {
+        this.shootTimer = this.bossType.shootInterval;
+        this.shoot(playerX, playerY);
+      }
+    }
+  }
+
+  shoot(playerX, playerY) {
+    const special = this.bossType.special;
+
+    if (special === 'scatter' || special === 'both') {
+      const count = 3 + Math.floor(Math.random() * 3);
+      const baseAngle = Math.atan2(playerY - this.y, playerX - this.x);
+      const spread = 0.3;
+      for (let i = 0; i < count; i++) {
+        const a = baseAngle + (i - (count - 1) / 2) * spread;
+        const spd = 3.5 + this.level * 0.3;
+        this.pendingProjectiles.push(new Projectile(
+          this.x, this.y, Math.cos(a) * spd, Math.sin(a) * spd,
+          this.color, { type: 'splitter', radius: 4 }
+        ));
+      }
+    }
+
+    if (special === 'ring' || special === 'both') {
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        this.pendingProjectiles.push(new Projectile(
+          this.x, this.y, Math.cos(a) * 4, Math.sin(a) * 4,
+          this.color, { type: 'normal', radius: 3.5 }
+        ));
+      }
+    }
+  }
+
+  hit() {
+    this.hp--;
+    return this.hp <= 0;
+  }
+
+  isExpired() { return this.age > this.lifetime; }
+
+  getCollisionPoints() {
+    const points = [{ x: this.x, y: this.y, radius: this.radius }];
+    if (this.bossType.behavior === 'snake') {
+      for (let i = 0; i < this.segments.length; i++) {
+        points.push({ x: this.segments[i].x, y: this.segments[i].y, radius: this.radius * (0.7 - i * 0.15) });
+      }
+    }
+    return points;
+  }
+
+  draw(ctx) {
+    const pulse = Math.sin(this.pulsePhase) * 0.2 + 0.8;
+
+    // Trail
+    for (let i = 0; i < this.trail.length; i++) {
+      const t = this.trail[i];
+      ctx.globalAlpha = (i / this.trail.length) * 0.15;
+      ctx.fillStyle = this.color;
+      const trailR = this.radius * (i / this.trail.length) * 0.8;
+      ctx.beginPath();
+      drawShape(ctx, t.x, t.y, trailR, this.bossType.shape, this.rotationAngle);
+      ctx.fill();
+    }
+
+    // Serpent segments
+    if (this.bossType.behavior === 'snake') {
+      for (let i = 0; i < this.segments.length; i++) {
+        const seg = this.segments[i];
+        const segR = this.radius * (0.7 - i * 0.15);
+        ctx.globalAlpha = 0.7 - i * 0.15;
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 20 * pulse;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        drawShape(ctx, seg.x, seg.y, segR * pulse, 'diamond', this.rotationAngle + i * 0.5);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    // Outer danger glow
+    ctx.globalAlpha = 0.1 * pulse;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius + 20 * pulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Main body — shaped
+    ctx.globalAlpha = 0.9;
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = 30 * pulse;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    drawShape(ctx, this.x, this.y, this.radius * pulse, this.bossType.shape, this.rotationAngle);
+    ctx.fill();
+
+    // Inner core
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fff';
+    ctx.globalAlpha = 0.4 * pulse;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // HP indicator — arcs
+    ctx.globalAlpha = 0.8;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < this.hp; i++) {
+      const startAngle = (i / this.maxHp) * Math.PI * 2 - Math.PI / 2;
+      const endAngle = ((i + 0.7) / this.maxHp) * Math.PI * 2 - Math.PI / 2;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius + 6, startAngle, endAngle);
+      ctx.stroke();
+    }
+
+    // Boss name label
+    ctx.globalAlpha = 0.6;
+    ctx.fillStyle = this.color;
+    ctx.font = 'bold 9px Courier New';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(this.bossType.name.toUpperCase(), this.x, this.y - this.radius - 12);
+
+    // Lifetime bar
+    const lifeRatio = Math.max(0, 1 - this.age / this.lifetime);
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = '#333';
+    ctx.fillRect(this.x - 20, this.y + this.radius + 12, 40, 3);
+    ctx.fillStyle = this.color;
+    ctx.fillRect(this.x - 20, this.y + this.radius + 12, 40 * lifeRatio, 3);
+
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+  }
+}
+
+// ============================================================
+// Warning
+// ============================================================
+class Warning {
+  constructor(x, y, time) {
+    this.x = x; this.y = y; this.time = time;
+  }
+  isExpired(now) { return now - this.time > WARNING_DURATION; }
+  draw(ctx, now) {
+    const progress = Math.max(0, Math.min(1, (now - this.time) / WARNING_DURATION));
+    ctx.globalAlpha = (1 - progress) * 0.6;
+    ctx.strokeStyle = '#ff3355';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, 8 + progress * 12, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ============================================================
+// PowerUp
+// ============================================================
+class PowerUp {
+  constructor(x, y, type, time) {
+    this.x = x; this.y = y; this.type = type;
+    this.def = POWERUP_TYPES[type];
+    this.spawnTime = time; this.age = 0;
+  }
+  update(dt) { this.age += dt; }
+  isExpired() { return this.age > POWERUP_LIFETIME; }
+  draw(ctx) {
+    const pulse = Math.sin(this.age * 4) * 0.3 + 0.7;
+    const fadeOut = this.age > POWERUP_LIFETIME - 1.5 ? Math.max(0, (POWERUP_LIFETIME - this.age) / 1.5) : 1;
+    ctx.globalAlpha = 0.15 * pulse * fadeOut;
+    ctx.fillStyle = this.def.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, POWERUP_RADIUS + 8 + Math.sin(this.age * 3) * 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 0.9 * fadeOut;
+    ctx.shadowColor = this.def.color;
+    ctx.shadowBlur = 20 * pulse;
+    ctx.fillStyle = this.def.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, POWERUP_RADIUS * pulse, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = fadeOut;
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 14px Courier New';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(this.def.icon, this.x, this.y + 1);
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ============================================================
+// Main Game
+// ============================================================
+class Game {
+  constructor() {
+    this.canvas = document.getElementById('game');
+    this.ctx = this.canvas.getContext('2d');
+
+    this.running = false;
+    this.gameTime = 0;
+    this.phase = 0;
+    this.projectiles = [];
+    this.warnings = [];
+    this.particles = [];
+    this.powerups = [];
+    this.shockwaves = [];
+    this.bosses = [];
+    this.dodgedCount = 0;
+    this.bossesDefeated = 0;
+    this.closestCall = Infinity;
+    this.totalGames = parseInt(localStorage.getItem('dodge-ai-games') || '0');
+    this.bestTime = parseFloat(localStorage.getItem('dodge-ai-best') || '0');
+
+    this.player = { x: 0, y: 0, vx: 0, vy: 0 };
+    this.targetX = 0;
+    this.targetY = 0;
+
+    this.effects = {
+      slowmo: { active: false, remaining: 0, duration: 0 },
+      shield: { active: false, remaining: 0, duration: 0 },
+      shrink: { active: false, remaining: 0, duration: 0 },
+      ghost: { active: false, remaining: 0, duration: 0 },
+      magnet: { active: false, remaining: 0, duration: 0 },
+      overclock: { active: false, remaining: 0, duration: 0 },
+    };
+
+    this.lastPowerupType = null;
+    this.brain = new AIBrain();
+
+    this.spawnTimer = 0;
+    this.lastTime = 0;
+    this.phaseAnnounceTimer = 0;
+    this.bossAnnounceTimer = 0;
+    this.powerupTimer = POWERUP_SPAWN_MIN + Math.random() * (POWERUP_SPAWN_MAX - POWERUP_SPAWN_MIN);
+    this.pickupAnnounceTimer = 0;
+    this.nextBossTime = BOSS_INTERVAL;
+    this.bossLevel = 0;
+    this._lastAnnouncedPhase = -1;
+    this.forceFieldFlash = 0;
+
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    this.setupInput();
+    this.updateStartScreen();
+
+    this.bgStars = [];
+    for (let i = 0; i < 60; i++) {
+      this.bgStars.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        r: Math.random() * 1.2 + 0.3,
+        a: Math.random(),
+      });
+    }
+
+    this.idleLoop();
+  }
+
+  idleLoop() {
+    if (this.running) return;
+    const ctx = this.ctx;
+    ctx.fillStyle = '#06060f';
+    ctx.fillRect(0, 0, this.w, this.h);
+    const t = Date.now() / 1000;
+    for (const star of this.bgStars) {
+      ctx.globalAlpha = star.a * 0.3 + Math.sin(t + star.x) * 0.08;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(star.x, star.y + Math.sin(t * 0.3 + star.x * 0.01) * 2, star.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(() => this.idleLoop());
+  }
+
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    this.w = this.canvas.width;
+    this.h = this.canvas.height;
+  }
+
+  setupInput() {
+    const onMove = (x, y) => { this.targetX = x; this.targetY = y; };
+    this.canvas.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
+    this.canvas.addEventListener('touchmove', e => { e.preventDefault(); onMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+    this.canvas.addEventListener('touchstart', e => { e.preventDefault(); onMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+
+    document.getElementById('btn-start').onclick = () => this.start();
+    document.getElementById('btn-retry').onclick = () => this.start();
+    document.getElementById('btn-share').onclick = () => this.share();
+    document.getElementById('btn-menu').onclick = () => {
+      document.getElementById('gameover-screen').classList.remove('show');
+      document.getElementById('start-screen').classList.remove('hidden');
+      document.getElementById('ad-zone').style.display = 'none';
+      this.updateStartScreen();
+      this.idleLoop();
+    };
+
+    // Menu modals
+    document.getElementById('btn-howto').onclick = () => {
+      document.getElementById('modal-howto').classList.add('show');
+    };
+    document.getElementById('btn-stats').onclick = () => {
+      const grid = document.getElementById('stats-grid');
+      const dom = this.brain.getDominantDodge();
+      const reaction = this.brain.getAvgReaction();
+      grid.innerHTML = `
+        <div class="stat-item"><div class="stat-val">${this.bestTime > 0 ? this.bestTime.toFixed(1) + 's' : '\u2014'}</div><div class="stat-label">Longest Not-Dead</div></div>
+        <div class="stat-item"><div class="stat-val">${this.totalGames}</div><div class="stat-label">Lives Sacrificed</div></div>
+        <div class="stat-item"><div class="stat-val">${this.brain.getConfidence()}%</div><div class="stat-label">How Screwed You Are</div></div>
+        <div class="stat-item"><div class="stat-val">${this.brain.totalSamples}</div><div class="stat-label">Your Moves Stolen</div></div>
+        <div class="stat-item"><div class="stat-val">${dom ? dom.direction + ' ' + dom.pct + '%' : '\u2014'}</div><div class="stat-label">Predictable Dodge</div></div>
+        <div class="stat-item"><div class="stat-val">${reaction ? reaction + 'ms' : '\u2014'}</div><div class="stat-label">Reaction Time</div></div>
+      `;
+      document.getElementById('modal-stats').classList.add('show');
+    };
+    document.getElementById('btn-contact').onclick = () => {
+      window.location.href = 'mailto:znjeim@gmail.com';
+    };
+    document.getElementById('btn-feedback').onclick = () => {
+      document.getElementById('modal-feedback').classList.add('show');
+    };
+    document.getElementById('btn-submit-feedback').onclick = () => {
+      const text = document.getElementById('feedback-text').value.trim();
+      if (!text) return;
+      try {
+        const existing = JSON.parse(localStorage.getItem('dodge-ai-feedback') || '[]');
+        existing.push({ text, time: new Date().toISOString() });
+        localStorage.setItem('dodge-ai-feedback', JSON.stringify(existing));
+      } catch(e) {}
+      document.getElementById('feedback-text').value = '';
+      const status = document.getElementById('feedback-status');
+      status.style.display = 'block';
+      setTimeout(() => { status.style.display = 'none'; }, 3000);
+    };
+    document.getElementById('btn-reset-ai').onclick = () => {
+      if (confirm('Reset AI brain data? This cannot be undone.')) {
+        localStorage.removeItem('dodge-ai-brain');
+        this.brain = new AIBrain();
+      }
+    };
+
+    // Modal close buttons
+    document.querySelectorAll('.modal-close').forEach(btn => {
+      btn.onclick = () => {
+        const modalId = btn.getAttribute('data-close');
+        if (modalId) document.getElementById(modalId).classList.remove('show');
+      };
+    });
+  }
+
+  updateStartScreen() {
+    const el = document.getElementById('start-best');
+    el.textContent = this.bestTime > 0 ? `Best: ${this.bestTime.toFixed(1)}s` : '';
+  }
+
+  start() {
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('gameover-screen').classList.remove('show');
+    document.getElementById('ad-zone').style.display = 'none';
+    document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('show'));
+
+    this.running = true;
+    this.gameTime = 0;
+    this.phase = 0;
+    this.projectiles = [];
+    this.warnings = [];
+    this.particles = [];
+    this.powerups = [];
+    this.shockwaves = [];
+    this.bosses = [];
+    this.dodgedCount = 0;
+    this.bossesDefeated = 0;
+    this.closestCall = Infinity;
+    this.spawnTimer = 1.2;
+    this.phaseAnnounceTimer = 0;
+    this.bossAnnounceTimer = 0;
+    this.powerupTimer = 6 + Math.random() * 4;
+    this.nextBossTime = BOSS_INTERVAL;
+    this.bossLevel = 0;
+    this._lastAnnouncedPhase = 0;
+
+    this.effects.slowmo = { active: false, remaining: 0, duration: 0 };
+    this.effects.shield = { active: false, remaining: 0, duration: 0 };
+    this.effects.shrink = { active: false, remaining: 0, duration: 0 };
+    this.effects.ghost = { active: false, remaining: 0, duration: 0 };
+    this.effects.magnet = { active: false, remaining: 0, duration: 0 };
+    this.effects.overclock = { active: false, remaining: 0, duration: 0 };
+    this.forceFieldFlash = 0;
+    this.lastPowerupType = null;
+
+    this.player.x = this.w / 2;
+    this.player.y = this.h / 2;
+    this.player.vx = 0;
+    this.player.vy = 0;
+    this.targetX = this.w / 2;
+    this.targetY = this.h / 2;
+
+    this.brain.reset();
+    this.lastTime = performance.now();
+
+    this.announcePhase();
+    requestAnimationFrame(t => this.loop(t));
+  }
+
+  loop(timestamp) {
+    if (!this.running) return;
+    try {
+      const dt = Math.min((timestamp - this.lastTime) / 1000, 0.05);
+      this.lastTime = timestamp;
+      this.update(dt);
+      this.render();
+      this.updateUI();
+    } catch (e) {
+      console.error('Game loop error:', e);
+    }
+    requestAnimationFrame(t => this.loop(t));
+  }
+
+  getPlayerRadius() {
+    return this.effects.shrink.active ? PLAYER_RADIUS * 0.5 : PLAYER_RADIUS;
+  }
+
+  getSlowMod() {
+    return this.effects.slowmo.active ? 0.3 : 1;
+  }
+
+  // Get current phase params (computed, not mutating PHASE_DEFS)
+  getPhaseDef() {
+    if (this.phase < PHASE_DEFS.length - 1) return PHASE_DEFS[this.phase];
+    // EVOLVED: ramp values dynamically without mutating originals
+    const phaseDurations = PHASE_DEFS.slice(0, 5).reduce((s, p) => s + p.dur, 0);
+    const t = Math.max(0, this.gameTime - phaseDurations);
+    const ramp = Math.floor(t / 20);
+    return {
+      ...EVOLVED_BASE,
+      speed: 6.0 + ramp * 0.4,
+      spawnRate: Math.max(0.2, 0.35 - ramp * 0.03),
+      count: Math.min(6, 4 + Math.floor(t / 30)),
+      homingChance: Math.min(0.5, 0.3 + Math.floor(t / 30) * 0.05),
+      splitterChance: Math.min(0.4, 0.3 + ramp * 0.02),
+      bouncerChance: Math.min(0.3, 0.2 + ramp * 0.02),
+      waveChance: Math.min(0.3, 0.2 + ramp * 0.02),
+      accelChance: Math.min(0.35, 0.25 + ramp * 0.02),
+    };
+  }
+
+  update(dt) {
+    this.gameTime += dt;
+    this.spawnTimer -= dt;
+
+    // --- Announce timers (must tick before any early return) ---
+    if (this.phaseAnnounceTimer > 0) this.phaseAnnounceTimer -= dt;
+    if (this.bossAnnounceTimer > 0) this.bossAnnounceTimer -= dt;
+    if (this.pickupAnnounceTimer > 0) this.pickupAnnounceTimer -= dt;
+    if (this.pickupAnnounceTimer <= 0) {
+      document.getElementById('pickup-announce').classList.remove('show');
+    }
+
+    // --- Phase progression ---
+    let elapsed = this.gameTime;
+    for (let i = 0; i < this.phase; i++) elapsed -= PHASE_DEFS[i].dur;
+    while (elapsed >= PHASE_DEFS[this.phase].dur && this.phase < PHASE_DEFS.length - 1) {
+      this.phase++;
+      elapsed -= PHASE_DEFS[this.phase - 1].dur;
+    }
+    if (this.phase !== this._lastAnnouncedPhase) {
+      this._lastAnnouncedPhase = this.phase;
+      this.announcePhase();
+    }
+
+    // --- Move player ---
+    const prevX = this.player.x;
+    const prevY = this.player.y;
+    const lerp = this.effects.overclock.active ? PLAYER_LERP * 2.2 : PLAYER_LERP;
+    this.player.x += (this.targetX - this.player.x) * lerp;
+    this.player.y += (this.targetY - this.player.y) * lerp;
+    this.player.vx = this.player.x - prevX;
+    this.player.vy = this.player.y - prevY;
+
+    const pr = this.getPlayerRadius();
+    this.player.x = Math.max(pr, Math.min(this.w - pr, this.player.x));
+    this.player.y = Math.max(pr, Math.min(this.h - pr, this.player.y));
+
+    this.brain.trackPosition(this.player.x, this.player.y, this.gameTime * 1000, this.w, this.h);
+
+    // --- Spawn projectiles ---
+    if (this.spawnTimer <= 0 && this.phaseAnnounceTimer <= 0 && this.bossAnnounceTimer <= 0) {
+      this.spawnWarnings();
+      this.spawnTimer = this.getPhaseDef().spawnRate;
+    }
+
+    // --- Warnings -> projectiles ---
+    const now = this.gameTime * 1000;
+    for (let i = this.warnings.length - 1; i >= 0; i--) {
+      if (this.warnings[i].isExpired(now)) {
+        this.spawnProjectileFromWarning(this.warnings[i]);
+        this.warnings.splice(i, 1);
+      }
+    }
+
+    // --- Magnet repel force ---
+    if (this.effects.magnet.active) {
+      const repelRadius = 150;
+      const repelForce = 400;
+      for (const p of this.projectiles) {
+        const rdx = p.x - this.player.x;
+        const rdy = p.y - this.player.y;
+        const rdist = Math.sqrt(rdx * rdx + rdy * rdy);
+        if (rdist < repelRadius && rdist > 1) {
+          const strength = (1 - rdist / repelRadius) * repelForce * dt;
+          p.vx += (rdx / rdist) * strength;
+          p.vy += (rdy / rdist) * strength;
+        }
+      }
+    }
+
+    // --- Update projectiles ---
+    const slowMod = this.getSlowMod();
+    const newProjectiles = [];
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const p = this.projectiles[i];
+      p.update(dt, this.player.x, this.player.y, slowMod);
+
+      // Bouncer check
+      p.checkBounce(this.w, this.h);
+
+      // Splitter check
+      const children = p.checkSplit(this.w, this.h);
+      if (children) {
+        newProjectiles.push(...children);
+        // Spawn split particles
+        for (let j = 0; j < 6; j++) {
+          const a = Math.random() * Math.PI * 2;
+          this.particles.push(new Particle(p.x, p.y, Math.cos(a) * 60, Math.sin(a) * 60, 0.3, '#ff69b4', 2));
+        }
+      }
+
+      const dx = p.x - this.player.x;
+      const dy = p.y - this.player.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const hitDist = pr + p.radius;
+
+      if (dist < hitDist) {
+        if (this.effects.ghost.active) {
+          // Ghost — projectiles pass through, small shimmer
+          if (Math.random() < 0.3) {
+            this.particles.push(new Particle(p.x, p.y, 0, 0, 0.2, '#94a3b8', 1.5));
+          }
+          continue;
+        }
+        if (this.effects.shield.active) {
+          // Force field impact — hex crack particles
+          const hitAngle = Math.atan2(p.y - this.player.y, p.x - this.player.x);
+          for (let j = 0; j < 12; j++) {
+            const a = hitAngle + (Math.random() - 0.5) * 1.2;
+            const sp = 40 + Math.random() * 80;
+            this.particles.push(new Particle(p.x, p.y, Math.cos(a) * sp, Math.sin(a) * sp, 0.35, '#10b981', 2));
+          }
+          // White flash particles at impact
+          for (let j = 0; j < 4; j++) {
+            const a = hitAngle + (Math.random() - 0.5) * 0.5;
+            this.particles.push(new Particle(p.x, p.y, Math.cos(a) * 60, Math.sin(a) * 60, 0.2, '#fff', 3));
+          }
+          // Localized shockwave
+          this.shockwaves.push(new Shockwave(p.x, p.y, 35, '#10b981', 0.25));
+          this.forceFieldFlash = 0.15;
+          this.projectiles.splice(i, 1);
+          this.dodgedCount++;
+          continue;
+        }
+        this.die();
+        return;
+      }
+
+      if (dist < this.closestCall && p.age > 0.15) this.closestCall = dist;
+
+      if (p.isOffscreen(this.w, this.h) && (p.type !== 'bouncer' || p.bounces >= p.maxBounces)) {
+        this.dodgedCount++;
+        this.projectiles.splice(i, 1);
+      }
+    }
+    // Add split children
+    for (const c of newProjectiles) this.projectiles.push(c);
+
+    // --- Power-ups spawn ---
+    this.powerupTimer -= dt;
+    if (this.powerupTimer <= 0) {
+      this.spawnPowerup();
+      this.powerupTimer = POWERUP_SPAWN_MIN + Math.random() * (POWERUP_SPAWN_MAX - POWERUP_SPAWN_MIN);
+    }
+
+    // --- Update power-ups ---
+    for (let i = this.powerups.length - 1; i >= 0; i--) {
+      const pu = this.powerups[i];
+      pu.update(dt);
+      const dx = pu.x - this.player.x;
+      const dy = pu.y - this.player.y;
+      if (Math.sqrt(dx * dx + dy * dy) < pr + POWERUP_RADIUS) {
+        this.collectPowerup(pu);
+        this.powerups.splice(i, 1);
+        continue;
+      }
+      if (pu.isExpired()) this.powerups.splice(i, 1);
+    }
+
+    // --- Boss spawning ---
+    if (this.gameTime >= this.nextBossTime && this.bossAnnounceTimer <= 0 && this.phase >= 1) {
+      this.announceBoss();
+      this.nextBossTime = this.gameTime + BOSS_INTERVAL;
+    }
+
+    // --- Update bosses ---
+    for (let i = this.bosses.length - 1; i >= 0; i--) {
+      const boss = this.bosses[i];
+      boss.update(dt, this.player.x, this.player.y);
+
+      // Collect boss projectiles
+      for (const proj of boss.pendingProjectiles) {
+        this.projectiles.push(proj);
+      }
+
+      // Collision check (includes segments for Serpent)
+      const collisionPoints = boss.getCollisionPoints();
+      let bossCollided = false;
+      for (const cp of collisionPoints) {
+        const cdx = cp.x - this.player.x;
+        const cdy = cp.y - this.player.y;
+        const cdist = Math.sqrt(cdx * cdx + cdy * cdy);
+        if (cdist < pr + cp.radius) {
+          bossCollided = true;
+          break;
+        }
+      }
+
+      if (bossCollided) {
+        if (this.effects.ghost.active) {
+          // Ghost — pass through bosses
+          if (Math.random() < 0.2) {
+            this.particles.push(new Particle(boss.x, boss.y, 0, 0, 0.25, '#94a3b8', 2));
+          }
+        } else if (this.effects.shield.active) {
+          const killed = boss.hit();
+          this.shockwaves.push(new Shockwave(boss.x, boss.y, 60, boss.color, 0.4));
+          for (let j = 0; j < 15; j++) {
+            const a = Math.random() * Math.PI * 2;
+            this.particles.push(new Particle(boss.x, boss.y, Math.cos(a) * 120, Math.sin(a) * 120, 0.5, '#10b981', 3));
+          }
+          this.forceFieldFlash = 0.15;
+          if (killed) {
+            this.bossDeathEffect(boss);
+            this.bosses.splice(i, 1);
+            this.bossesDefeated++;
+            this.dodgedCount += 10;
+            continue;
+          }
+        } else {
+          this.die();
+          return;
+        }
+      }
+
+      if (boss.isExpired()) {
+        this.bossDeathEffect(boss);
+        this.bosses.splice(i, 1);
+        this.bossesDefeated++;
+        this.dodgedCount += 5;
+      }
+    }
+
+    // --- Update effects ---
+    for (const key of ['slowmo', 'shield', 'shrink', 'ghost', 'magnet', 'overclock']) {
+      const eff = this.effects[key];
+      if (eff.active) {
+        eff.remaining -= dt;
+        if (eff.remaining <= 0) {
+          eff.active = false;
+          eff.remaining = 0;
+        }
+      }
+    }
+
+    // --- Force field flash timer ---
+    if (this.forceFieldFlash > 0) this.forceFieldFlash -= dt;
+
+    // --- Shockwaves ---
+    for (let i = this.shockwaves.length - 1; i >= 0; i--) {
+      this.shockwaves[i].update(dt);
+      if (this.shockwaves[i].isDead()) this.shockwaves.splice(i, 1);
+    }
+
+    // --- Particles ---
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      this.particles[i].update(dt);
+      if (this.particles[i].life <= 0) this.particles.splice(i, 1);
+    }
+
+    // Smart particle cap - trim oldest if over limit
+    if (this.particles.length > 400) {
+      this.particles.sort((a, b) => a.life - b.life);
+      this.particles = this.particles.slice(this.particles.length - 250);
+    }
+
+    // Player trail
+    if (Math.random() < 0.3) {
+      const trailColor = this.effects.ghost.active ? '#94a3b8' : this.effects.overclock.active ? '#ef4444' : this.effects.shield.active ? '#10b981' : this.effects.shrink.active ? '#ec4899' : '#00f0ff';
+      this.particles.push(new Particle(
+        this.player.x, this.player.y,
+        (Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20,
+        0.4, trailColor, 2
+      ));
+    }
+
+  }
+
+  spawnPowerup() {
+    const types = Object.keys(POWERUP_TYPES);
+    let type;
+    do {
+      type = types[Math.floor(Math.random() * types.length)];
+    } while (type === this.lastPowerupType && types.length > 1);
+    this.lastPowerupType = type;
+    const margin = 60;
+    const x = margin + Math.random() * (this.w - margin * 2);
+    const y = margin + Math.random() * (this.h - margin * 2);
+    this.powerups.push(new PowerUp(x, y, type, this.gameTime));
+  }
+
+  collectPowerup(pu) {
+    const def = pu.def;
+
+    // Pickup particles — burst outward
+    for (let i = 0; i < 20; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      this.particles.push(new Particle(
+        pu.x, pu.y,
+        Math.cos(angle) * 140, Math.sin(angle) * 140,
+        0.6, def.color, 3
+      ));
+    }
+
+    // Announce
+    const el = document.getElementById('pickup-announce');
+    el.textContent = def.name;
+    el.style.color = def.color;
+    el.style.textShadow = `0 0 20px ${def.color}`;
+    el.classList.add('show');
+    this.pickupAnnounceTimer = 1;
+
+    if (pu.type === 'emp') {
+      // === EMP ANIMATION ===
+      // Big shockwave from player
+      this.shockwaves.push(new Shockwave(this.player.x, this.player.y, Math.max(this.w, this.h) * 0.6, '#facc15', 0.8));
+      this.shockwaves.push(new Shockwave(this.player.x, this.player.y, Math.max(this.w, this.h) * 0.4, '#fff', 0.5));
+
+      // Explode each projectile with staggered delay based on distance from player
+      const sorted = [...this.projectiles].sort((a, b) => {
+        const da = Math.sqrt((a.x - this.player.x) ** 2 + (a.y - this.player.y) ** 2);
+        const db = Math.sqrt((b.x - this.player.x) ** 2 + (b.y - this.player.y) ** 2);
+        return da - db;
+      });
+      sorted.forEach((p, idx) => {
+        // Staggered explosion particles
+        const delay = idx * 0.02;
+        for (let j = 0; j < 6; j++) {
+          const a = Math.random() * Math.PI * 2;
+          const particle = new Particle(p.x, p.y, Math.cos(a) * 80, Math.sin(a) * 80, 0.4 + delay, '#facc15', 2.5);
+          this.particles.push(particle);
+        }
+        // Mini shockwave per projectile
+        this.shockwaves.push(new Shockwave(p.x, p.y, 20, '#facc15', 0.3));
+      });
+
+      // Kill bosses too
+      for (const boss of this.bosses) {
+        this.bossDeathEffect(boss);
+        this.bossesDefeated++;
+        this.dodgedCount += 10;
+      }
+      this.bosses = [];
+
+      this.dodgedCount += this.projectiles.length;
+      this.projectiles = [];
+      this.warnings = [];
+
+    } else if (pu.type === 'slowmo') {
+      // === SLOW-MO ANIMATION ===
+      this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 200, '#3b82f6', 0.6));
+      // Blue radial particles
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        this.particles.push(new Particle(
+          this.player.x + Math.cos(a) * 30, this.player.y + Math.sin(a) * 30,
+          Math.cos(a) * 60, Math.sin(a) * 60, 0.8, '#3b82f6', 2
+        ));
+      }
+      this.effects.slowmo.active = true;
+      this.effects.slowmo.remaining = POWERUP_TYPES.slowmo.duration;
+      this.effects.slowmo.duration = POWERUP_TYPES.slowmo.duration;
+
+    } else if (pu.type === 'shield') {
+      // === SHIELD ANIMATION ===
+      // Expanding bubble
+      this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 60, '#10b981', 0.5));
+      this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 40, '#fff', 0.3));
+      // Hexagonal shield flash particles
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        this.particles.push(new Particle(
+          this.player.x + Math.cos(a) * 20, this.player.y + Math.sin(a) * 20,
+          Math.cos(a) * 40, Math.sin(a) * 40, 0.6, '#10b981', 3
+        ));
+      }
+      this.effects.shield.active = true;
+      this.effects.shield.remaining = POWERUP_TYPES.shield.duration;
+      this.effects.shield.duration = POWERUP_TYPES.shield.duration;
+
+    } else if (pu.type === 'shrink') {
+      // === SHRINK ANIMATION ===
+      // Imploding particles toward player
+      for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * Math.PI * 2;
+        const dist = 60 + Math.random() * 30;
+        this.particles.push(new Particle(
+          this.player.x + Math.cos(a) * dist, this.player.y + Math.sin(a) * dist,
+          -Math.cos(a) * 80, -Math.sin(a) * 80, 0.4, '#ec4899', 2.5
+        ));
+      }
+      this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 30, '#ec4899', 0.4));
+      this.effects.shrink.active = true;
+      this.effects.shrink.remaining = POWERUP_TYPES.shrink.duration;
+      this.effects.shrink.duration = POWERUP_TYPES.shrink.duration;
+
+    } else if (pu.type === 'ghost') {
+      // === GHOST ANIMATION ===
+      // Phase-out shimmer — ring of fading particles
+      this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 80, '#94a3b8', 0.5));
+      for (let i = 0; i < 14; i++) {
+        const a = (i / 14) * Math.PI * 2;
+        this.particles.push(new Particle(
+          this.player.x + Math.cos(a) * 15, this.player.y + Math.sin(a) * 15,
+          Math.cos(a) * 50, Math.sin(a) * 50, 0.6, '#94a3b8', 2
+        ));
+      }
+      this.effects.ghost.active = true;
+      this.effects.ghost.remaining = POWERUP_TYPES.ghost.duration;
+      this.effects.ghost.duration = POWERUP_TYPES.ghost.duration;
+
+    } else if (pu.type === 'magnet') {
+      // === REPULSE ANIMATION ===
+      // Blast wave that pushes everything back
+      this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 200, '#f97316', 0.6));
+      this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 120, '#fff', 0.3));
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2;
+        this.particles.push(new Particle(
+          this.player.x, this.player.y,
+          Math.cos(a) * 100, Math.sin(a) * 100, 0.5, '#f97316', 3
+        ));
+      }
+      this.effects.magnet.active = true;
+      this.effects.magnet.remaining = POWERUP_TYPES.magnet.duration;
+      this.effects.magnet.duration = POWERUP_TYPES.magnet.duration;
+
+    } else if (pu.type === 'blink') {
+      // === BLINK (INSTANT TELEPORT) ===
+      // Find safest spot — farthest from all projectiles
+      const oldX = this.player.x;
+      const oldY = this.player.y;
+      let bestX = this.w / 2, bestY = this.h / 2, bestDist = 0;
+      for (let tries = 0; tries < 20; tries++) {
+        const tx = 40 + Math.random() * (this.w - 80);
+        const ty = 40 + Math.random() * (this.h - 80);
+        let minDist = Infinity;
+        for (const p of this.projectiles) {
+          const d = Math.sqrt((p.x - tx) ** 2 + (p.y - ty) ** 2);
+          if (d < minDist) minDist = d;
+        }
+        for (const boss of this.bosses) {
+          const d = Math.sqrt((boss.x - tx) ** 2 + (boss.y - ty) ** 2);
+          if (d < minDist) minDist = d;
+        }
+        if (minDist > bestDist) { bestDist = minDist; bestX = tx; bestY = ty; }
+      }
+      // Teleport
+      this.player.x = bestX;
+      this.player.y = bestY;
+      this.targetX = bestX;
+      this.targetY = bestY;
+      // Exit particles at old position
+      for (let i = 0; i < 12; i++) {
+        const a = Math.random() * Math.PI * 2;
+        this.particles.push(new Particle(oldX, oldY, Math.cos(a) * 70, Math.sin(a) * 70, 0.4, '#c084fc', 2.5));
+      }
+      this.shockwaves.push(new Shockwave(oldX, oldY, 50, '#c084fc', 0.4));
+      // Entry particles at new position
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        const dist = 50 + Math.random() * 20;
+        this.particles.push(new Particle(
+          bestX + Math.cos(a) * dist, bestY + Math.sin(a) * dist,
+          -Math.cos(a) * 60, -Math.sin(a) * 60, 0.4, '#c084fc', 2.5
+        ));
+      }
+      this.shockwaves.push(new Shockwave(bestX, bestY, 60, '#c084fc', 0.5));
+
+    } else if (pu.type === 'overclock') {
+      // === OVERCLOCK ANIMATION ===
+      // Speed burst — directional particles
+      this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 100, '#ef4444', 0.5));
+      for (let i = 0; i < 16; i++) {
+        const a = Math.random() * Math.PI * 2;
+        this.particles.push(new Particle(
+          this.player.x, this.player.y,
+          Math.cos(a) * 90, Math.sin(a) * 90, 0.4, '#ef4444', 2
+        ));
+      }
+      this.effects.overclock.active = true;
+      this.effects.overclock.remaining = POWERUP_TYPES.overclock.duration;
+      this.effects.overclock.duration = POWERUP_TYPES.overclock.duration;
+    }
+  }
+
+  spawnWarnings() {
+    const def = this.getPhaseDef();
+    const count = def.count;
+    const isBurst = Math.random() < def.burstChance;
+
+    if (isBurst) {
+      const edge = Math.floor(Math.random() * 4);
+      let wx, wy;
+      switch (edge) {
+        case 0: wx = Math.random() * this.w; wy = 0; break;
+        case 1: wx = this.w; wy = Math.random() * this.h; break;
+        case 2: wx = Math.random() * this.w; wy = this.h; break;
+        case 3: wx = 0; wy = Math.random() * this.h; break;
+      }
+      const fanCount = 3 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < fanCount; i++) {
+        this.warnings.push(new Warning(
+          wx + (Math.random() - 0.5) * 8,
+          wy + (Math.random() - 0.5) * 8,
+          this.gameTime * 1000 + i * 60
+        ));
+      }
+    } else {
+      for (let i = 0; i < count; i++) {
+        const edge = Math.floor(Math.random() * 4);
+        let wx, wy;
+        switch (edge) {
+          case 0: wx = Math.random() * this.w; wy = 0; break;
+          case 1: wx = this.w; wy = Math.random() * this.h; break;
+          case 2: wx = Math.random() * this.w; wy = this.h; break;
+          case 3: wx = 0; wy = Math.random() * this.h; break;
+        }
+        this.warnings.push(new Warning(wx, wy, this.gameTime * 1000));
+      }
+    }
+  }
+
+  spawnProjectileFromWarning(warning) {
+    const def = this.getPhaseDef();
+    const phase = this.phase;
+    let targetX, targetY;
+    const px = this.player.x;
+    const py = this.player.y;
+    const isHoming = Math.random() < def.homingChance;
+
+    // Determine aim
+    const aimRoll = Math.random();
+    if (aimRoll > def.aimPct) {
+      targetX = this.w * 0.15 + Math.random() * this.w * 0.7;
+      targetY = this.h * 0.15 + Math.random() * this.h * 0.7;
+    } else if (phase <= 1) {
+      targetX = px + (Math.random() - 0.5) * 30;
+      targetY = py + (Math.random() - 0.5) * 30;
+    } else if (phase === 2) {
+      const predicted = this.brain.getPredictedDodgeTarget(px, py, this.w, this.h);
+      if (predicted && Math.random() < 0.65) { targetX = predicted.x; targetY = predicted.y; }
+      else { targetX = px; targetY = py; }
+    } else if (phase === 3) {
+      const roll = Math.random();
+      if (roll < 0.4) {
+        const predicted = this.brain.getPredictedDodgeTarget(px, py, this.w, this.h);
+        if (predicted) { targetX = predicted.x; targetY = predicted.y; }
+        else { targetX = px; targetY = py; }
+      } else if (roll < 0.7) {
+        const zone = this.brain.getFavoriteZone(this.w, this.h);
+        targetX = zone.x + (Math.random() - 0.5) * 50;
+        targetY = zone.y + (Math.random() - 0.5) * 50;
+      } else { targetX = px; targetY = py; }
+    } else {
+      const roll = Math.random();
+      if (roll < 0.3) {
+        const futurePos = this.brain.getPredictedFuturePos(px, py, this.player.vx * 60, this.player.vy * 60, 0.4 + Math.random() * 0.3);
+        targetX = futurePos.x; targetY = futurePos.y;
+      } else if (roll < 0.55) {
+        const predicted = this.brain.getPredictedDodgeTarget(px, py, this.w, this.h);
+        if (predicted) { targetX = predicted.x; targetY = predicted.y; }
+        else { targetX = px; targetY = py; }
+      } else if (roll < 0.75) {
+        const zone = this.brain.getFavoriteZone(this.w, this.h);
+        targetX = zone.x + (Math.random() - 0.5) * 40;
+        targetY = zone.y + (Math.random() - 0.5) * 40;
+      } else { targetX = px; targetY = py; }
+    }
+
+    const dx = targetX - warning.x;
+    const dy = targetY - warning.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    const speed = def.speed;
+
+    // Determine special type
+    let type = 'normal';
+    const typeRoll = Math.random();
+    if (typeRoll < def.splitterChance) type = 'splitter';
+    else if (typeRoll < def.splitterChance + def.bouncerChance) type = 'bouncer';
+    else if (typeRoll < def.splitterChance + def.bouncerChance + def.waveChance) type = 'wave';
+    else if (typeRoll < def.splitterChance + def.bouncerChance + def.waveChance + def.accelChance) type = 'accel';
+
+    let color = def.color;
+    if (isHoming) color = '#ffaa00';
+    else if (type === 'splitter') color = '#ff69b4';
+    else if (type === 'bouncer') color = '#00ff88';
+    else if (type === 'wave') color = '#a78bfa';
+    else if (type === 'accel') color = '#ff4400';
+
+    const proj = new Projectile(
+      warning.x, warning.y,
+      (dx / dist) * speed, (dy / dist) * speed,
+      color,
+      { homing: isHoming, type }
+    );
+    this.projectiles.push(proj);
+    this.brain.onProjectileFired(this.gameTime * 1000);
+  }
+
+  announceBoss() {
+    this.bossLevel++;
+    this.bossAnnounceTimer = BOSS_ANNOUNCE_DURATION / 1000;
+    const bossType = BOSS_TYPES[(this.bossLevel - 1) % BOSS_TYPES.length];
+    const el = document.getElementById('boss-announce');
+    const titleEl = el.querySelector('.boss-title');
+    titleEl.textContent = bossType.name.toUpperCase();
+    titleEl.style.color = bossType.color;
+    titleEl.style.textShadow = `0 0 40px ${bossType.color}99`;
+    const bossTaunts = [
+      'Oh this is gonna be fun. For me.',
+      'You look nervous. Good instinct.',
+      'It brought friends. Well, friend-shaped things.',
+      'Remember that boss you barely survived? This one\'s worse.',
+      'At this point you\'re just padding my kill count.',
+    ];
+    el.querySelector('.boss-sub').textContent =
+      this.bossLevel === 1 ? 'Surprise! You didn\'t think this would be easy, right?' :
+      bossTaunts[(this.bossLevel - 1) % bossTaunts.length];
+    el.classList.add('show');
+    setTimeout(() => {
+      el.classList.remove('show');
+      const edge = Math.floor(Math.random() * 4);
+      let bx, by;
+      switch (edge) {
+        case 0: bx = Math.random() * this.w; by = -30; break;
+        case 1: bx = this.w + 30; by = Math.random() * this.h; break;
+        case 2: bx = Math.random() * this.w; by = this.h + 30; break;
+        case 3: bx = -30; by = Math.random() * this.h; break;
+      }
+      this.bosses.push(new Boss(bx, by, this.w, this.h, this.bossLevel));
+    }, BOSS_ANNOUNCE_DURATION);
+  }
+
+  bossDeathEffect(boss) {
+    // Big explosion using boss color
+    for (let i = 0; i < 40; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 50 + Math.random() * 200;
+      this.particles.push(new Particle(boss.x, boss.y, Math.cos(a) * sp, Math.sin(a) * sp, 0.8, boss.color, 3 + Math.random() * 3));
+    }
+    this.shockwaves.push(new Shockwave(boss.x, boss.y, boss.radius * 4, boss.color, 0.6));
+    this.shockwaves.push(new Shockwave(boss.x, boss.y, boss.radius * 2.5, '#fff', 0.4));
+  }
+
+  announcePhase() {
+    const def = PHASE_DEFS[this.phase];
+    const el = document.getElementById('phase-announce');
+    el.querySelector('.phase-num').textContent = `Phase ${this.phase + 1}`;
+    el.querySelector('.phase-name').textContent = def.name;
+    el.querySelector('.phase-name').style.color = def.color;
+    el.querySelector('.phase-desc').textContent = def.desc;
+    el.classList.add('show');
+    this.phaseAnnounceTimer = PHASE_ANNOUNCE_DURATION / 1000;
+    setTimeout(() => el.classList.remove('show'), PHASE_ANNOUNCE_DURATION);
+  }
+
+  die() {
+    this.running = false;
+    this.brain.save();
+    this.totalGames++;
+    localStorage.setItem('dodge-ai-games', this.totalGames.toString());
+
+    for (let i = 0; i < 50; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 250 + 50;
+      this.particles.push(new Particle(
+        this.player.x, this.player.y,
+        Math.cos(angle) * speed, Math.sin(angle) * speed,
+        0.8, '#00f0ff', Math.random() * 4 + 1
+      ));
+    }
+
+    this.renderDeathFrame();
+
+    const isNewBest = this.gameTime > this.bestTime;
+    if (isNewBest) {
+      this.bestTime = this.gameTime;
+      localStorage.setItem('dodge-ai-best', this.bestTime.toFixed(1));
+    }
+
+    setTimeout(() => this.showGameOver(isNewBest), 600);
+  }
+
+  renderDeathFrame() {
+    // Render one more frame without the player for death effect
+    const ctx = this.ctx;
+    ctx.fillStyle = '#06060f';
+    ctx.fillRect(0, 0, this.w, this.h);
+    for (const p of this.projectiles) p.draw(ctx);
+    for (const sw of this.shockwaves) sw.draw(ctx);
+    for (const p of this.particles) p.draw(ctx);
+    // Animate remaining particles
+    const deathAnim = () => {
+      if (this.running) return;
+      ctx.fillStyle = 'rgba(6,6,15,0.15)';
+      ctx.fillRect(0, 0, this.w, this.h);
+      for (let i = this.particles.length - 1; i >= 0; i--) {
+        this.particles[i].update(0.016);
+        this.particles[i].draw(ctx);
+        if (this.particles[i].life <= 0) this.particles.splice(i, 1);
+      }
+      for (let i = this.shockwaves.length - 1; i >= 0; i--) {
+        this.shockwaves[i].update(0.016);
+        this.shockwaves[i].draw(ctx);
+        if (this.shockwaves[i].isDead()) this.shockwaves.splice(i, 1);
+      }
+      if (this.particles.length > 0 || this.shockwaves.length > 0) requestAnimationFrame(deathAnim);
+    };
+    requestAnimationFrame(deathAnim);
+  }
+
+  showGameOver(isNewBest) {
+    document.getElementById('go-time').innerHTML = `${this.gameTime.toFixed(1)}<span>s</span>`;
+    const phaseQuips = [
+      'Died in Phase 1. The tutorial phase. I can\'t even.',
+      'Phase 2. It was just getting warmed up.',
+      'Phase 3. The AI predicted that, by the way.',
+      'Phase 4. Your timing was... almost adequate.',
+      'Phase 5. Respect. You earned that death.',
+      'Phase 6. You absolute legend. Still dead though.',
+    ];
+    document.getElementById('go-phase').textContent = phaseQuips[Math.min(this.phase, 5)];
+    document.getElementById('go-dodged').textContent = this.dodgedCount;
+    document.getElementById('go-closest').textContent = this.closestCall === Infinity ? '0px' : `${Math.round(this.closestCall)}px`;
+    document.getElementById('go-games').textContent = this.totalGames;
+    document.getElementById('go-new-best').style.display = isNewBest ? 'block' : 'none';
+
+    const dom = this.brain.getDominantDodge();
+    const reaction = this.brain.getAvgReaction();
+    let learned = `I catalogued ${this.brain.totalSamples} of your panic moves.`;
+    if (dom) learned += ` You dodge ${dom.direction} ${dom.pct}% of the time — real original.`;
+    if (reaction) learned += ` ${reaction}ms reaction time. I've seen faster. I've seen slower. Both died.`;
+    learned += ' Oh, and I remember everything for next round. Sweet dreams.';
+    document.getElementById('go-ai-learned').textContent = learned;
+
+    document.getElementById('gameover-screen').classList.add('show');
+    document.getElementById('ad-zone').style.display = 'flex';
+    this.updateStartScreen();
+  }
+
+  share() {
+    const phase = PHASE_DEFS[this.phase].name;
+    const emoji = this.phase >= 4 ? '🔥' : this.phase >= 2 ? '⚡' : '🎯';
+    const text = [
+      `${emoji} DODGE AI — ${this.gameTime.toFixed(1)}s`,
+      `Phase ${this.phase + 1}: ${phase}`,
+      `Dodged: ${this.dodgedCount}`,
+      this.bossesDefeated > 0 ? `Bosses demolished: ${this.bossesDefeated}` : '',
+      `The AI thinks it knows me (${this.brain.getConfidence()}% confident)`,
+      '',
+      'Think you can last longer? Spoiler: you can\'t.',
+    ].filter(Boolean).join('\n');
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).catch(() => {});
+    }
+  }
+
+  render() {
+    const ctx = this.ctx;
+    const w = this.w;
+    const h = this.h;
+
+    ctx.fillStyle = '#06060f';
+    ctx.fillRect(0, 0, w, h);
+
+    // Slowmo tint
+    if (this.effects.slowmo.active) {
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.04)';
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    // Grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.02)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < w; x += 50) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+    for (let y = 0; y < h; y += 50) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+
+    // Stars
+    for (const star of this.bgStars) {
+      ctx.globalAlpha = star.a * 0.3;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // Warnings
+    const now = this.gameTime * 1000;
+    for (const wr of this.warnings) wr.draw(ctx, now);
+
+    // Power-ups
+    for (const pu of this.powerups) pu.draw(ctx);
+
+    // Shockwaves
+    for (const sw of this.shockwaves) sw.draw(ctx);
+
+    // Particles
+    for (const p of this.particles) p.draw(ctx);
+
+    // Projectiles
+    for (const p of this.projectiles) p.draw(ctx);
+
+    // Bosses
+    for (const boss of this.bosses) boss.draw(ctx);
+
+    // Player
+    if (this.running) {
+      const pr = this.getPlayerRadius();
+      const playerColor = this.effects.ghost.active ? '#94a3b8' : this.effects.overclock.active ? '#ef4444' : this.effects.shield.active ? '#10b981' : this.effects.shrink.active ? '#ec4899' : '#00f0ff';
+
+      // Magnet repel ring
+      if (this.effects.magnet.active) {
+        const repelAlpha = 0.12 + Math.sin(this.gameTime * 10) * 0.06;
+        ctx.globalAlpha = repelAlpha;
+        ctx.strokeStyle = '#f97316';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(this.player.x, this.player.y, 150, 0, Math.PI * 2);
+        ctx.stroke();
+        // Inner pulsing ring
+        const innerR = 150 - Math.sin(this.gameTime * 8) * 30;
+        ctx.globalAlpha = repelAlpha * 0.5;
+        ctx.beginPath();
+        ctx.arc(this.player.x, this.player.y, innerR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+
+      // Overclock speed lines
+      if (this.effects.overclock.active) {
+        const speed = Math.sqrt(this.player.vx ** 2 + this.player.vy ** 2);
+        if (speed > 0.5) {
+          const angle = Math.atan2(-this.player.vy, -this.player.vx);
+          for (let li = 0; li < 3; li++) {
+            const offset = (li - 1) * 0.4;
+            const lineAngle = angle + offset;
+            const startR = pr + 8;
+            const lineLen = Math.min(speed * 4, 30);
+            ctx.globalAlpha = 0.4 - li * 0.1;
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(
+              this.player.x + Math.cos(lineAngle) * startR,
+              this.player.y + Math.sin(lineAngle) * startR
+            );
+            ctx.lineTo(
+              this.player.x + Math.cos(lineAngle) * (startR + lineLen),
+              this.player.y + Math.sin(lineAngle) * (startR + lineLen)
+            );
+            ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      // Force field hex segments
+      if (this.effects.shield.active) {
+        const segments = 6;
+        const fieldRadius = pr + 14;
+        const segGap = 0.12;
+        const baseRotation = this.gameTime * 2;
+        const isFlashing = this.forceFieldFlash > 0;
+
+        for (let si = 0; si < segments; si++) {
+          const segAngle = (si / segments) * Math.PI * 2 + baseRotation;
+          const arcLen = (Math.PI * 2 / segments) - segGap;
+          const shimmer = isFlashing ? 0.7 : (0.15 + Math.sin(this.gameTime * 8 + si * 1.7) * 0.1 + Math.random() * 0.05);
+
+          ctx.globalAlpha = shimmer;
+          ctx.strokeStyle = isFlashing ? '#fff' : '#10b981';
+          ctx.lineWidth = isFlashing ? 3.5 : 2.5;
+          ctx.beginPath();
+          ctx.arc(this.player.x, this.player.y, fieldRadius, segAngle, segAngle + arcLen);
+          ctx.stroke();
+
+          // Edge caps at segment ends
+          const capLen = 4;
+          for (const endA of [segAngle, segAngle + arcLen]) {
+            const cx = this.player.x + Math.cos(endA) * fieldRadius;
+            const cy = this.player.y + Math.sin(endA) * fieldRadius;
+            const nx = Math.cos(endA);
+            const ny = Math.sin(endA);
+            ctx.beginPath();
+            ctx.moveTo(cx - ny * capLen, cy + nx * capLen);
+            ctx.lineTo(cx + ny * capLen, cy - nx * capLen);
+            ctx.stroke();
+          }
+        }
+
+        // Outer glow ring
+        ctx.globalAlpha = isFlashing ? 0.15 : 0.06;
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.arc(this.player.x, this.player.y, fieldRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+
+      // Ghost flicker effect
+      const ghostAlpha = this.effects.ghost.active ? 0.25 + Math.sin(this.gameTime * 15) * 0.1 : 1;
+
+      // Outer glow
+      ctx.shadowColor = playerColor;
+      ctx.shadowBlur = 25;
+      ctx.globalAlpha = 0.15 * ghostAlpha;
+      ctx.fillStyle = playerColor;
+      ctx.beginPath();
+      ctx.arc(this.player.x, this.player.y, pr + 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Core
+      ctx.globalAlpha = ghostAlpha;
+      ctx.fillStyle = playerColor;
+      ctx.beginPath();
+      ctx.arc(this.player.x, this.player.y, pr, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Inner
+      ctx.globalAlpha = ghostAlpha;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(this.player.x, this.player.y, pr * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  updateUI() {
+    document.getElementById('hud-time').textContent = `${this.gameTime.toFixed(1)}s`;
+    const def = PHASE_DEFS[this.phase];
+    const phaseEl = document.getElementById('hud-phase');
+    phaseEl.textContent = `PHASE ${this.phase + 1} — ${def.name}`;
+    phaseEl.style.color = def.color;
+    document.getElementById('hud-dodged').textContent = `Dodged: ${this.dodgedCount}`;
+
+    document.getElementById('brain-confidence').textContent = `${this.brain.getConfidence()}%`;
+    const reaction = this.brain.getAvgReaction();
+    document.getElementById('brain-reaction').textContent = reaction ? `${reaction}ms` : '—';
+    document.getElementById('brain-samples').textContent = this.brain.totalSamples;
+    const bias = this.brain.getBiasPercentages();
+    document.getElementById('bias-up').textContent = `${bias.up}%`;
+    document.getElementById('bias-down').textContent = `${bias.down}%`;
+    document.getElementById('bias-left').textContent = `${bias.left}%`;
+    document.getElementById('bias-right').textContent = `${bias.right}%`;
+    document.getElementById('brain-insight').textContent = this.brain.getInsight();
+
+    for (const key of ['slowmo', 'shield', 'shrink', 'ghost', 'magnet', 'overclock']) {
+      const eff = this.effects[key];
+      const el = document.getElementById(`pu-${key}`);
+      const bar = document.getElementById(`pu-${key}-bar`);
+      if (el && bar) {
+        if (eff.active) {
+          el.classList.add('active');
+          bar.style.width = `${(eff.remaining / eff.duration) * 100}%`;
+        } else {
+          el.classList.remove('active');
+        }
+      }
+    }
+  }
+}
+
+// Boot
+const game = new Game();
+window._game = game;
+</script>
+</body>
+</html>
