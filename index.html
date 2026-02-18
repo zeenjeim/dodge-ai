@@ -550,6 +550,14 @@
       line-height: 1.4;
     }
 
+    #go-killed-by {
+      font-size: 12px;
+      letter-spacing: 1px;
+      margin-top: 10px;
+      font-family: 'Courier New', monospace;
+      text-transform: uppercase;
+    }
+
     /* --- Ad Zone Placeholder --- */
     .ad-zone {
       position: fixed;
@@ -720,6 +728,7 @@
     <button class="go-btn" id="btn-menu">MENU</button>
   </div>
   <div class="go-ai-learned" id="go-ai-learned"></div>
+  <div id="go-killed-by"></div>
 </div>
 
 <!-- Ad Zone Placeholder -->
@@ -731,6 +740,15 @@
 // ============================================================
 // DODGE AI — Survive the Learning Machine (v3)
 // ============================================================
+
+// Utility: Convert radian angle to cardinal/ordinal direction name
+function getDirectionName(angle) {
+  // Normalize angle to [0, 2*PI)
+  const a = ((angle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  const sector = Math.round(a / (Math.PI / 4)) % 8;
+  const names = ['RIGHT', 'LOWER-RIGHT', 'BELOW', 'LOWER-LEFT', 'LEFT', 'UPPER-LEFT', 'ABOVE', 'UPPER-RIGHT'];
+  return names[sector];
+}
 
 const PHASE_DEFS = [
   { name: 'SCANNING',    dur: 20, color: '#ff3355', desc: 'The AI is taking notes. Like a really creepy diary.',
@@ -2517,7 +2535,10 @@ class Game {
     for (const p of this.projectiles) p.draw(ctx);
     for (const sw of this.shockwaves) sw.draw(ctx);
     for (const p of this.particles) p.draw(ctx);
+    // Draw death indicator on the initial frame
+    this.renderDeathIndicator(ctx);
     // Animate remaining particles
+    let deathIndicatorFrames = 20;
     const deathAnim = () => {
       if (this.running) return;
       ctx.fillStyle = 'rgba(6,6,15,0.15)';
@@ -2532,9 +2553,60 @@ class Game {
         this.shockwaves[i].draw(ctx);
         if (this.shockwaves[i].isDead()) this.shockwaves.splice(i, 1);
       }
+      // Keep death indicator visible during particle fade-out
+      if (deathIndicatorFrames > 0) {
+        this.renderDeathIndicator(ctx);
+        deathIndicatorFrames--;
+      }
       if (this.particles.length > 0 || this.shockwaves.length > 0) requestAnimationFrame(deathAnim);
     };
     requestAnimationFrame(deathAnim);
+  }
+
+  renderDeathIndicator(ctx) {
+    if (!this.deathContext) return;
+    const d = this.deathContext;
+
+    ctx.save();
+
+    // 1. Pulsing white ring around the killer
+    const ringRadius = d.type === 'boss' ? 35 : 15;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.globalAlpha = 0.8;
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, ringRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 2. Arrow line from player position to killer position
+    ctx.strokeStyle = '#ff3355';
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    ctx.moveTo(d.playerX, d.playerY);
+    ctx.lineTo(d.x, d.y);
+    ctx.stroke();
+
+    // 3. Arrowhead at the killer end
+    const headLen = 12;
+    const spread = 0.4;
+    const angle = d.angle;
+    ctx.beginPath();
+    ctx.moveTo(d.x, d.y);
+    ctx.lineTo(d.x - headLen * Math.cos(angle - spread), d.y - headLen * Math.sin(angle - spread));
+    ctx.moveTo(d.x, d.y);
+    ctx.lineTo(d.x - headLen * Math.cos(angle + spread), d.y - headLen * Math.sin(angle + spread));
+    ctx.stroke();
+
+    // 4. Label above the killer
+    const label = d.bossName || d.subtype.toUpperCase();
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = d.color;
+    ctx.font = 'bold 11px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, d.x, d.y - ringRadius - 8);
+
+    ctx.restore();
   }
 
   showGameOver(isNewBest) {
@@ -2560,6 +2632,18 @@ class Game {
     if (reaction) learned += ` ${reaction}ms reaction time. I've seen faster. I've seen slower. Both died.`;
     learned += ' Oh, and I remember everything for next round. Sweet dreams.';
     document.getElementById('go-ai-learned').textContent = learned;
+
+    const killedByEl = document.getElementById('go-killed-by');
+    if (this.deathContext) {
+      const d = this.deathContext;
+      const directionName = getDirectionName(d.angle);
+      const killerName = d.bossName || d.subtype.toUpperCase();
+      killedByEl.textContent = `Killed by: ${killerName} from the ${directionName}`;
+      killedByEl.style.color = d.color;
+      killedByEl.style.display = 'block';
+    } else {
+      killedByEl.style.display = 'none';
+    }
 
     document.getElementById('gameover-screen').classList.add('show');
     document.getElementById('ad-zone').style.display = 'flex';
