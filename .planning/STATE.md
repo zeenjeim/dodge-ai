@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 1 of 5 (Gameplay Polish)
-Plan: 0 of 2 in current phase
-Status: Ready to plan
-Last activity: 2026-02-18 — Roadmap created, 22 requirements mapped across 5 phases
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-18 — Completed 01-01-PLAN.md (death context + kill indicator)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█████░░░░░] 50% of Phase 1 (1/2 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
-- Average duration: -
-- Total execution time: 0 hours
+- Total plans completed: 1
+- Average duration: 3min
+- Total execution time: 3min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 01-gameplay-polish | 1/2 | 3min | 3min |
 
 **Recent Trend:**
-- Last 5 plans: none
-- Trend: N/A
+- Last 5 plans: 01-01 (3min)
+- Trend: N/A (first plan)
 
 *Updated after each plan completion*
 
@@ -45,6 +45,9 @@ Recent decisions affecting current work:
 - [Roadmap]: Single HTML file stays through Phase 2; Vite migration considered at Phase 3 if file exceeds ~4000 lines
 - [Roadmap]: Analytics before retention (measure before optimizing)
 - [Roadmap]: Share card ships with SEO/analytics in Phase 3 (AI commentary from Phase 2 powers it)
+- [01-01]: deathContext pattern captures killer identity at collision time before die() call
+- [01-01]: getDirectionName() placed as standalone utility (pure function, not class method)
+- [01-01]: deathIndicatorFrames counter (20 frames) keeps indicator visible during fade-out without extra delay
 
 ### Pending Todos
 
@@ -58,5 +61,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Roadmap created and approved
+Stopped at: Completed 01-01-PLAN.md
 Resume file: None
