@@ -7,10 +7,10 @@
 
 ### Gameplay Polish
 
-- [ ] **POLISH-01**: Player sees clear visual indicator of what killed them (projectile type, direction)
-- [ ] **POLISH-02**: Mobile touch input uses finger offset so character isn't hidden under thumb
-- [ ] **POLISH-03**: Browser gestures prevented on mobile (pull-to-refresh, swipe-back)
-- [ ] **POLISH-04**: Game respects device safe areas (notch, navigation bar)
+- [x] **POLISH-01**: Player sees clear visual indicator of what killed them (projectile type, direction)
+- [x] **POLISH-02**: Mobile touch input uses finger offset so character isn't hidden under thumb
+- [x] **POLISH-03**: Browser gestures prevented on mobile (pull-to-refresh, swipe-back)
+- [x] **POLISH-04**: Game respects device safe areas (notch, navigation bar)
 
 ### AI Intelligence
 
@@ -81,10 +81,10 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| POLISH-01 | Phase 1 | Pending |
-| POLISH-02 | Phase 1 | Pending |
-| POLISH-03 | Phase 1 | Pending |
-| POLISH-04 | Phase 1 | Pending |
+| POLISH-01 | Phase 1 | Complete |
+| POLISH-02 | Phase 1 | Complete |
+| POLISH-03 | Phase 1 | Complete |
+| POLISH-04 | Phase 1 | Complete |
 | AI-01 | Phase 2 | Pending |
 | AI-02 | Phase 2 | Pending |
 | AI-03 | Phase 2 | Pending |
@@ -111,4 +111,4 @@
 
 ---
 *Requirements defined: 2026-02-18*
-*Last updated: 2026-02-18 after roadmap creation*
+*Last updated: 2026-02-18 after Phase 1 completion*
