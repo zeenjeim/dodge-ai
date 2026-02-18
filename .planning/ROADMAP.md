@@ -24,16 +24,16 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Goal**: Every death feels earned and mobile play feels native
 **Depends on**: Nothing (first phase)
 **Requirements**: POLISH-01, POLISH-02, POLISH-03, POLISH-04
+**Plans**: 2 plans
 **Success Criteria** (what must be TRUE):
   1. Player sees a death replay indicator showing which projectile killed them and from what direction
   2. On mobile, the player character is offset above the touch point so the finger never obscures it
   3. Pull-to-refresh, swipe-back, and pinch-to-zoom are all disabled during gameplay on mobile browsers
   4. Game canvas respects device safe areas (notch, home indicator) with no content clipped on iOS or Android
-**Plans**: TBD
 
 Plans:
-- [ ] 01-01: Death feedback and visual kill indicator
-- [ ] 01-02: Mobile touch improvements and safe areas
+- [ ] 01-01-PLAN.md — Death context capture, freeze-frame kill indicator, and game-over kill text
+- [ ] 01-02-PLAN.md — Mobile touch offset, gesture prevention, and safe area integration
 
 ### Phase 2: AI Intelligence
 **Goal**: The AI visibly learns player patterns, adapts its attacks, and stays fair
@@ -105,7 +105,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
-| 1. Gameplay Polish | 0/2 | Not started | - |
+| 1. Gameplay Polish | 0/2 | Planned | - |
 | 2. AI Intelligence | 0/3 | Not started | - |
 | 3. Growth Foundation | 0/3 | Not started | - |
 | 4. Retention | 0/2 | Not started | - |
