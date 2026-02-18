@@ -81,34 +81,34 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| POLISH-01 | Pending | Pending |
-| POLISH-02 | Pending | Pending |
-| POLISH-03 | Pending | Pending |
-| POLISH-04 | Pending | Pending |
-| AI-01 | Pending | Pending |
-| AI-02 | Pending | Pending |
-| AI-03 | Pending | Pending |
-| AI-04 | Pending | Pending |
-| AI-05 | Pending | Pending |
-| AI-06 | Pending | Pending |
-| RET-01 | Pending | Pending |
-| RET-02 | Pending | Pending |
-| RET-03 | Pending | Pending |
-| RET-04 | Pending | Pending |
-| MECH-01 | Pending | Pending |
-| MECH-02 | Pending | Pending |
-| MECH-03 | Pending | Pending |
-| GROW-01 | Pending | Pending |
-| GROW-02 | Pending | Pending |
-| GROW-03 | Pending | Pending |
-| GROW-04 | Pending | Pending |
-| GROW-05 | Pending | Pending |
+| POLISH-01 | Phase 1 | Pending |
+| POLISH-02 | Phase 1 | Pending |
+| POLISH-03 | Phase 1 | Pending |
+| POLISH-04 | Phase 1 | Pending |
+| AI-01 | Phase 2 | Pending |
+| AI-02 | Phase 2 | Pending |
+| AI-03 | Phase 2 | Pending |
+| AI-04 | Phase 2 | Pending |
+| AI-05 | Phase 2 | Pending |
+| AI-06 | Phase 2 | Pending |
+| RET-01 | Phase 4 | Pending |
+| RET-02 | Phase 4 | Pending |
+| RET-03 | Phase 4 | Pending |
+| RET-04 | Phase 4 | Pending |
+| MECH-01 | Phase 5 | Pending |
+| MECH-02 | Phase 5 | Pending |
+| MECH-03 | Phase 5 | Pending |
+| GROW-01 | Phase 3 | Pending |
+| GROW-02 | Phase 3 | Pending |
+| GROW-03 | Phase 3 | Pending |
+| GROW-04 | Phase 3 | Pending |
+| GROW-05 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 22 total
-- Mapped to phases: 0
-- Unmapped: 22
+- Mapped to phases: 22
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-18*
-*Last updated: 2026-02-18 after initial definition*
+*Last updated: 2026-02-18 after roadmap creation*
