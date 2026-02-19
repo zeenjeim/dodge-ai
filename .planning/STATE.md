@@ -5,28 +5,28 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** The AI feels genuinely intelligent — it learns your patterns, predicts your movement, and makes every death feel earned.
-**Current focus:** Phase 5 in progress (New Mechanics). Plan 01 complete.
+**Current focus:** Phase 5 in progress (New Mechanics). Plan 02 complete.
 
 ## Current Position
 
 Phase: 5 of 5 (New Mechanics) — In progress
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-19 — Completed 05-01-PLAN.md (new projectile types)
+Last activity: 2026-02-19 — Completed 05-02-PLAN.md (environmental hazards)
 
-Progress: [███████████░] 85% overall (11/13 plans)
+Progress: [████████████░] 92% overall (12/13 plans)
 Phase 1: [██████████] 100% (2/2 plans)
 Phase 2: [██████████] 100% (3/3 plans)
 Phase 3: [██████████] 100% (3/3 plans)
 Phase 4: [██████████] 100% (2/2 plans)
-Phase 5: [███░░░░░░░] 33% (1/3 plans)
+Phase 5: [██████░░░░] 67% (2/3 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11
-- Average duration: ~8min
-- Total execution time: ~85min
+- Total plans completed: 12
+- Average duration: ~7min
+- Total execution time: ~90min
 
 **By Phase:**
 
@@ -36,10 +36,10 @@ Phase 5: [███░░░░░░░] 33% (1/3 plans)
 | 02-ai-intelligence | 3/3 | ~30min | ~10min |
 | 03-growth-foundation | 3/3 | ~12min | ~4min |
 | 04-retention | 2/2 | ~12min | ~6min |
-| 05-new-mechanics | 1/3 | ~6min | ~6min |
+| 05-new-mechanics | 2/3 | ~11min | ~5.5min |
 
 **Recent Trend:**
-- Last 5 plans: 03-03 (~3min), 04-01 (~8min), 04-02 (~4min), 05-01 (~6min)
+- Last 5 plans: 04-01 (~8min), 04-02 (~4min), 05-01 (~6min), 05-02 (~5min)
 - Trend: Consistent execution speed, single-file changes keep plans fast
 
 *Updated after each plan completion*
@@ -67,7 +67,7 @@ Recent decisions affecting current work:
 - [02-03]: Threat level smoothed: max 0.015/s, cap 0.3-1.0/120s (originally 0.02/s, 0.5-1.0/90s)
 - [02-03]: getPhaseDef() modifiers softened: aimPct +0.08, speed +0.8, spawnRate *0.85
 - [02-03]: Brain panel: personality text → compact stats (threat%, patterns, insight line)
-- [02-03]: Powerups rebalanced: removed Plot Armor, Maximum Effort, Yoink; added GTFO dash (8→6)
+- [02-03]: Powerups rebalanced: removed Plot Armor, Maximum Effort, Yoink; added GTFO dash (8->6)
 - [03-01]: URL placeholders use dodgeai.example.com -- updated when real domain chosen
 - [03-01]: body overflow:hidden kept intact -- SEO content accessible to crawlers via HTML source
 - [03-01]: SEO content styled in game aesthetic (monospace, cyan/purple, terminal-style bullets)
@@ -92,6 +92,11 @@ Recent decisions affecting current work:
 - [05-01]: Mine dwell 2.0-3.0s with pulsing glow telegraph, 4-bullet aimed detonation
 - [05-01]: Projectile cap at 80 prevents cluster/mine child multiplication runaway
 - [05-01]: Child projectiles from cluster/mine use splitChildren=true for consistent rendering
+- [05-02]: Hazard visuals capped at 0.18 max alpha -- projectiles remain primary visual threat
+- [05-02]: AI needs pattern confidence >= 0.6 to spawn hazards
+- [05-02]: Gravity wells pull both player and projectiles (projectiles at 50% strength)
+- [05-02]: Danger zone 1s grace period before kill; Ghost blocks all hazard effects
+- [05-02]: Arena shrink phase-gated to phase >= 3
 
 ### Pending Todos
 
@@ -99,12 +104,12 @@ None.
 
 ### Blockers/Concerns
 
-- Brownfield codebase (~4100 lines single file after new projectile types) -- well past complexity threshold
+- Brownfield codebase (~4350 lines single file after environmental hazards) -- well past complexity threshold
 - OG image placeholder needs real asset created (could leverage generateShareCard() pattern)
 - GoatCounter account not yet created -- analytics no-ops until DODGEAI placeholder is replaced with real site code
 
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Completed 05-01-PLAN.md. Phase 5 plan 1 of 3 done. Next: 05-02 (environmental hazards).
+Stopped at: Completed 05-02-PLAN.md. Phase 5 plan 2 of 3 done. Next: 05-03 (boss abilities / final plan).
 Resume file: None
