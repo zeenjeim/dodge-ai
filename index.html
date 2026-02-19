@@ -865,6 +865,16 @@
 <!-- Powerup Pickup -->
 <div id="pickup-announce"></div>
 
+<!-- Mobile Ability Button -->
+<button id="ability-btn" style="
+  position: fixed; bottom: 80px; right: 20px;
+  width: 50px; height: 50px; border-radius: 50%;
+  background: rgba(0, 255, 170, 0.15); border: 2px solid rgba(0, 255, 170, 0.4);
+  color: #00ffaa; font-size: 18px; font-weight: bold;
+  display: none; z-index: 100; touch-action: manipulation;
+  font-family: monospace;
+">AB</button>
+
 <!-- Start Screen / Menu -->
 <div id="start-screen">
   <h1>DODGE <span>AI</span></h1>
@@ -944,6 +954,8 @@
   </div>
   <div class="go-ai-learned" id="go-ai-learned"></div>
   <div id="go-killed-by"></div>
+  <div id="go-ability-unlock" style="display:none; color:#00ffaa; font-size:14px; letter-spacing:2px; margin-top:10px; text-shadow: 0 0 12px rgba(0,255,170,0.5); font-weight:bold;"></div>
+  <div id="go-abilities" style="display:none; color:#555; font-size:11px; margin-top:6px; letter-spacing:1px;"></div>
 </div>
 
 <!-- Ad Zone Placeholder -->
@@ -2821,6 +2833,23 @@ class Game {
       }
     }, { passive: false });
 
+    // Spacebar: activate ability (desktop)
+    document.addEventListener('keydown', e => {
+      if (e.code === 'Space' && this.running) {
+        e.preventDefault();
+        this.activateAbility();
+      }
+    });
+
+    // Mobile ability button
+    const abilityBtn = document.getElementById('ability-btn');
+    if (abilityBtn) {
+      abilityBtn.addEventListener('touchstart', e => {
+        e.preventDefault();
+        this.activateAbility();
+      }, { passive: false });
+    }
+
     document.getElementById('btn-start').onclick = () => {
       this.isDailyChallenge = false;
       this.start();
@@ -4129,6 +4158,38 @@ class Game {
       killedByEl.style.display = 'none';
     }
 
+    // Ability unlock announcement
+    const unlockEl = document.getElementById('go-ability-unlock');
+    if (unlockEl) {
+      if (this.unlockAnnounce) {
+        const abilityLabels = {
+          dashBurst: 'DASH BURST', decoy: 'DECOY',
+          phaseShift: 'PHASE SHIFT', timeWarp: 'TIME WARP'
+        };
+        unlockEl.textContent = `ABILITY UNLOCKED: ${abilityLabels[this.unlockAnnounce.name] || this.unlockAnnounce.name}`;
+        unlockEl.style.display = 'block';
+      } else {
+        unlockEl.style.display = 'none';
+      }
+    }
+
+    // Abilities progress
+    const abilitiesEl = document.getElementById('go-abilities');
+    if (abilitiesEl) {
+      const unlockedCount = Object.values(this.abilities).filter(a => a.unlocked).length;
+      if (unlockedCount > 0) {
+        abilitiesEl.textContent = `Abilities: ${unlockedCount}/4 [SPACE to activate]`;
+        abilitiesEl.style.display = 'block';
+      } else {
+        abilitiesEl.textContent = 'Abilities: Keep playing to unlock';
+        abilitiesEl.style.display = 'block';
+      }
+    }
+
+    // Hide mobile ability button on game over
+    const abilityBtnEl = document.getElementById('ability-btn');
+    if (abilityBtnEl) abilityBtnEl.style.display = 'none';
+
     document.getElementById('gameover-screen').classList.add('show');
     document.getElementById('ad-zone').style.display = 'flex';
     this.updateStartScreen();
@@ -4346,6 +4407,24 @@ class Game {
     // Bosses
     for (const boss of this.bosses) boss.draw(ctx);
 
+    // Decoy hologram
+    if (this.decoyPos) {
+      const alpha = 0.4 + Math.sin(this.decoyPos.age * 8) * 0.15;
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = '#00ffaa';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(this.decoyPos.x, this.decoyPos.y, PLAYER_RADIUS, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(this.decoyPos.x - 5, this.decoyPos.y);
+      ctx.lineTo(this.decoyPos.x + 5, this.decoyPos.y);
+      ctx.moveTo(this.decoyPos.x, this.decoyPos.y - 5);
+      ctx.lineTo(this.decoyPos.x, this.decoyPos.y + 5);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
     // Player
     if (this.running) {
       const pr = this.getPlayerRadius();
@@ -4397,8 +4476,15 @@ class Game {
         }
       }
 
-      // Ghost flicker effect
-      const ghostAlpha = this.effects.ghost.active ? 0.25 + Math.sin(this.gameTime * 15) * 0.1 : 1;
+      // Time Warp screen tint
+      if (this.abilities.timeWarp.active) {
+        ctx.fillStyle = 'rgba(0, 255, 170, 0.03)';
+        ctx.fillRect(0, 0, w, h);
+      }
+
+      // Ghost flicker / Phase Shift transparency
+      let ghostAlpha = this.effects.ghost.active ? 0.25 + Math.sin(this.gameTime * 15) * 0.1 : 1;
+      if (this.abilities.phaseShift.active) ghostAlpha = 0.35;
 
       // Outer glow
       ctx.shadowColor = playerColor;
@@ -4424,6 +4510,61 @@ class Game {
       ctx.fill();
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
+
+      // Ability cooldown indicator near player
+      const abilityOrder = ['dashBurst', 'decoy', 'phaseShift', 'timeWarp'];
+      const readyAbility = abilityOrder.find(n => this.abilities[n].unlocked);
+      if (readyAbility) {
+        const ab = this.abilities[readyAbility];
+        const ringX = this.player.x + 15;
+        const ringY = this.player.y - 15;
+        const ringRadius = 6;
+
+        if (ab.active) {
+          // Active: bright filled ring
+          ctx.globalAlpha = 0.7;
+          ctx.fillStyle = '#00ffaa';
+          ctx.beginPath();
+          ctx.arc(ringX, ringY, ringRadius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        } else if (ab.cooldown > 0) {
+          // On cooldown: partial arc showing recharge progress
+          const progress = 1 - (ab.cooldown / ab.maxCooldown);
+          ctx.strokeStyle = 'rgba(0, 255, 170, 0.3)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(ringX, ringY, ringRadius, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2);
+          ctx.stroke();
+        } else {
+          // Ready: full ring
+          ctx.strokeStyle = 'rgba(0, 255, 170, 0.6)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(ringX, ringY, ringRadius, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      // Mobile ability button visibility update
+      const abilityBtnEl = document.getElementById('ability-btn');
+      if (abilityBtnEl) {
+        const hasAbility = Object.values(this.abilities).some(a => a.unlocked);
+        const isMobile = 'ontouchstart' in window;
+        abilityBtnEl.style.display = (isMobile && hasAbility && this.running) ? 'block' : 'none';
+        if (hasAbility) {
+          const ready = abilityOrder.find(n => this.abilities[n].unlocked && this.abilities[n].cooldown <= 0 && !this.abilities[n].active);
+          if (ready) {
+            const labels = { dashBurst: 'DB', decoy: 'DC', phaseShift: 'PS', timeWarp: 'TW' };
+            abilityBtnEl.textContent = labels[ready] || 'AB';
+            abilityBtnEl.style.borderColor = 'rgba(0, 255, 170, 0.6)';
+          } else {
+            const minCd = Math.min(...Object.values(this.abilities).filter(a => a.unlocked).map(a => a.cooldown > 0 ? a.cooldown : 999));
+            abilityBtnEl.textContent = minCd < 999 ? Math.ceil(minCd) : '--';
+            abilityBtnEl.style.borderColor = 'rgba(0, 255, 170, 0.2)';
+          }
+        }
+      }
     }
   }
 
