@@ -5,26 +5,27 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** The AI feels genuinely intelligent — it learns your patterns, predicts your movement, and makes every death feel earned.
-**Current focus:** Phase 3 complete (Growth Foundation). Ready for Phase 4.
+**Current focus:** Phase 4 (Retention Loops) in progress.
 
 ## Current Position
 
-Phase: 3 of 5 (Growth Foundation) — Complete
-Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-02-19 — Completed 03-03-PLAN.md (analytics integration)
+Phase: 4 of 5 (Retention Loops) — In progress
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-19 — Completed 04-01-PLAN.md (daily challenge mode)
 
-Progress: [████████░░░░░] 62% overall (8/13 plans)
+Progress: [█████████░░░░] 69% overall (9/13 plans)
 Phase 1: [██████████] 100% (2/2 plans)
 Phase 2: [██████████] 100% (3/3 plans)
 Phase 3: [██████████] 100% (3/3 plans)
+Phase 4: [█████░░░░░] 50% (1/2 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
+- Total plans completed: 9
 - Average duration: ~8min
-- Total execution time: ~67min
+- Total execution time: ~75min
 
 **By Phase:**
 
@@ -33,10 +34,11 @@ Phase 3: [██████████] 100% (3/3 plans)
 | 01-gameplay-polish | 2/2 | ~18min | ~9min |
 | 02-ai-intelligence | 3/3 | ~30min | ~10min |
 | 03-growth-foundation | 3/3 | ~12min | ~4min |
+| 04-retention | 1/2 | ~8min | ~8min |
 
 **Recent Trend:**
-- Last 5 plans: 02-02 (~8min), 02-03 (~15min), 03-01 (~5min), 03-02 (~4min), 03-03 (~3min)
-- Trend: Phase 3 plans executing very fast (single-file changes, well-scoped tasks)
+- Last 5 plans: 02-03 (~15min), 03-01 (~5min), 03-02 (~4min), 03-03 (~3min), 04-01 (~8min)
+- Trend: Execution speed consistent, 04-01 slightly longer due to ~46 Math.random() replacements
 
 *Updated after each plan completion*
 
@@ -75,6 +77,10 @@ Recent decisions affecting current work:
 - [03-03]: Session games capped at 10 to prevent unbounded event names in GoatCounter
 - [03-03]: Analytics variables are module-level globals, not Game class members (persist across restarts)
 - [03-03]: Page-load event uses 500ms polling (max 20 attempts) since GoatCounter loads async
+- [04-01]: Unlimited daily attempts with per-day best time tracking (no attempt limit)
+- [04-01]: Cosmetic Math.random() preserved (~28 calls), gameplay this.rng() (~46 calls)
+- [04-01]: AIBrain Math.random() calls untouched (brain prediction noise separate from spawn determinism)
+- [04-01]: Daily best stored with dodge-ai-daily-YYYY-MM-DD localStorage keys
 
 ### Pending Todos
 
@@ -82,12 +88,12 @@ None.
 
 ### Blockers/Concerns
 
-- Brownfield codebase (~3600 lines single file after analytics additions) — approaching complexity threshold for later phases
+- Brownfield codebase (~3800 lines single file after daily challenge additions) — approaching complexity threshold
 - OG image placeholder needs real asset created (could leverage generateShareCard() pattern)
 - GoatCounter account not yet created — analytics no-ops until DODGEAI placeholder is replaced with real site code
 
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Completed 03-03-PLAN.md. Phase 3 complete. Next: Phase 4 planning.
+Stopped at: Completed 04-01-PLAN.md. Phase 4 plan 1 complete. Next: 04-02 (streaks/leaderboard).
 Resume file: None
