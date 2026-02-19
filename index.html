@@ -924,6 +924,37 @@ function getDirectionName(angle) {
   return names[sector];
 }
 
+// Seeded PRNG: FNV-1a string hash returning unsigned 32-bit integer
+function fnv1aHash(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+// Seeded PRNG: Mulberry32 — returns a function producing floats [0, 1)
+function mulberry32(seed) {
+  return function() {
+    seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), seed | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Returns today's date as "YYYY-MM-DD" in UTC
+function getTodayUTC() {
+  const d = new Date();
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+}
+
+// Returns today's daily challenge seed (deterministic per UTC date)
+function getDailySeed() {
+  return fnv1aHash('dodge-ai-daily-' + getTodayUTC());
+}
+
 // Analytics: fire-and-forget event tracking via GoatCounter
 // All calls are guarded -- never throws, never blocks gameplay
 function trackEvent(name, title) {
@@ -2169,7 +2200,7 @@ class Game {
     this.lastTime = 0;
     this.phaseAnnounceTimer = 0;
     this.bossAnnounceTimer = 0;
-    this.powerupTimer = POWERUP_SPAWN_MIN + Math.random() * (POWERUP_SPAWN_MAX - POWERUP_SPAWN_MIN);
+    this.powerupTimer = POWERUP_SPAWN_MIN + this.rng() * (POWERUP_SPAWN_MAX - POWERUP_SPAWN_MIN);
     this.pickupAnnounceTimer = 0;
     this.nextBossTime = BOSS_INTERVAL;
     this.bossLevel = 0;
@@ -2177,6 +2208,8 @@ class Game {
     this.deathContext = null;
     this.touchOffsetY = 50;
     this.safeArea = { top: 0, bottom: 0, left: 0, right: 0 };
+    this.rng = Math.random;
+    this.isDailyChallenge = false;
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -2328,6 +2361,11 @@ class Game {
     document.getElementById('ad-zone').style.display = 'none';
     document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('show'));
 
+    // Reset RNG to Math.random for normal play (daily mode sets it before calling start)
+    if (!this.isDailyChallenge) {
+      this.rng = Math.random;
+    }
+
     this.running = true;
     this.gameTime = 0;
     this.phase = 0;
@@ -2343,7 +2381,7 @@ class Game {
     this.spawnTimer = 1.2;
     this.phaseAnnounceTimer = 0;
     this.bossAnnounceTimer = 0;
-    this.powerupTimer = 6 + Math.random() * 4;
+    this.powerupTimer = 6 + this.rng() * 4;
     this.nextBossTime = BOSS_INTERVAL;
     this.bossLevel = 0;
     this._lastAnnouncedPhase = 0;
@@ -2602,7 +2640,7 @@ class Game {
     this.powerupTimer -= dt;
     if (this.powerupTimer <= 0) {
       this.spawnPowerup();
-      this.powerupTimer = POWERUP_SPAWN_MIN + Math.random() * (POWERUP_SPAWN_MAX - POWERUP_SPAWN_MIN);
+      this.powerupTimer = POWERUP_SPAWN_MIN + this.rng() * (POWERUP_SPAWN_MAX - POWERUP_SPAWN_MIN);
     }
 
     // --- Update power-ups ---
@@ -2729,13 +2767,13 @@ class Game {
     const types = Object.keys(POWERUP_TYPES);
     let type;
     do {
-      type = types[Math.floor(Math.random() * types.length)];
+      type = types[Math.floor(this.rng() * types.length)];
     } while (type === this.lastPowerupType && types.length > 1);
     this.lastPowerupType = type;
     const margin = 60;
     const sa = this.safeArea;
-    const x = margin + sa.left + Math.random() * (this.w - 2 * margin - sa.left - sa.right);
-    const y = margin + sa.top + Math.random() * (this.h - 2 * margin - sa.top - sa.bottom);
+    const x = margin + sa.left + this.rng() * (this.w - 2 * margin - sa.left - sa.right);
+    const y = margin + sa.top + this.rng() * (this.h - 2 * margin - sa.top - sa.bottom);
     this.powerups.push(new PowerUp(x, y, type, this.gameTime));
   }
 
@@ -2861,7 +2899,7 @@ class Game {
       const vx = this.player.vx || 0;
       const vy = this.player.vy || 0;
       const speed = Math.sqrt(vx * vx + vy * vy);
-      const dashAngle = speed > 0.5 ? Math.atan2(vy, vx) : Math.random() * Math.PI * 2;
+      const dashAngle = speed > 0.5 ? Math.atan2(vy, vx) : this.rng() * Math.PI * 2;
       for (let i = 0; i < 12; i++) {
         const spread = (Math.random() - 0.5) * 1.2;
         const a = dashAngle + Math.PI + spread;
@@ -2880,34 +2918,34 @@ class Game {
   spawnWarnings() {
     const def = this.getPhaseDef();
     const count = def.count;
-    const isBurst = Math.random() < def.burstChance;
+    const isBurst = this.rng() < def.burstChance;
 
     if (isBurst) {
-      const edge = Math.floor(Math.random() * 4);
+      const edge = Math.floor(this.rng() * 4);
       let wx, wy;
       switch (edge) {
-        case 0: wx = Math.random() * this.w; wy = 0; break;
-        case 1: wx = this.w; wy = Math.random() * this.h; break;
-        case 2: wx = Math.random() * this.w; wy = this.h; break;
-        case 3: wx = 0; wy = Math.random() * this.h; break;
+        case 0: wx = this.rng() * this.w; wy = 0; break;
+        case 1: wx = this.w; wy = this.rng() * this.h; break;
+        case 2: wx = this.rng() * this.w; wy = this.h; break;
+        case 3: wx = 0; wy = this.rng() * this.h; break;
       }
-      const fanCount = 3 + Math.floor(Math.random() * 3);
+      const fanCount = 3 + Math.floor(this.rng() * 3);
       for (let i = 0; i < fanCount; i++) {
         this.warnings.push(new Warning(
-          wx + (Math.random() - 0.5) * 8,
-          wy + (Math.random() - 0.5) * 8,
+          wx + (this.rng() - 0.5) * 8,
+          wy + (this.rng() - 0.5) * 8,
           this.gameTime * 1000 + i * 60
         ));
       }
     } else {
       for (let i = 0; i < count; i++) {
-        const edge = Math.floor(Math.random() * 4);
+        const edge = Math.floor(this.rng() * 4);
         let wx, wy;
         switch (edge) {
-          case 0: wx = Math.random() * this.w; wy = 0; break;
-          case 1: wx = this.w; wy = Math.random() * this.h; break;
-          case 2: wx = Math.random() * this.w; wy = this.h; break;
-          case 3: wx = 0; wy = Math.random() * this.h; break;
+          case 0: wx = this.rng() * this.w; wy = 0; break;
+          case 1: wx = this.w; wy = this.rng() * this.h; break;
+          case 2: wx = this.rng() * this.w; wy = this.h; break;
+          case 3: wx = 0; wy = this.rng() * this.h; break;
         }
         this.warnings.push(new Warning(wx, wy, this.gameTime * 1000));
       }
@@ -2920,35 +2958,35 @@ class Game {
     let targetX, targetY;
     const px = this.player.x;
     const py = this.player.y;
-    const isHoming = Math.random() < def.homingChance;
+    const isHoming = this.rng() < def.homingChance;
 
     // Determine aim
-    const aimRoll = Math.random();
+    const aimRoll = this.rng();
     if (aimRoll > def.aimPct) {
-      targetX = this.w * 0.15 + Math.random() * this.w * 0.7;
-      targetY = this.h * 0.15 + Math.random() * this.h * 0.7;
+      targetX = this.w * 0.15 + this.rng() * this.w * 0.7;
+      targetY = this.h * 0.15 + this.rng() * this.h * 0.7;
     } else if (phase <= 1) {
-      targetX = px + (Math.random() - 0.5) * 30;
-      targetY = py + (Math.random() - 0.5) * 30;
+      targetX = px + (this.rng() - 0.5) * 30;
+      targetY = py + (this.rng() - 0.5) * 30;
     } else if (phase === 2) {
       const predicted = this.brain.getPredictedDodgeTarget(px, py, this.w, this.h);
-      if (predicted && Math.random() < 0.65) { targetX = predicted.x; targetY = predicted.y; }
+      if (predicted && this.rng() < 0.65) { targetX = predicted.x; targetY = predicted.y; }
       else { targetX = px; targetY = py; }
     } else if (phase === 3) {
-      const roll = Math.random();
+      const roll = this.rng();
       if (roll < 0.4) {
         const predicted = this.brain.getPredictedDodgeTarget(px, py, this.w, this.h);
         if (predicted) { targetX = predicted.x; targetY = predicted.y; }
         else { targetX = px; targetY = py; }
       } else if (roll < 0.7) {
         const zone = this.brain.getFavoriteZone(this.w, this.h);
-        targetX = zone.x + (Math.random() - 0.5) * 50;
-        targetY = zone.y + (Math.random() - 0.5) * 50;
+        targetX = zone.x + (this.rng() - 0.5) * 50;
+        targetY = zone.y + (this.rng() - 0.5) * 50;
       } else { targetX = px; targetY = py; }
     } else {
-      const roll = Math.random();
+      const roll = this.rng();
       if (roll < 0.3) {
-        const futurePos = this.brain.getPredictedFuturePos(px, py, this.player.vx * 60, this.player.vy * 60, 0.4 + Math.random() * 0.3);
+        const futurePos = this.brain.getPredictedFuturePos(px, py, this.player.vx * 60, this.player.vy * 60, 0.4 + this.rng() * 0.3);
         targetX = futurePos.x; targetY = futurePos.y;
       } else if (roll < 0.55) {
         const predicted = this.brain.getPredictedDodgeTarget(px, py, this.w, this.h);
@@ -2956,14 +2994,14 @@ class Game {
         else { targetX = px; targetY = py; }
       } else if (roll < 0.75) {
         const zone = this.brain.getFavoriteZone(this.w, this.h);
-        targetX = zone.x + (Math.random() - 0.5) * 40;
-        targetY = zone.y + (Math.random() - 0.5) * 40;
+        targetX = zone.x + (this.rng() - 0.5) * 40;
+        targetY = zone.y + (this.rng() - 0.5) * 40;
       } else { targetX = px; targetY = py; }
     }
 
     // Counter-pattern targeting (AI fires based on detected patterns)
     const counterChance = def.counterPatternChance || 0;
-    if (Math.random() < counterChance) {
+    if (this.rng() < counterChance) {
       const gameTimeSec = this.gameTime;
       const pattern = this.brain.getHighestConfidencePattern(gameTimeSec);
       if (pattern) {
@@ -2971,8 +3009,8 @@ class Game {
         switch (pattern.type) {
           case 'safe-zone': {
             const zoneCenter = this.brain.safeZoneDetector.getZoneCenter(pattern.zone, this.w, this.h);
-            targetX = zoneCenter.x + (Math.random() - 0.5) * 50;
-            targetY = zoneCenter.y + (Math.random() - 0.5) * 50;
+            targetX = zoneCenter.x + (this.rng() - 0.5) * 50;
+            targetY = zoneCenter.y + (this.rng() - 0.5) * 50;
 
             counterFired = true;
             break;
@@ -3003,8 +3041,8 @@ class Game {
             if (nextDir) {
               const offsets = { R: [80, 0], L: [-80, 0], U: [0, -80], D: [0, 80] };
               const off = offsets[nextDir];
-              targetX = px + off[0] + (Math.random() - 0.5) * 30;
-              targetY = py + off[1] + (Math.random() - 0.5) * 30;
+              targetX = px + off[0] + (this.rng() - 0.5) * 30;
+              targetY = py + off[1] + (this.rng() - 0.5) * 30;
               counterFired = true;
             }
             break;
@@ -3030,7 +3068,7 @@ class Game {
 
     // Determine special type
     let type = 'normal';
-    const typeRoll = Math.random();
+    const typeRoll = this.rng();
     if (typeRoll < def.splitterChance) type = 'splitter';
     else if (typeRoll < def.splitterChance + def.bouncerChance) type = 'bouncer';
     else if (typeRoll < def.splitterChance + def.bouncerChance + def.waveChance) type = 'wave';
@@ -3091,13 +3129,13 @@ class Game {
     el.classList.add('show');
     setTimeout(() => {
       el.classList.remove('show');
-      const edge = Math.floor(Math.random() * 4);
+      const edge = Math.floor(this.rng() * 4);
       let bx, by;
       switch (edge) {
-        case 0: bx = Math.random() * this.w; by = -30; break;
-        case 1: bx = this.w + 30; by = Math.random() * this.h; break;
-        case 2: bx = Math.random() * this.w; by = this.h + 30; break;
-        case 3: bx = -30; by = Math.random() * this.h; break;
+        case 0: bx = this.rng() * this.w; by = -30; break;
+        case 1: bx = this.w + 30; by = this.rng() * this.h; break;
+        case 2: bx = this.rng() * this.w; by = this.h + 30; break;
+        case 3: bx = -30; by = this.rng() * this.h; break;
       }
       this.bosses.push(new Boss(bx, by, this.w, this.h, this.bossLevel));
     }, BOSS_ANNOUNCE_DURATION);
