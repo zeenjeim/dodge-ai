@@ -2374,6 +2374,14 @@ class Game {
 
     this.announcePhase();
     requestAnimationFrame(t => this.loop(t));
+
+    // Analytics
+    _gameEverStarted = true;
+    _sessionGamesPlayed++;
+    trackEvent('game-start', `Game ${_sessionGamesPlayed} started`);
+    if (_sessionGamesPlayed === 1) {
+      trackEvent('milestone-first-game', 'First game this session');
+    }
   }
 
   loop(timestamp) {
@@ -2473,6 +2481,8 @@ class Game {
     if (this.phase !== this._lastAnnouncedPhase) {
       this._lastAnnouncedPhase = this.phase;
       this.announcePhase();
+      // Analytics: phase milestone
+      trackEvent(`milestone-phase-${this.phase + 1}`, `Reached Phase ${this.phase + 1}: ${PHASE_DEFS[this.phase].name}`);
     }
 
     // --- Move player ---
@@ -3117,6 +3127,12 @@ class Game {
   }
 
   die() {
+    // Analytics: death event with phase info
+    trackEvent(
+      `death-phase-${this.phase + 1}`,
+      `Died at ${this.gameTime.toFixed(1)}s in Phase ${this.phase + 1}: ${PHASE_DEFS[Math.min(this.phase, PHASE_DEFS.length - 1)].name}`
+    );
+
     this.running = false;
     this.brain.lastThreatLevel = this.threatLevel;
     this.brain.save();
@@ -3371,6 +3387,8 @@ class Game {
   }
 
   share() {
+    trackEvent('share-card-generated', 'Share Card Generated');
+
     // Generate visual card
     const card = this.generateShareCard();
 
@@ -3405,6 +3423,7 @@ class Game {
             title: 'DODGE AI',
             text: text
           });
+          trackEvent('share-native', 'Shared via native dialog');
           return;
         } catch (e) {
           if (e.name === 'AbortError') return; // User cancelled
@@ -3420,6 +3439,7 @@ class Game {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      trackEvent('share-download', 'Shared via image download');
 
       // Also copy text to clipboard as secondary
       if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
@@ -3640,6 +3660,37 @@ class Game {
   }
 
 }
+
+// Analytics: session tracking
+let _sessionGamesPlayed = 0;
+let _gameEverStarted = false;
+
+// Track page load (fires when GoatCounter loads, or on next available moment)
+// Compare page-load count vs game-start count in dashboard to get pre-play drop-off
+function _initAnalytics() {
+  trackEvent('page-load', 'Page Loaded');
+}
+// GoatCounter loads async; poll briefly to fire page-load event
+(function() {
+  let attempts = 0;
+  const interval = setInterval(() => {
+    attempts++;
+    if (window.goatcounter && window.goatcounter.count) {
+      _initAnalytics();
+      clearInterval(interval);
+    } else if (attempts > 20) {
+      clearInterval(interval); // Give up after ~10 seconds
+    }
+  }, 500);
+})();
+
+// Track session depth on page unload (best-effort)
+window.addEventListener('beforeunload', () => {
+  if (_sessionGamesPlayed > 0) {
+    trackEvent(`session-games-${Math.min(_sessionGamesPlayed, 10)}`,
+      `Session ended after ${_sessionGamesPlayed} games`);
+  }
+});
 
 // Boot
 const game = new Game();
