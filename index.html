@@ -1351,6 +1351,7 @@ class AIBrain {
         dodgeSequenceSummary: this.dodgeSequenceDetector.serialize(),
         safeZoneSummary: this.safeZoneDetector.serialize(),
         directionSummary: this.directionDetector.serialize(),
+        threatLevelHistory: [...(existing.threatLevelHistory || []).slice(-4), this.lastThreatLevel || 0].slice(-5),
       }));
     } catch (e) {}
   }
@@ -2246,6 +2247,11 @@ class Game {
     this._tauntTimer = 0;
     this._lastShotWasCounter = false;
     clearTimeout(this._calloutTimer);
+    this.threatLevel = 0;
+    this.endgameMode = null;
+    this.endgameCycleTimer = 0;
+    this.recentCounterMisses = 0;
+    this._threatAtCapDuration = 0;
 
     this.player.x = this.w / 2;
     this.player.y = this.h / 2;
@@ -2286,22 +2292,55 @@ class Game {
 
   // Get current phase params (computed, not mutating PHASE_DEFS)
   getPhaseDef() {
-    if (this.phase < PHASE_DEFS.length - 1) return PHASE_DEFS[this.phase];
-    // EVOLVED: ramp values dynamically without mutating originals
-    const phaseDurations = PHASE_DEFS.slice(0, 5).reduce((s, p) => s + p.dur, 0);
-    const t = Math.max(0, this.gameTime - phaseDurations);
-    const ramp = Math.floor(t / 20);
-    return {
-      ...EVOLVED_BASE,
-      speed: 6.0 + ramp * 0.4,
-      spawnRate: Math.max(0.2, 0.35 - ramp * 0.03),
-      count: Math.min(6, 4 + Math.floor(t / 30)),
-      homingChance: Math.min(0.5, 0.3 + Math.floor(t / 30) * 0.05),
-      splitterChance: Math.min(0.4, 0.3 + ramp * 0.02),
-      bouncerChance: Math.min(0.3, 0.2 + ramp * 0.02),
-      waveChance: Math.min(0.3, 0.2 + ramp * 0.02),
-      accelChance: Math.min(0.35, 0.25 + ramp * 0.02),
+    let base;
+    if (this.phase < PHASE_DEFS.length - 1) {
+      base = { ...PHASE_DEFS[this.phase] };
+    } else {
+      // EVOLVED: ramp values dynamically without mutating originals
+      const phaseDurations = PHASE_DEFS.slice(0, 5).reduce((s, p) => s + p.dur, 0);
+      const t = Math.max(0, this.gameTime - phaseDurations);
+      const ramp = Math.floor(t / 20);
+      base = {
+        ...EVOLVED_BASE,
+        speed: 6.0 + ramp * 0.4,
+        spawnRate: Math.max(0.2, 0.35 - ramp * 0.03),
+        count: Math.min(6, 4 + Math.floor(t / 30)),
+        homingChance: Math.min(0.5, 0.3 + Math.floor(t / 30) * 0.05),
+        splitterChance: Math.min(0.4, 0.3 + ramp * 0.02),
+        bouncerChance: Math.min(0.3, 0.2 + ramp * 0.02),
+        waveChance: Math.min(0.3, 0.2 + ramp * 0.02),
+        accelChance: Math.min(0.35, 0.25 + ramp * 0.02),
+      };
+    }
+
+    // Apply threat level modifiers (adaptive difficulty)
+    const tl = this.threatLevel || 0;
+    const result = {
+      ...base,
+      aimPct: Math.min(0.98, base.aimPct + tl * 0.12),
+      speed: base.speed + tl * 1.2,
+      spawnRate: base.spawnRate * (1 - tl * 0.2),
+      counterPatternChance: tl * 0.5,
     };
+
+    // Endgame mode modifiers (cycling at max threat)
+    if (this.endgameMode) {
+      switch (this.endgameMode) {
+        case 'zone-denial':
+          result.counterPatternChance = Math.min(0.8, result.counterPatternChance + 0.3);
+          break;
+        case 'prediction-spam':
+          result.aimPct = Math.min(0.99, result.aimPct + 0.08);
+          result.homingChance = Math.min(0.5, (result.homingChance || 0) + 0.1);
+          break;
+        case 'speed-pressure':
+          result.speed += 1.5;
+          result.spawnRate = Math.max(0.15, result.spawnRate * 0.7);
+          break;
+      }
+    }
+
+    return result;
   }
 
   update(dt) {
@@ -2343,6 +2382,8 @@ class Game {
     this.player.y = Math.max(pr + sa.top, Math.min(this.h - pr - sa.bottom, this.player.y));
 
     this.brain.trackPosition(this.player.x, this.player.y, this.gameTime * 1000, this.w, this.h);
+    this.updateThreatLevel(dt);
+    this.updateEndgameCycle(dt);
 
     // --- Pattern detection callouts (check every ~60 frames) ---
     this._patternCheckCounter = (this._patternCheckCounter || 0) + 1;
@@ -2497,6 +2538,7 @@ class Game {
 
       if (p.isOffscreen(this.w, this.h) && (p.type !== 'bouncer' || p.bounces >= p.maxBounces)) {
         this.dodgedCount++;
+        if (p.isCounter) this.recentCounterMisses++;
         this.projectiles.splice(i, 1);
       }
     }
@@ -2941,7 +2983,7 @@ class Game {
     }
 
     // Counter-pattern targeting (AI fires based on detected patterns)
-    const counterChance = this.brain.getConfidence() / 100 * 0.4;
+    const counterChance = def.counterPatternChance || 0;
     if (Math.random() < counterChance) {
       const gameTimeSec = this.gameTime;
       const pattern = this.brain.getHighestConfidencePattern(gameTimeSec);
@@ -3117,6 +3159,7 @@ class Game {
     this.running = false;
     const calloutEl = document.getElementById('ai-callout');
     if (calloutEl) calloutEl.classList.remove('show');
+    this.brain.lastThreatLevel = this.threatLevel;
     this.brain.save();
     this.totalGames++;
     localStorage.setItem('dodge-ai-games', this.totalGames.toString());
@@ -3464,6 +3507,59 @@ class Game {
       ctx.fill();
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
+    }
+  }
+
+  updateThreatLevel(dt) {
+    const maxRatePerSecond = 0.02;
+
+    // Session cap: ramps from 0.5 to 1.0 over 90 seconds
+    const sessionCap = Math.min(1.0, 0.5 + (this.gameTime / 90) * 0.5);
+
+    // Rise based on AI confidence and active pattern count
+    const gameTimeSec = this.gameTime;
+    const confidence = this.brain.getConfidence() / 100;
+    const activePatterns = this.brain.getActivePatternCount(gameTimeSec);
+    const riseRate = (confidence * 0.012 + activePatterns * 0.004) * dt;
+
+    // Decay when counter-pattern shots are dodged
+    let decayRate = 0;
+    if (this.recentCounterMisses > 2) {
+      decayRate = 0.004 * dt;
+      this.recentCounterMisses = Math.max(0, this.recentCounterMisses - dt * 0.5);
+    }
+
+    // Apply with rate limit and session cap
+    const netChange = Math.min(riseRate, maxRatePerSecond * dt) - decayRate;
+    this.threatLevel = Math.min(sessionCap, Math.max(0, this.threatLevel + netChange));
+  }
+
+  updateEndgameCycle(dt) {
+    if (this.threatLevel < 0.9) {
+      this._threatAtCapDuration = 0;
+      this.endgameMode = null;
+      return;
+    }
+
+    this._threatAtCapDuration += dt;
+
+    // Start cycling after 5 seconds at max threat
+    if (this._threatAtCapDuration < 5) return;
+
+    this.endgameCycleTimer += dt;
+    const cycleDuration = 12;
+    const modeIndex = Math.floor(this.endgameCycleTimer / cycleDuration) % 3;
+    const modes = ['zone-denial', 'prediction-spam', 'speed-pressure'];
+    const newMode = modes[modeIndex];
+
+    if (newMode !== this.endgameMode) {
+      this.endgameMode = newMode;
+      const modeMessages = {
+        'zone-denial': 'Locking down your safe zones. Good luck finding a new one.',
+        'prediction-spam': 'Full prediction mode activated. I know where you\'re going.',
+        'speed-pressure': 'Speed increase. Try to keep up.',
+      };
+      this.showLearningMessage('taunt', modeMessages[newMode]);
     }
   }
 
