@@ -853,6 +853,7 @@ class AIBrain {
     this.lastProjectileTime = 0;
     this.playerMovedSinceShot = false;
     this.zoneVisits = new Array(9).fill(0);
+    this._savedProfile = null;
     this.load();
   }
 
@@ -974,11 +975,26 @@ class AIBrain {
 
   save() {
     try {
+      const existing = JSON.parse(localStorage.getItem('dodge-ai-brain')) || {};
+      const sessionsPlayed = (existing.sessionsPlayed || 0) + 1;
+
+      // Determine dominant patterns for welcome-back taunts
+      const dominantPatterns = [];
+      const dom = this.getDominantDodge();
+      if (dom && dom.pct > 30) dominantPatterns.push(dom.direction + '-dodge');
+      const favZoneIdx = this.zoneVisits.indexOf(Math.max(...this.zoneVisits));
+      const zoneNames = ['top-left', 'top-center', 'top-right', 'mid-left', 'center', 'mid-right', 'bottom-left', 'bottom-center', 'bottom-right'];
+      if (this.zoneVisits[favZoneIdx] > 20) dominantPatterns.push(zoneNames[favZoneIdx] + '-zone');
+
       localStorage.setItem('dodge-ai-brain', JSON.stringify({
+        version: 2,
         directionBias: this.directionBias,
         totalSamples: this.totalSamples,
         reactionSamples: this.reactionSamples.slice(-20),
         zoneVisits: this.zoneVisits,
+        sessionsPlayed: sessionsPlayed,
+        lastPlayedAt: Date.now(),
+        dominantPatterns: dominantPatterns.slice(0, 3),
       }));
     } catch (e) {}
   }
@@ -991,8 +1007,18 @@ class AIBrain {
         this.totalSamples = data.totalSamples || 0;
         this.reactionSamples = data.reactionSamples || [];
         this.zoneVisits = data.zoneVisits || new Array(9).fill(0);
+        // Cross-session profile
+        this._savedProfile = {
+          sessionsPlayed: data.sessionsPlayed || 0,
+          lastPlayedAt: data.lastPlayedAt || 0,
+          dominantPatterns: data.dominantPatterns || [],
+        };
       }
     } catch (e) {}
+  }
+
+  getSavedProfile() {
+    return this._savedProfile || null;
   }
 }
 
@@ -1860,6 +1886,7 @@ class Game {
     this.lastTime = performance.now();
 
     this.announcePhase();
+    this.showWelcomeBack();
     requestAnimationFrame(t => this.loop(t));
   }
 
@@ -2968,6 +2995,42 @@ class Game {
         }
       }
     }
+  }
+
+  showWelcomeBack() {
+    const profile = this.brain.getSavedProfile();
+    if (!profile || profile.sessionsPlayed < 1) return;
+
+    const patterns = profile.dominantPatterns || [];
+    const sessions = profile.sessionsPlayed;
+
+    // Templates with pattern references
+    const withPattern = [
+      (p) => `Oh, you're back. Still ${p.replace('-', ' ')}ing?`,
+      (p) => `Session ${sessions + 1}. I still remember your ${p.replace('-dodge', '').replace('-zone', ' zone')} habit.`,
+      (p) => `Return of the ${p.replace('-dodge', ' dodger').replace('-zone', ' zone camper')}. My aim has improved.`,
+    ];
+
+    // Generic templates (no pattern data needed)
+    const generic = [
+      () => `Missed you. Well, not literally. I never miss.`,
+      () => `Back for more? Your pattern data is still warm.`,
+      () => `Session ${sessions + 1}. Your patterns haven't changed. Mine have.`,
+    ];
+
+    let msg;
+    if (patterns.length > 0) {
+      const template = withPattern[Math.floor(Math.random() * withPattern.length)];
+      msg = template(patterns[0]);
+    } else {
+      const template = generic[Math.floor(Math.random() * generic.length)];
+      msg = template();
+    }
+
+    // Show with a slight delay so the game has started visually
+    setTimeout(() => {
+      if (this.running) this.showLearningMessage('welcome', msg);
+    }, 1500);
   }
 
   showLearningMessage(type, text) {
