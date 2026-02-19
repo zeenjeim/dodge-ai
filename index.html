@@ -641,6 +641,64 @@
       #hud-time { font-size: 24px; }
       #phase-announce .phase-name { font-size: 28px; }
     }
+
+    /* --- SEO Content (below fold) --- */
+    .seo-content {
+      position: relative;
+      z-index: 1;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 60px 24px 80px;
+      color: #b0b0b0;
+      font-family: 'Courier New', monospace;
+      line-height: 1.7;
+    }
+
+    .seo-content h1 {
+      color: #00f0ff;
+      font-size: 1.8rem;
+      margin-bottom: 24px;
+      line-height: 1.3;
+    }
+
+    .seo-content h2 {
+      color: #8b5cf6;
+      font-size: 1.2rem;
+      margin-top: 32px;
+      margin-bottom: 12px;
+    }
+
+    .seo-content p {
+      margin-bottom: 16px;
+      max-width: 65ch;
+    }
+
+    .seo-content ul {
+      list-style: none;
+      padding: 0;
+      margin-bottom: 16px;
+    }
+
+    .seo-content ul li {
+      padding-left: 20px;
+      position: relative;
+      margin-bottom: 8px;
+    }
+
+    .seo-content ul li::before {
+      content: '>';
+      position: absolute;
+      left: 0;
+      color: #00f0ff;
+    }
+
+    .seo-content .seo-footer {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid #1a1a2e;
+      color: #555;
+      font-size: 0.85rem;
+    }
   </style>
 </head>
 <body>
@@ -800,6 +858,48 @@
 <div class="ad-zone" id="ad-zone" style="display:none">
   <span>Ad Space</span>
 </div>
+
+<!-- SEO Content (below fold, visible to crawlers) -->
+<section class="seo-content" aria-label="About DODGE AI">
+  <h1>DODGE AI -- Browser Game Where the AI Learns How You Play</h1>
+
+  <p>DODGE AI is a bullet hell browser game with one twist: the AI is watching. Every dodge you make, every safe zone you hide in, every panic move you pull -- the AI catalogs it all and uses it against you.</p>
+
+  <h2>How to Play</h2>
+  <p>Move your cursor (or finger on mobile) to dodge incoming projectiles. Survive as long as you can while the AI ramps up the pressure across 6 escalating phases.</p>
+  <ul>
+    <li>Move with mouse or touch -- your character follows</li>
+    <li>Dodge projectiles: homing, splitters, bouncers, waves, and more</li>
+    <li>Collect power-ups: Bullet Time, EMP, Ghost Mode, Blink, and others</li>
+    <li>Defeat bosses that appear every 25 seconds</li>
+    <li>Survive the AI's adaptive attacks as it learns your patterns</li>
+  </ul>
+
+  <h2>The AI That Learns</h2>
+  <p>This is not a scripted difficulty curve. The AI Brain tracks your dodge direction bias, preferred zones, reaction time, and movement patterns in real time. It remembers you across sessions. Come back tomorrow and it already knows your habits.</p>
+  <ul>
+    <li>Pattern detection: clockwise dodging, corner hugging, panic reversals</li>
+    <li>Counter-attacks: targeted projectiles aimed at your safe zones</li>
+    <li>Adaptive difficulty: adjusts aggression based on your skill level</li>
+    <li>Persistent memory: the AI remembers returning players via localStorage</li>
+  </ul>
+
+  <h2>Features</h2>
+  <ul>
+    <li>6 escalating phases from SCANNING to EVOLVED</li>
+    <li>Multiple projectile types with unique behaviors</li>
+    <li>Boss fights with health bars and attack patterns</li>
+    <li>6 power-ups including Bullet Time, EMP, and GTFO dash</li>
+    <li>AI brain panel showing live analysis of your play style</li>
+    <li>No download required -- plays directly in your browser</li>
+    <li>Works on desktop and mobile</li>
+    <li>Free to play, no account needed</li>
+  </ul>
+
+  <div class="seo-footer">
+    <p>DODGE AI is a free browser game. No download, no login, no tracking cookies. Just you versus an AI that gets smarter every round.</p>
+  </div>
+</section>
 
 <script>
 // ============================================================
