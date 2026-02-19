@@ -58,19 +58,17 @@ Plans:
 - [x] 03-03-PLAN.md — Analytics: GoatCounter integration with lifecycle events and drop-off tracking
 
 ### Phase 4: Retention
-**Goal**: Players have a reason to come back every day and a streak they don't want to break
+**Goal**: Daily challenge mode and personal best tracking give players a reason to return
 **Depends on**: Phase 3 (analytics data informs whether retention features are working; share card can include daily challenge results)
-**Requirements**: RET-01, RET-02, RET-03, RET-04
+**Requirements**: RET-01 (RET-02, RET-03, RET-04 deferred by user)
 **Success Criteria** (what must be TRUE):
   1. A "Daily Challenge" mode is available where all players face the same date-seeded AI configuration each day
-  2. Consecutive daily challenge completions are tracked as a streak, visible on the main screen
-  3. Streak milestones unlock escalating cosmetic rewards (titles, visual flair) that persist in localStorage
-  4. Missing a day reduces the streak gradually (gentle ramp-down) rather than resetting to zero
-**Plans**: TBD
+  2. A personal best list shows top 5 survival times with dates
+**Plans**: 2 plans (2 waves, sequential -- both modify index.html)
 
 Plans:
-- [ ] 04-01: Daily challenge mode with date-seeded AI
-- [ ] 04-02: Streak system with rewards and gentle ramp-down
+- [ ] 04-01-PLAN.md -- Seeded PRNG, swappable rng(), daily challenge mode with button/HUD/game-over
+- [ ] 04-02-PLAN.md -- Personal best list (localStorage, migration, stats modal, share card daily badge)
 
 ### Phase 5: New Mechanics
 **Goal**: Gameplay stays fresh with new projectile types, environmental hazards, and player abilities
@@ -97,9 +95,9 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 1. Gameplay Polish | 2/2 | Complete | 2026-02-18 |
 | 2. AI Intelligence | 3/3 | Complete | 2026-02-19 |
 | 3. Growth Foundation | 3/3 | Complete | 2026-02-19 |
-| 4. Retention | 0/2 | Not started | - |
+| 4. Retention | 0/2 | Planned | - |
 | 5. New Mechanics | 0/3 | Not started | - |
 
 ---
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-02-19 after Phase 3 completion*
+*Last updated: 2026-02-19 after Phase 4 planning*
