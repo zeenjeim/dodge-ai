@@ -1747,6 +1747,46 @@ function drawShape(ctx, x, y, radius, shape, angle) {
       ctx.closePath();
       break;
     }
+    case 'spiralShape': {
+      // 3-arm swirl glyph radiating from center
+      const a = angle || 0;
+      for (let arm = 0; arm < 3; arm++) {
+        const baseA = a + (arm / 3) * Math.PI * 2;
+        ctx.moveTo(x, y);
+        for (let t = 0; t <= 1; t += 0.2) {
+          const r = radius * t;
+          const sa = baseA + t * 1.5;
+          const px = x + Math.cos(sa) * r;
+          const py = y + Math.sin(sa) * r;
+          ctx.lineTo(px, py);
+        }
+      }
+      break;
+    }
+    case 'clusterShape': {
+      // Circle with outer ring (bomb/grenade look)
+      ctx.arc(x, y, radius * 0.6, 0, Math.PI * 2);
+      ctx.moveTo(x + radius, y);
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      break;
+    }
+    case 'mineShape': {
+      // Octagon with crosshair lines
+      const a = angle || 0;
+      for (let i = 0; i < 8; i++) {
+        const oa = (i / 8) * Math.PI * 2 + a;
+        const px = x + Math.cos(oa) * radius;
+        const py = y + Math.sin(oa) * radius;
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      // Crosshair lines
+      ctx.moveTo(x - radius * 0.7, y);
+      ctx.lineTo(x + radius * 0.7, y);
+      ctx.moveTo(x, y - radius * 0.7);
+      ctx.lineTo(x, y + radius * 0.7);
+      break;
+    }
   }
 }
 
@@ -1811,7 +1851,7 @@ class Projectile {
     this.homing = opts.homing || false;
     this.homingStrength = 0.015;
     // Special types
-    this.type = opts.type || 'normal'; // normal, splitter, bouncer, wave, accel
+    this.type = opts.type || 'normal'; // normal, splitter, bouncer, wave, accel, spiral, cluster, mine
     this.hasSplit = false;
     this.bounces = 0;
     this.maxBounces = 1;
@@ -1820,6 +1860,17 @@ class Projectile {
     this.baseVx = vx; this.baseVy = vy;
     this.accelRate = opts.accelRate || 1.5; // multiplier per second
     this.splitChildren = opts.splitChildren || false; // true = this is a child from a split
+    // Spiral properties
+    this.spiralAngle = 0;
+    this.spiralSpeed = opts.spiralSpeed || 6;   // radians/sec
+    this.spiralRadius = opts.spiralRadius || 25; // pixel amplitude
+    // Cluster properties
+    this.fuseTime = opts.fuseTime || 1.0;
+    this.hasExploded = false;
+    // Mine properties
+    this.travelTime = opts.travelTime || 0.5;
+    this.dwellTime = opts.dwellTime || 2.5;
+    this.hasDetonated = false;
   }
 
   update(dt, playerX, playerY, slowMod) {
@@ -1856,6 +1907,30 @@ class Projectile {
       const mult = 1 + this.age * this.accelRate;
       this.x += this.vx * dt * 60 * speed * mult;
       this.y += this.vy * dt * 60 * speed * mult;
+    }
+    // Spiral: corkscrew oscillation perpendicular to travel direction
+    else if (this.type === 'spiral') {
+      this.spiralAngle += this.spiralSpeed * dt;
+      const baseAngle = Math.atan2(this.baseVy, this.baseVx);
+      const perpX = -Math.sin(baseAngle);
+      const perpY = Math.cos(baseAngle);
+      const orbit = Math.sin(this.spiralAngle) * this.spiralRadius;
+      this.x += this.baseVx * dt * 60 * speed + perpX * orbit * dt * 4;
+      this.y += this.baseVy * dt * 60 * speed + perpY * orbit * dt * 4;
+    }
+    // Cluster: travels straight, explodes after fuseTime (handled in checkCluster)
+    else if (this.type === 'cluster') {
+      this.x += this.vx * dt * 60 * speed;
+      this.y += this.vy * dt * 60 * speed;
+    }
+    // Mine: slow travel, then dwell in place, then detonate (handled in checkMineDetonate)
+    else if (this.type === 'mine') {
+      if (this.age < this.travelTime) {
+        this.x += this.vx * dt * 60 * speed * 0.3;
+        this.y += this.vy * dt * 60 * speed * 0.3;
+      }
+      // dwell phase: sits in place (no movement)
+      // detonation is handled in checkMineDetonate()
     }
     // Default movement
     else {
@@ -1902,6 +1977,50 @@ class Projectile {
     return bounced;
   }
 
+  // Returns array of child projectiles when cluster fuse expires (6-bullet ring)
+  checkCluster() {
+    if (this.type !== 'cluster' || this.hasExploded) return null;
+    if (this.age > this.fuseTime) {
+      this.hasExploded = true;
+      const children = [];
+      const count = 6;
+      const childSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy) * 0.8;
+      for (let i = 0; i < count; i++) {
+        const a = (i / count) * Math.PI * 2;
+        children.push(new Projectile(this.x, this.y,
+          Math.cos(a) * childSpeed, Math.sin(a) * childSpeed,
+          '#ff8800', { radius: 3, type: 'normal', splitChildren: true }
+        ));
+      }
+      return children;
+    }
+    return null;
+  }
+
+  // Returns array of child projectiles when mine detonates toward player (4 aimed bullets)
+  checkMineDetonate(playerX, playerY) {
+    if (this.type !== 'mine' || this.hasDetonated) return null;
+    if (this.age > this.travelTime + this.dwellTime) {
+      this.hasDetonated = true;
+      const children = [];
+      const count = 4;
+      const dx = playerX - this.x;
+      const dy = playerY - this.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const baseSpeed = 5;
+      const spread = 0.3;
+      for (let i = 0; i < count; i++) {
+        const angle = Math.atan2(dy, dx) + (i - 1.5) * spread;
+        children.push(new Projectile(this.x, this.y,
+          Math.cos(angle) * baseSpeed, Math.sin(angle) * baseSpeed,
+          '#ff0066', { radius: 3, type: 'normal', splitChildren: true }
+        ));
+      }
+      return children;
+    }
+    return null;
+  }
+
   draw(ctx) {
     const angle = Math.atan2(this.vy, this.vx);
 
@@ -1912,6 +2031,9 @@ class Projectile {
     else if (this.type === 'bouncer') shape = 'triangle';
     else if (this.type === 'wave') shape = 'hexagon';
     else if (this.type === 'accel') shape = 'arrow';
+    else if (this.type === 'spiral') shape = 'spiralShape';
+    else if (this.type === 'cluster') shape = 'clusterShape';
+    else if (this.type === 'mine') shape = 'mineShape';
     if (this.splitChildren) shape = 'triangle';
 
     // Trail
@@ -1931,7 +2053,8 @@ class Projectile {
     ctx.shadowBlur = this.homing ? 18 : 10;
     ctx.fillStyle = this.color;
     ctx.beginPath();
-    drawShape(ctx, this.x, this.y, this.radius, shape, angle);
+    const drawAngle = this.type === 'spiral' ? this.spiralAngle : angle;
+    drawShape(ctx, this.x, this.y, this.radius, shape, drawAngle);
     ctx.fill();
 
     // Type-specific effects
@@ -1975,6 +2098,47 @@ class Projectile {
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.radius + mult * 1.5, 0, Math.PI * 2);
       ctx.fill();
+    }
+    if (this.type === 'spiral') {
+      // Trailing swirl effect
+      ctx.globalAlpha = 0.25;
+      ctx.strokeStyle = '#00ffaa';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius + 3 + Math.sin(this.spiralAngle) * 2, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    if (this.type === 'cluster' && !this.hasExploded) {
+      // Pulse as fuse approaches: scale up in last 0.3s
+      const fuseProgress = this.age / this.fuseTime;
+      if (fuseProgress > 0.7) {
+        const pulse = 1 + (fuseProgress - 0.7) / 0.3 * 0.5;
+        ctx.globalAlpha = 0.4 * pulse;
+        ctx.fillStyle = '#ff8800';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius * pulse + 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    if (this.type === 'mine' && !this.hasDetonated) {
+      // During dwell phase: pulsing glow telegraph with increasing intensity
+      if (this.age >= this.travelTime) {
+        const dwellProgress = (this.age - this.travelTime) / this.dwellTime;
+        const intensity = 0.3 + Math.sin(this.age * 4) * 0.3;
+        const pulseRadius = this.radius + 4 + dwellProgress * 6;
+        ctx.globalAlpha = intensity * (0.5 + dwellProgress * 0.5);
+        ctx.strokeStyle = '#ff0066';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, pulseRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        // Inner danger glow
+        ctx.globalAlpha = intensity * 0.3;
+        ctx.fillStyle = '#ff0066';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, pulseRadius * 0.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     // Counter-pattern purple glow overlay
@@ -2782,6 +2946,32 @@ class Game {
         }
       }
 
+      // Cluster explosion check
+      const clusterChildren = p.checkCluster();
+      if (clusterChildren) {
+        newProjectiles.push(...clusterChildren);
+        for (let j = 0; j < 8; j++) {
+          const a = Math.random() * Math.PI * 2;
+          this.particles.push(new Particle(p.x, p.y, Math.cos(a) * 80, Math.sin(a) * 80, 0.4, '#ff8800', 2.5));
+        }
+      }
+
+      // Mine detonation check
+      const mineChildren = p.checkMineDetonate(this.player.x, this.player.y);
+      if (mineChildren) {
+        newProjectiles.push(...mineChildren);
+        for (let j = 0; j < 6; j++) {
+          const a = Math.random() * Math.PI * 2;
+          this.particles.push(new Particle(p.x, p.y, Math.cos(a) * 50, Math.sin(a) * 50, 0.35, '#ff0066', 2));
+        }
+      }
+
+      // Remove exploded clusters and detonated mines
+      if (p.hasExploded || p.hasDetonated) {
+        this.projectiles.splice(i, 1);
+        continue;
+      }
+
       const dx = p.x - this.player.x;
       const dy = p.y - this.player.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -2822,7 +3012,7 @@ class Game {
         this.projectiles.splice(i, 1);
       }
     }
-    // Add split children
+    // Add split/cluster/mine children
     for (const c of newProjectiles) this.projectiles.push(c);
 
     // --- Power-ups spawn ---
