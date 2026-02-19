@@ -285,6 +285,35 @@
 
     #pickup-announce.show { opacity: 1; }
 
+    /* --- AI Callout Toast --- */
+    #ai-callout {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 15;
+      font-size: 13px;
+      color: #c4b5fd;
+      letter-spacing: 1px;
+      text-align: center;
+      max-width: 320px;
+      padding: 8px 16px;
+      background: rgba(139, 92, 246, 0.1);
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      border-radius: 6px;
+      opacity: 0;
+      transition: opacity 0.4s;
+      pointer-events: none;
+      font-family: 'Courier New', monospace;
+      text-transform: uppercase;
+    }
+
+    #ai-callout.show { opacity: 1; }
+
+    #ai-callout.type-counter { color: #f87171; border-color: rgba(248, 113, 113, 0.3); background: rgba(248, 113, 113, 0.08); }
+    #ai-callout.type-welcome { color: #a78bfa; border-color: rgba(167, 139, 250, 0.3); background: rgba(167, 139, 250, 0.1); }
+    #ai-callout.type-taunt { color: #fbbf24; border-color: rgba(251, 191, 36, 0.2); background: rgba(251, 191, 36, 0.06); }
+
     /* --- Start Screen --- */
     #start-screen {
       position: fixed;
@@ -595,6 +624,7 @@
       #hud { top: max(8px, calc(4px + var(--sa-top))); left: max(8px, calc(4px + var(--sa-left))); }
       #hud-time { font-size: 24px; }
       #phase-announce .phase-name { font-size: 28px; }
+      #ai-callout { font-size: 11px; max-width: 240px; }
     }
   </style>
 </head>
@@ -663,6 +693,9 @@
 
 <!-- Powerup Pickup -->
 <div id="pickup-announce"></div>
+
+<!-- AI Callout Toast -->
+<div id="ai-callout"></div>
 
 <!-- Start Screen / Menu -->
 <div id="start-screen">
@@ -1810,6 +1843,11 @@ class Game {
     this.forceFieldFlash = 0;
     this.lastPowerupType = null;
     this.deathContext = null;
+    this._lastCalloutTime = 0;
+    this._currentCalloutType = null;
+    this._calloutCooldown = 0;
+    this._calloutTypeCounts = {};
+    clearTimeout(this._calloutTimer);
 
     this.player.x = this.w / 2;
     this.player.y = this.h / 2;
@@ -2546,6 +2584,8 @@ class Game {
 
   die() {
     this.running = false;
+    const calloutEl = document.getElementById('ai-callout');
+    if (calloutEl) calloutEl.classList.remove('show');
     this.brain.save();
     this.totalGames++;
     localStorage.setItem('dodge-ai-games', this.totalGames.toString());
@@ -2928,6 +2968,52 @@ class Game {
         }
       }
     }
+  }
+
+  showLearningMessage(type, text) {
+    // type: 'detect', 'counter', 'taunt', 'welcome'
+    // Priority order: counter > detect > taunt (welcome bypasses cooldown)
+    const now = this.gameTime || 0;
+    const priority = { counter: 3, detect: 2, welcome: 2, taunt: 1 };
+
+    // Respect cooldown (welcome messages bypass it)
+    if (type !== 'welcome' && this._lastCalloutTime && (now - this._lastCalloutTime) < this._calloutCooldown) {
+      // Queue if higher priority than current showing message
+      if ((priority[type] || 0) <= (priority[this._currentCalloutType] || 0)) return;
+    }
+
+    // Suppress repeated message types after 3 occurrences of the same type in this run
+    if (type !== 'welcome') {
+      this._calloutTypeCounts = this._calloutTypeCounts || {};
+      const key = type + ':' + text.slice(0, 20);
+      this._calloutTypeCounts[key] = (this._calloutTypeCounts[key] || 0) + 1;
+      if (this._calloutTypeCounts[key] > 3) return;
+    }
+
+    const el = document.getElementById('ai-callout');
+    if (!el) return;
+
+    // Clear previous
+    el.classList.remove('show', 'type-counter', 'type-welcome', 'type-taunt', 'type-detect');
+
+    // Set content and type-specific styling
+    el.textContent = text;
+    el.classList.add('type-' + type);
+
+    // Force reflow then show
+    void el.offsetWidth;
+    el.classList.add('show');
+
+    this._lastCalloutTime = now;
+    this._currentCalloutType = type;
+    this._calloutCooldown = 8 + Math.random() * 4; // 8-12 seconds
+
+    // Auto-hide after 3 seconds
+    clearTimeout(this._calloutTimer);
+    this._calloutTimer = setTimeout(() => {
+      el.classList.remove('show');
+      this._currentCalloutType = null;
+    }, 3000);
   }
 }
 
