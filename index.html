@@ -285,35 +285,6 @@
 
     #pickup-announce.show { opacity: 1; }
 
-    /* --- AI Callout Toast --- */
-    #ai-callout {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 15;
-      font-size: 13px;
-      color: #c4b5fd;
-      letter-spacing: 1px;
-      text-align: center;
-      max-width: 320px;
-      padding: 8px 16px;
-      background: rgba(139, 92, 246, 0.1);
-      border: 1px solid rgba(139, 92, 246, 0.2);
-      border-radius: 6px;
-      opacity: 0;
-      transition: opacity 0.4s;
-      pointer-events: none;
-      font-family: 'Courier New', monospace;
-      text-transform: uppercase;
-    }
-
-    #ai-callout.show { opacity: 1; }
-
-    #ai-callout.type-counter { color: #f87171; border-color: rgba(248, 113, 113, 0.3); background: rgba(248, 113, 113, 0.08); }
-    #ai-callout.type-welcome { color: #a78bfa; border-color: rgba(167, 139, 250, 0.3); background: rgba(167, 139, 250, 0.1); }
-    #ai-callout.type-taunt { color: #fbbf24; border-color: rgba(251, 191, 36, 0.2); background: rgba(251, 191, 36, 0.06); }
-
     /* --- Start Screen --- */
     #start-screen {
       position: fixed;
@@ -624,7 +595,6 @@
       #hud { top: max(8px, calc(4px + var(--sa-top))); left: max(8px, calc(4px + var(--sa-left))); }
       #hud-time { font-size: 24px; }
       #phase-announce .phase-name { font-size: 28px; }
-      #ai-callout { font-size: 11px; max-width: 240px; }
     }
   </style>
 </head>
@@ -651,17 +621,25 @@
 
 <!-- AI Brain Panel -->
 <div id="brain-panel">
-  <h3>The AI's Diary</h3>
+  <h3>AI Brain</h3>
   <div class="brain-row">
-    <span class="brain-label">How Sure I Am</span>
+    <span class="brain-label">Confidence</span>
     <span class="brain-value" id="brain-confidence">0%</span>
   </div>
   <div class="brain-row">
-    <span class="brain-label">Your Reflexes</span>
+    <span class="brain-label">Threat</span>
+    <span class="brain-value" id="brain-threat">0%</span>
+  </div>
+  <div class="brain-row">
+    <span class="brain-label">Patterns</span>
+    <span class="brain-value" id="brain-patterns">0</span>
+  </div>
+  <div class="brain-row">
+    <span class="brain-label">Reaction</span>
     <span class="brain-value" id="brain-reaction">—</span>
   </div>
   <div class="brain-row">
-    <span class="brain-label">Moves Stolen</span>
+    <span class="brain-label">Samples</span>
     <span class="brain-value" id="brain-samples">0</span>
   </div>
   <div id="brain-bias">
@@ -693,9 +671,6 @@
 
 <!-- Powerup Pickup -->
 <div id="pickup-announce"></div>
-
-<!-- AI Callout Toast -->
-<div id="ai-callout"></div>
 
 <!-- Start Screen / Menu -->
 <div id="start-screen">
@@ -1300,29 +1275,17 @@ class AIBrain {
   }
 
   getInsight() {
-    const dom = this.getDominantDodge();
-    const reaction = this.getAvgReaction();
-    const conf = this.getConfidence();
-    if (conf < 15) return 'Sizing you up...';
-    if (conf < 30) return 'Ooh, I see what you did there...';
-    const msgs = [];
-    if (dom && dom.pct > 30) msgs.push(`You dodge ${dom.direction} ${dom.pct}% of the time. Adorable.`);
-    if (reaction) {
-      if (reaction < 200) msgs.push(`${reaction}ms reflexes. Okay, I'm mildly threatened.`);
-      else if (reaction > 500) msgs.push(`${reaction}ms reaction. My grandma dodges faster.`);
-      else msgs.push(`${reaction}ms. Filed that away for later. You're welcome.`);
-    }
-    if (conf > 60) msgs.push('I know your moves better than you do.');
-    if (conf > 80) msgs.push('At this point I\'m just showing off.');
     const nowSec = Date.now() / 1000;
-    const dirPattern = this.directionDetector.getActivePattern(nowSec);
-    if (dirPattern && dirPattern.rotation) msgs.push(`${dirPattern.rotation === 'clockwise' ? 'Clockwise' : 'Counterclockwise'} dodger. Predictable.`);
+    const patterns = this.getActivePatternCount(nowSec);
+    const dom = this.getDominantDodge();
+    if (patterns === 0) return 'Scanning...';
+    const parts = [];
+    if (dom && dom.pct > 30) parts.push(`${dom.direction} ${dom.pct}%`);
     const safePattern = this.safeZoneDetector.getActivePattern(nowSec);
-    if (safePattern) msgs.push(`Your ${safePattern.zoneName} obsession is noted.`);
+    if (safePattern) parts.push(`zone: ${safePattern.zoneName}`);
     const panicPattern = this.panicDetector.getActivePattern(nowSec);
-    if (panicPattern && panicPattern.type === 'panic-reversal') msgs.push(`Panic reversals detected. Delicious.`);
-    if (panicPattern && panicPattern.type === 'cornering') msgs.push(`Hugging the ${panicPattern.edge}? Bold choice.`);
-    return msgs[Math.floor(Date.now() / 2500) % msgs.length] || 'Processing your failures...';
+    if (panicPattern) parts.push(panicPattern.type === 'panic-reversal' ? 'panic' : panicPattern.edge);
+    return parts.length > 0 ? parts.join(' · ') : `${patterns} pattern${patterns > 1 ? 's' : ''}`;
   }
 
   save() {
@@ -2238,15 +2201,7 @@ class Game {
     this.forceFieldFlash = 0;
     this.lastPowerupType = null;
     this.deathContext = null;
-    this._lastCalloutTime = 0;
-    this._currentCalloutType = null;
-    this._calloutCooldown = 0;
-    this._calloutTypeCounts = {};
-    this._patternCheckCounter = 0;
-    this._detectedPatterns = {};
-    this._tauntTimer = 0;
     this._lastShotWasCounter = false;
-    clearTimeout(this._calloutTimer);
     this.threatLevel = 0;
     this.endgameMode = null;
     this.endgameCycleTimer = 0;
@@ -2264,7 +2219,6 @@ class Game {
     this.lastTime = performance.now();
 
     this.announcePhase();
-    this.showWelcomeBack();
     requestAnimationFrame(t => this.loop(t));
   }
 
@@ -2313,14 +2267,14 @@ class Game {
       };
     }
 
-    // Apply threat level modifiers (adaptive difficulty)
+    // Apply threat level modifiers (adaptive difficulty — smooth ramp)
     const tl = this.threatLevel || 0;
     const result = {
       ...base,
-      aimPct: Math.min(0.98, base.aimPct + tl * 0.12),
-      speed: base.speed + tl * 1.2,
-      spawnRate: base.spawnRate * (1 - tl * 0.2),
-      counterPatternChance: tl * 0.5,
+      aimPct: Math.min(0.95, base.aimPct + tl * 0.08),
+      speed: base.speed + tl * 0.8,
+      spawnRate: base.spawnRate * (1 - tl * 0.15),
+      counterPatternChance: tl * 0.4,
     };
 
     // Endgame mode modifiers (cycling at max threat)
@@ -2384,52 +2338,6 @@ class Game {
     this.brain.trackPosition(this.player.x, this.player.y, this.gameTime * 1000, this.w, this.h);
     this.updateThreatLevel(dt);
     this.updateEndgameCycle(dt);
-
-    // --- Pattern detection callouts (check every ~60 frames) ---
-    this._patternCheckCounter = (this._patternCheckCounter || 0) + 1;
-    if (this._patternCheckCounter >= 60) {
-      this._patternCheckCounter = 0;
-      this._detectedPatterns = this._detectedPatterns || {};
-      const gameTimeSec = this.gameTime;
-      const patterns = [
-        this.brain.directionDetector.getActivePattern(gameTimeSec),
-        this.brain.safeZoneDetector.getActivePattern(gameTimeSec),
-        this.brain.dodgeSequenceDetector.getActivePattern(gameTimeSec),
-        this.brain.panicDetector.getActivePattern(gameTimeSec),
-      ].filter(Boolean);
-
-      for (const p of patterns) {
-        const key = p.type;
-        if (!this._detectedPatterns[key] && p.confidence > 0.5) {
-          this._detectedPatterns[key] = true;
-          const messages = {
-            'direction-bias': p.rotation
-              ? `${p.rotation === 'clockwise' ? 'Clockwise' : 'Counter-clockwise'}? Really? Noted.`
-              : `You dodge ${p.direction} ${p.pct}% of the time. Adorable.`,
-            'safe-zone': `You love that ${p.zoneName}. Filing that away.`,
-            'dodge-sequence': `${p.readable} — I see a pattern forming.`,
-            'panic-reversal': `Panic reversals detected. That's basically a homing beacon.`,
-            'cornering': `Edge hugger detected. The ${p.edge} isn't going to save you.`,
-            'speed-freeze': `Speed drop when pressured. Exploitable.`,
-          };
-          if (messages[key]) this.showLearningMessage('detect', messages[key]);
-          break;
-        }
-      }
-
-      // Taunt if patterns persist (every ~30 checks after first detection)
-      this._tauntTimer = (this._tauntTimer || 0) + 1;
-      if (this._tauntTimer >= 30 && Object.keys(this._detectedPatterns).length >= 2) {
-        this._tauntTimer = 0;
-        const taunts = [
-          'Still doing the same thing? Bold strategy.',
-          'I already told you I see that. You just don\'t care, do you?',
-          'At this point I\'m predicting your predictions.',
-          'You\'re making this too easy. Change it up. Or don\'t. I\'m entertained either way.',
-        ];
-        this.showLearningMessage('taunt', taunts[Math.floor(Math.random() * taunts.length)]);
-      }
-    }
 
     // --- Spawn projectiles ---
     if (this.spawnTimer <= 0 && this.phaseAnnounceTimer <= 0 && this.bossAnnounceTimer <= 0) {
@@ -2994,16 +2902,12 @@ class Game {
             const zoneCenter = this.brain.safeZoneDetector.getZoneCenter(pattern.zone, this.w, this.h);
             targetX = zoneCenter.x + (Math.random() - 0.5) * 50;
             targetY = zoneCenter.y + (Math.random() - 0.5) * 50;
-            this.showLearningMessage('counter', `Targeting your ${pattern.zoneName} safe zone.`);
+
             counterFired = true;
             break;
           }
           case 'direction-bias': {
-            if (pattern.rotation) {
-              this.showLearningMessage('counter', `${pattern.rotation === 'clockwise' ? 'Clockwise' : 'Counter-clockwise'}? Really? I had you in seconds.`);
-            } else {
-              this.showLearningMessage('counter', `You dodge ${pattern.direction} ${pattern.pct}% of the time. Aiming there.`);
-            }
+            // AI silently targets based on detected direction bias
             const predicted = this.brain.getPredictedDodgeTarget(px, py, this.w, this.h);
             if (predicted) { targetX = predicted.x; targetY = predicted.y; }
             counterFired = true;
@@ -3012,14 +2916,12 @@ class Game {
           case 'panic-reversal': {
             targetX = px + Math.cos(pattern.dominantAngle) * 100;
             targetY = py + Math.sin(pattern.dominantAngle) * 100;
-            this.showLearningMessage('counter', `Exploiting your panic reflex.`);
             counterFired = true;
             break;
           }
           case 'cornering': {
             const edgeTarget = this._getEdgeTarget(pattern.edge);
             if (edgeTarget) { targetX = edgeTarget.x; targetY = edgeTarget.y; }
-            this.showLearningMessage('counter', `Hugging the ${pattern.edge}? Here's a welcome gift.`);
             counterFired = true;
             break;
           }
@@ -3032,7 +2934,6 @@ class Game {
               const off = offsets[nextDir];
               targetX = px + off[0] + (Math.random() - 0.5) * 30;
               targetY = py + off[1] + (Math.random() - 0.5) * 30;
-              this.showLearningMessage('counter', `Let's see if you do ${pattern.readable} again.`);
               counterFired = true;
             }
             break;
@@ -3040,7 +2941,6 @@ class Game {
           case 'speed-freeze': {
             targetX = px;
             targetY = py;
-            this.showLearningMessage('counter', `Speed drop detected. Easy target.`);
             counterFired = true;
             break;
           }
@@ -3157,8 +3057,6 @@ class Game {
 
   die() {
     this.running = false;
-    const calloutEl = document.getElementById('ai-callout');
-    if (calloutEl) calloutEl.classList.remove('show');
     this.brain.lastThreatLevel = this.threatLevel;
     this.brain.save();
     this.totalGames++;
@@ -3511,16 +3409,16 @@ class Game {
   }
 
   updateThreatLevel(dt) {
-    const maxRatePerSecond = 0.02;
+    const maxRatePerSecond = 0.015;
 
-    // Session cap: ramps from 0.5 to 1.0 over 90 seconds
-    const sessionCap = Math.min(1.0, 0.5 + (this.gameTime / 90) * 0.5);
+    // Session cap: ramps from 0.3 to 1.0 over 120 seconds (smoother curve)
+    const sessionCap = Math.min(1.0, 0.3 + (this.gameTime / 120) * 0.7);
 
     // Rise based on AI confidence and active pattern count
     const gameTimeSec = this.gameTime;
     const confidence = this.brain.getConfidence() / 100;
     const activePatterns = this.brain.getActivePatternCount(gameTimeSec);
-    const riseRate = (confidence * 0.012 + activePatterns * 0.004) * dt;
+    const riseRate = (confidence * 0.008 + activePatterns * 0.003) * dt;
 
     // Decay when counter-pattern shots are dodged
     let decayRate = 0;
@@ -3554,12 +3452,6 @@ class Game {
 
     if (newMode !== this.endgameMode) {
       this.endgameMode = newMode;
-      const modeMessages = {
-        'zone-denial': 'Locking down your safe zones. Good luck finding a new one.',
-        'prediction-spam': 'Full prediction mode activated. I know where you\'re going.',
-        'speed-pressure': 'Speed increase. Try to keep up.',
-      };
-      this.showLearningMessage('taunt', modeMessages[newMode]);
     }
   }
 
@@ -3572,6 +3464,8 @@ class Game {
     document.getElementById('hud-dodged').textContent = `Dodged: ${this.dodgedCount}`;
 
     document.getElementById('brain-confidence').textContent = `${this.brain.getConfidence()}%`;
+    document.getElementById('brain-threat').textContent = `${Math.round((this.threatLevel || 0) * 100)}%`;
+    document.getElementById('brain-patterns').textContent = this.brain.getActivePatternCount(this.gameTime);
     const reaction = this.brain.getAvgReaction();
     document.getElementById('brain-reaction').textContent = reaction ? `${reaction}ms` : '—';
     document.getElementById('brain-samples').textContent = this.brain.totalSamples;
@@ -3597,87 +3491,6 @@ class Game {
     }
   }
 
-  showWelcomeBack() {
-    const profile = this.brain.getSavedProfile();
-    if (!profile || profile.sessionsPlayed < 1) return;
-
-    const patterns = profile.dominantPatterns || [];
-    const sessions = profile.sessionsPlayed;
-
-    // Templates with pattern references
-    const withPattern = [
-      (p) => `Oh, you're back. Still ${p.replace('-', ' ')}ing?`,
-      (p) => `Session ${sessions + 1}. I still remember your ${p.replace('-dodge', '').replace('-zone', ' zone')} habit.`,
-      (p) => `Return of the ${p.replace('-dodge', ' dodger').replace('-zone', ' zone camper')}. My aim has improved.`,
-    ];
-
-    // Generic templates (no pattern data needed)
-    const generic = [
-      () => `Missed you. Well, not literally. I never miss.`,
-      () => `Back for more? Your pattern data is still warm.`,
-      () => `Session ${sessions + 1}. Your patterns haven't changed. Mine have.`,
-    ];
-
-    let msg;
-    if (patterns.length > 0) {
-      const template = withPattern[Math.floor(Math.random() * withPattern.length)];
-      msg = template(patterns[0]);
-    } else {
-      const template = generic[Math.floor(Math.random() * generic.length)];
-      msg = template();
-    }
-
-    // Show with a slight delay so the game has started visually
-    setTimeout(() => {
-      if (this.running) this.showLearningMessage('welcome', msg);
-    }, 1500);
-  }
-
-  showLearningMessage(type, text) {
-    // type: 'detect', 'counter', 'taunt', 'welcome'
-    // Priority order: counter > detect > taunt (welcome bypasses cooldown)
-    const now = this.gameTime || 0;
-    const priority = { counter: 3, detect: 2, welcome: 2, taunt: 1 };
-
-    // Respect cooldown (welcome messages bypass it)
-    if (type !== 'welcome' && this._lastCalloutTime && (now - this._lastCalloutTime) < this._calloutCooldown) {
-      // Queue if higher priority than current showing message
-      if ((priority[type] || 0) <= (priority[this._currentCalloutType] || 0)) return;
-    }
-
-    // Suppress repeated message types after 3 occurrences of the same type in this run
-    if (type !== 'welcome') {
-      this._calloutTypeCounts = this._calloutTypeCounts || {};
-      const key = type + ':' + text.slice(0, 20);
-      this._calloutTypeCounts[key] = (this._calloutTypeCounts[key] || 0) + 1;
-      if (this._calloutTypeCounts[key] > 3) return;
-    }
-
-    const el = document.getElementById('ai-callout');
-    if (!el) return;
-
-    // Clear previous
-    el.classList.remove('show', 'type-counter', 'type-welcome', 'type-taunt', 'type-detect');
-
-    // Set content and type-specific styling
-    el.textContent = text;
-    el.classList.add('type-' + type);
-
-    // Force reflow then show
-    void el.offsetWidth;
-    el.classList.add('show');
-
-    this._lastCalloutTime = now;
-    this._currentCalloutType = type;
-    this._calloutCooldown = 8 + Math.random() * 4; // 8-12 seconds
-
-    // Auto-hide after 3 seconds
-    clearTimeout(this._calloutTimer);
-    this._calloutTimer = setTimeout(() => {
-      el.classList.remove('show');
-      this._currentCalloutType = null;
-    }, 3000);
-  }
 }
 
 // Boot
