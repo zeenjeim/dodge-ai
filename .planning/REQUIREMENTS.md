@@ -14,12 +14,12 @@
 
 ### AI Intelligence
 
-- [ ] **AI-01**: AI displays visible learning messages during gameplay ("Detected clockwise pattern", "You favor top-left zone")
-- [ ] **AI-02**: AI detects micro-habits (panic moves, cornering tendency, speed changes under pressure)
-- [ ] **AI-03**: AI tracks preferred safe zones and exploits them with targeted spawns
-- [ ] **AI-04**: AI remembers dodge sequences and fires counter-patterns
-- [ ] **AI-05**: Adaptive difficulty adjusts AI aggression based on player skill level
-- [ ] **AI-06**: Adaptation speed is capped per session to prevent rage-quit spiral
+- [x] **AI-01**: AI brain panel displays live stats (confidence, threat level, patterns, dodge bias) during gameplay
+- [x] **AI-02**: AI detects micro-habits (panic moves, cornering tendency, speed changes under pressure)
+- [x] **AI-03**: AI tracks preferred safe zones and exploits them with targeted spawns
+- [x] **AI-04**: AI remembers dodge sequences and fires counter-patterns
+- [x] **AI-05**: Adaptive difficulty adjusts AI aggression based on player skill level
+- [x] **AI-06**: Adaptation speed is capped per session to prevent rage-quit spiral
 
 ### Retention
 
@@ -85,12 +85,12 @@
 | POLISH-02 | Phase 1 | Complete |
 | POLISH-03 | Phase 1 | Complete |
 | POLISH-04 | Phase 1 | Complete |
-| AI-01 | Phase 2 | Pending |
-| AI-02 | Phase 2 | Pending |
-| AI-03 | Phase 2 | Pending |
-| AI-04 | Phase 2 | Pending |
-| AI-05 | Phase 2 | Pending |
-| AI-06 | Phase 2 | Pending |
+| AI-01 | Phase 2 | Complete |
+| AI-02 | Phase 2 | Complete |
+| AI-03 | Phase 2 | Complete |
+| AI-04 | Phase 2 | Complete |
+| AI-05 | Phase 2 | Complete |
+| AI-06 | Phase 2 | Complete |
 | RET-01 | Phase 4 | Pending |
 | RET-02 | Phase 4 | Pending |
 | RET-03 | Phase 4 | Pending |
@@ -111,4 +111,4 @@
 
 ---
 *Requirements defined: 2026-02-18*
-*Last updated: 2026-02-18 after Phase 1 completion*
+*Last updated: 2026-02-19 after Phase 2 completion*

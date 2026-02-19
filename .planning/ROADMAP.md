@@ -13,7 +13,7 @@ Dodge AI is a working browser bullet hell game (~2800 lines, single HTML file) w
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Gameplay Polish** - Mobile and death experience feel right
-- [ ] **Phase 2: AI Intelligence** - The AI visibly learns, adapts, and feels fair
+- [x] **Phase 2: AI Intelligence** - The AI visibly learns, adapts, and feels fair
 - [ ] **Phase 3: Growth Foundation** - Game is discoverable, shareable, and measured
 - [ ] **Phase 4: Retention** - Daily challenge and streaks give players a reason to return
 - [ ] **Phase 5: New Mechanics** - Fresh projectiles, hazards, and abilities keep gameplay evolving
@@ -48,9 +48,9 @@ Plans:
 **Plans**: 3 plans (3 waves, sequential — all modify index.html)
 
 Plans:
-- [ ] 02-01-PLAN.md — AI callout toast system, welcome-back taunts, expanded localStorage persistence (wave 1)
-- [ ] 02-02-PLAN.md — 4 pattern detectors, counter-pattern firing with purple glow, detection/taunt callouts (wave 2)
-- [ ] 02-03-PLAN.md — Threat level controller, adaptive difficulty via getPhaseDef(), endgame cycling modes (wave 3)
+- [x] 02-01-PLAN.md — AI callout toast system, welcome-back taunts, expanded localStorage persistence (wave 1)
+- [x] 02-02-PLAN.md — 4 pattern detectors, counter-pattern firing with purple glow, detection/taunt callouts (wave 2)
+- [x] 02-03-PLAN.md — Threat level controller, adaptive difficulty, endgame cycling, powerup rebalance (wave 3)
 
 ### Phase 3: Growth Foundation
 **Goal**: The game is discoverable via search, shareable as a visual card, and measured with analytics
@@ -106,11 +106,11 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
 | 1. Gameplay Polish | 2/2 | Complete | 2026-02-18 |
-| 2. AI Intelligence | 0/3 | Not started | - |
+| 2. AI Intelligence | 3/3 | Complete | 2026-02-19 |
 | 3. Growth Foundation | 0/3 | Not started | - |
 | 4. Retention | 0/2 | Not started | - |
 | 5. New Mechanics | 0/3 | Not started | - |
 
 ---
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-02-19*
+*Last updated: 2026-02-19 after Phase 2 completion*
