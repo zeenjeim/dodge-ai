@@ -2616,6 +2616,18 @@ class Game {
       dash: { active: false, remaining: 0, duration: 0 },
     };
 
+    // Ability system
+    this.abilities = {
+      dashBurst:  { unlocked: false, cooldown: 0, maxCooldown: 10, duration: 0.3, active: false, remaining: 0 },
+      decoy:      { unlocked: false, cooldown: 0, maxCooldown: 12, duration: 3.0, active: false, remaining: 0 },
+      phaseShift: { unlocked: false, cooldown: 0, maxCooldown: 15, duration: 0.5, active: false, remaining: 0 },
+      timeWarp:   { unlocked: false, cooldown: 0, maxCooldown: 20, duration: 2.0, active: false, remaining: 0 },
+    };
+    this.activeAbility = null;
+    this.decoyPos = null;
+    this.milestones = { totalTimeSurvived: 0 };
+    this.unlockAnnounce = null;
+
     this.lastPowerupType = null;
     this.brain = new AIBrain();
 
@@ -2637,6 +2649,7 @@ class Game {
     this.resize();
     window.addEventListener('resize', () => this.resize());
     this.setupInput();
+    this.loadAbilities();
     this.updateStartScreen();
 
     this.bgStars = [];
@@ -2683,6 +2696,105 @@ class Game {
       left: parseFloat(style.getPropertyValue('--sa-left')) || 0,
       right: parseFloat(style.getPropertyValue('--sa-right')) || 0,
     };
+  }
+
+  loadAbilities() {
+    try {
+      const data = JSON.parse(localStorage.getItem('dodge-ai-abilities'));
+      if (data) {
+        if (data.unlocked) {
+          for (const name of data.unlocked) {
+            if (this.abilities[name]) this.abilities[name].unlocked = true;
+          }
+        }
+        if (data.milestones) {
+          this.milestones = { ...this.milestones, ...data.milestones };
+        }
+      }
+    } catch (e) {}
+  }
+
+  saveAbilities() {
+    const unlocked = Object.keys(this.abilities).filter(k => this.abilities[k].unlocked);
+    localStorage.setItem('dodge-ai-abilities', JSON.stringify({
+      unlocked,
+      milestones: this.milestones,
+      version: 1
+    }));
+  }
+
+  checkMilestoneUnlocks() {
+    this.milestones.totalTimeSurvived += this.gameTime;
+    const bestRun = this.bestTime;
+    const total = this.milestones.totalTimeSurvived;
+    const thresholds = {
+      dashBurst:  { totalTime: 300 },
+      decoy:      { totalTime: 900 },
+      phaseShift: { bestRun: 60 },
+      timeWarp:   { totalTime: 2400 },
+    };
+    let newUnlock = null;
+    for (const [name, req] of Object.entries(thresholds)) {
+      if (this.abilities[name].unlocked) continue;
+      const met = (!req.totalTime || total >= req.totalTime) &&
+                  (!req.bestRun || bestRun >= req.bestRun);
+      if (met) {
+        this.abilities[name].unlocked = true;
+        newUnlock = name;
+      }
+    }
+    this.saveAbilities();
+    return newUnlock;
+  }
+
+  activateAbility() {
+    if (!this.running) return;
+    const order = ['dashBurst', 'decoy', 'phaseShift', 'timeWarp'];
+    const available = order.find(name => {
+      const a = this.abilities[name];
+      return a.unlocked && a.cooldown <= 0 && !a.active;
+    });
+    if (!available) return;
+
+    const ability = this.abilities[available];
+    ability.active = true;
+    ability.remaining = ability.duration;
+    ability.cooldown = ability.maxCooldown;
+    this.activeAbility = available;
+
+    if (available === 'dashBurst') {
+      const speed = Math.sqrt(this.player.vx * this.player.vx + this.player.vy * this.player.vy);
+      if (speed > 0.1) {
+        this.player.x += (this.player.vx / speed) * 100;
+        this.player.y += (this.player.vy / speed) * 100;
+      } else {
+        this.player.y -= 100;
+      }
+      this.player.x = Math.max(10, Math.min(this.w - 10, this.player.x));
+      this.player.y = Math.max(10, Math.min(this.h - 10, this.player.y));
+      // Shockwave push nearby projectiles
+      for (const p of this.projectiles) {
+        const dx = p.x - this.player.x;
+        const dy = p.y - this.player.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 80 && dist > 0) {
+          const push = 3;
+          p.vx += (dx / dist) * push;
+          p.vy += (dy / dist) * push;
+        }
+      }
+      // Shockwave visual
+      this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 80, '#00ffaa', 0.4));
+      // Burst particles
+      for (let i = 0; i < 12; i++) {
+        const a = Math.random() * Math.PI * 2;
+        this.particles.push(new Particle(this.player.x, this.player.y, Math.cos(a) * 120, Math.sin(a) * 120, 0.35, '#00ffaa', 2.5));
+      }
+    }
+
+    else if (available === 'decoy') {
+      this.decoyPos = { x: this.player.x, y: this.player.y, age: 0 };
+    }
   }
 
   setupInput() {
@@ -2859,6 +2971,13 @@ class Game {
     this.effects.ghost = { active: false, remaining: 0, duration: 0 };
     this.effects.magnet = { active: false, remaining: 0, duration: 0 };
     this.effects.dash = { active: false, remaining: 0, duration: 0 };
+    // Reset ability active states and cooldowns (but NOT unlocked status)
+    for (const a of Object.values(this.abilities)) {
+      a.cooldown = 0; a.active = false; a.remaining = 0;
+    }
+    this.activeAbility = null;
+    this.decoyPos = null;
+    this.unlockAnnounce = null;
     this.lastPowerupType = null;
     this.deathContext = null;
     this._lastShotWasCounter = false;
@@ -2919,7 +3038,9 @@ class Game {
   }
 
   getSlowMod() {
-    return this.effects.slowmo.active ? 0.3 : 1;
+    let mod = this.effects.slowmo.active ? 0.3 : 1;
+    if (this.abilities.timeWarp.active) mod *= 0.3;
+    return mod;
   }
 
   // Get current phase params (computed, not mutating PHASE_DEFS)
@@ -3007,7 +3128,8 @@ class Game {
     // --- Move player ---
     const prevX = this.player.x;
     const prevY = this.player.y;
-    const lerp = this.effects.dash.active ? PLAYER_LERP * 4 : PLAYER_LERP;
+    let lerp = this.effects.dash.active ? PLAYER_LERP * 4 : PLAYER_LERP;
+    if (this.abilities.timeWarp.active) lerp *= 0.7;
     this.player.x += (this.targetX - this.player.x) * lerp;
     this.player.y += (this.targetY - this.player.y) * lerp;
     this.player.vx = this.player.x - prevX;
@@ -3173,6 +3295,15 @@ class Game {
           }
           continue;
         }
+        // Dash Burst: brief invulnerability during teleport
+        if (this.abilities.dashBurst.active) continue;
+        // Phase Shift: projectiles pass through, but hazards still hurt
+        if (this.abilities.phaseShift.active) {
+          if (Math.random() < 0.4) {
+            this.particles.push(new Particle(p.x, p.y, 0, 0, 0.15, 'rgba(0,255,170,0.5)', 1.5));
+          }
+          continue;
+        }
         this.deathContext = {
           type: 'projectile',
           subtype: p.type,
@@ -3295,6 +3426,34 @@ class Game {
         if (eff.remaining <= 0) {
           eff.active = false;
           eff.remaining = 0;
+        }
+      }
+    }
+
+    // --- Update abilities ---
+    for (const [name, a] of Object.entries(this.abilities)) {
+      if (a.cooldown > 0) a.cooldown -= dt;
+      if (a.active) {
+        a.remaining -= dt;
+        if (a.remaining <= 0) {
+          a.active = false;
+          a.remaining = 0;
+          if (this.activeAbility === name) this.activeAbility = null;
+          if (name === 'decoy') this.decoyPos = null;
+        }
+      }
+    }
+
+    // Decoy: attract homing projectiles toward decoy instead of player
+    if (this.decoyPos) {
+      this.decoyPos.age += dt;
+      for (const p of this.projectiles) {
+        if (p.homing && p.age < 3) {
+          const ddx = this.decoyPos.x - p.x;
+          const ddy = this.decoyPos.y - p.y;
+          const ddist = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
+          p.vx += (ddx / ddist) * p.homingStrength * 60 * dt * 0.7;
+          p.vy += (ddy / ddist) * p.homingStrength * 60 * dt * 0.7;
         }
       }
     }
@@ -3796,6 +3955,12 @@ class Game {
     this.brain.save();
     this.totalGames++;
     localStorage.setItem('dodge-ai-games', this.totalGames.toString());
+
+    // Check milestone unlocks for abilities
+    const newUnlock = this.checkMilestoneUnlocks();
+    if (newUnlock) {
+      this.unlockAnnounce = { name: newUnlock, timer: 3.0 };
+    }
 
     // Track daily challenge best time per UTC date
     if (this.isDailyChallenge) {
