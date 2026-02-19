@@ -45,12 +45,12 @@ Plans:
   3. A first-time player and a veteran player face noticeably different AI aggression levels within the same session
   4. The AI never escalates faster than a defined cap per session, preventing a frustration spiral where the game feels unbeatable
   5. AI learning data persists across sessions via localStorage — the AI remembers returning players
-**Plans**: TBD
+**Plans**: 3 plans (3 waves, sequential — all modify index.html)
 
 Plans:
-- [ ] 02-01: AI visibility layer (learning messages and pattern display)
-- [ ] 02-02: Micro-habit detection and counter-pattern firing
-- [ ] 02-03: Adaptive difficulty and session-capped adaptation
+- [ ] 02-01-PLAN.md — AI callout toast system, welcome-back taunts, expanded localStorage persistence (wave 1)
+- [ ] 02-02-PLAN.md — 4 pattern detectors, counter-pattern firing with purple glow, detection/taunt callouts (wave 2)
+- [ ] 02-03-PLAN.md — Threat level controller, adaptive difficulty via getPhaseDef(), endgame cycling modes (wave 3)
 
 ### Phase 3: Growth Foundation
 **Goal**: The game is discoverable via search, shareable as a visual card, and measured with analytics
@@ -113,4 +113,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 ---
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-02-18*
+*Last updated: 2026-02-19*
