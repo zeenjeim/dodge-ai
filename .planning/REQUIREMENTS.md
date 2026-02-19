@@ -36,11 +36,11 @@
 
 ### Growth & Virality
 
-- [ ] **GROW-01**: Canvas-generated visual share card (1200x630) with stats, phase, AI commentary
-- [ ] **GROW-02**: Schema.org VideoGame JSON-LD structured data
-- [ ] **GROW-03**: SEO-optimized meta tags, title, description targeting browser game searches
-- [ ] **GROW-04**: Visible text content around canvas for search engine indexing
-- [ ] **GROW-05**: Analytics integration (lightweight, privacy-friendly) tracking sessions, retention, drop-off
+- [x] **GROW-01**: Canvas-generated visual share card (1200x630) with stats, phase, AI commentary
+- [x] **GROW-02**: Schema.org VideoGame JSON-LD structured data
+- [x] **GROW-03**: SEO-optimized meta tags, title, description targeting browser game searches
+- [x] **GROW-04**: Visible text content around canvas for search engine indexing
+- [x] **GROW-05**: Analytics integration (lightweight, privacy-friendly) tracking sessions, retention, drop-off
 
 ## v2 Requirements
 
@@ -98,11 +98,11 @@
 | MECH-01 | Phase 5 | Pending |
 | MECH-02 | Phase 5 | Pending |
 | MECH-03 | Phase 5 | Pending |
-| GROW-01 | Phase 3 | Pending |
-| GROW-02 | Phase 3 | Pending |
-| GROW-03 | Phase 3 | Pending |
-| GROW-04 | Phase 3 | Pending |
-| GROW-05 | Phase 3 | Pending |
+| GROW-01 | Phase 3 | Complete |
+| GROW-02 | Phase 3 | Complete |
+| GROW-03 | Phase 3 | Complete |
+| GROW-04 | Phase 3 | Complete |
+| GROW-05 | Phase 3 | Complete |
 
 **Coverage:**
 - v1 requirements: 22 total
@@ -111,4 +111,4 @@
 
 ---
 *Requirements defined: 2026-02-18*
-*Last updated: 2026-02-19 after Phase 2 completion*
+*Last updated: 2026-02-19 after Phase 3 completion*
