@@ -113,16 +113,14 @@
 
     #pu-slowmo { background: rgba(59,130,246,0.2); color: #3b82f6; border: 1px solid rgba(59,130,246,0.3); }
     #pu-slowmo .pu-bar-fill { background: #3b82f6; }
-    #pu-shield { background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
-    #pu-shield .pu-bar-fill { background: #10b981; }
     #pu-shrink { background: rgba(236,72,153,0.2); color: #ec4899; border: 1px solid rgba(236,72,153,0.3); }
     #pu-shrink .pu-bar-fill { background: #ec4899; }
     #pu-ghost { background: rgba(148,163,184,0.2); color: #94a3b8; border: 1px solid rgba(148,163,184,0.3); }
     #pu-ghost .pu-bar-fill { background: #94a3b8; }
     #pu-magnet { background: rgba(249,115,22,0.2); color: #f97316; border: 1px solid rgba(249,115,22,0.3); }
     #pu-magnet .pu-bar-fill { background: #f97316; }
-    #pu-overclock { background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
-    #pu-overclock .pu-bar-fill { background: #ef4444; }
+    #pu-dash { background: rgba(6,182,212,0.2); color: #06b6d4; border: 1px solid rgba(6,182,212,0.3); }
+    #pu-dash .pu-bar-fill { background: #06b6d4; }
 
     /* --- AI Brain Panel --- */
     #brain-panel {
@@ -612,11 +610,10 @@
 <!-- Power-up indicators -->
 <div id="hud-powerups">
   <div class="powerup-indicator" id="pu-slowmo">BULLET TIME <div class="pu-bar"><div class="pu-bar-fill" id="pu-slowmo-bar"></div></div></div>
-  <div class="powerup-indicator" id="pu-shield">PLOT ARMOR <div class="pu-bar"><div class="pu-bar-fill" id="pu-shield-bar"></div></div></div>
   <div class="powerup-indicator" id="pu-shrink">SMOL MODE <div class="pu-bar"><div class="pu-bar-fill" id="pu-shrink-bar"></div></div></div>
   <div class="powerup-indicator" id="pu-ghost">NOPE <div class="pu-bar"><div class="pu-bar-fill" id="pu-ghost-bar"></div></div></div>
   <div class="powerup-indicator" id="pu-magnet">PERSONAL SPACE <div class="pu-bar"><div class="pu-bar-fill" id="pu-magnet-bar"></div></div></div>
-  <div class="powerup-indicator" id="pu-overclock">MAXIMUM EFFORT <div class="pu-bar"><div class="pu-bar-fill" id="pu-overclock-bar"></div></div></div>
+  <div class="powerup-indicator" id="pu-dash">GTFO <div class="pu-bar"><div class="pu-bar-fill" id="pu-dash-bar"></div></div></div>
 </div>
 
 <!-- AI Brain Panel -->
@@ -810,12 +807,10 @@ const BOSS_LIFETIME = 12; // seconds a boss lives
 const POWERUP_TYPES = {
   slowmo:    { name: 'BULLET TIME',    color: '#3b82f6', duration: 4,   icon: 'S' },
   emp:       { name: 'KABOOM',        color: '#facc15', duration: 0,   icon: 'E' },
-  shield:    { name: 'PLOT ARMOR',    color: '#10b981', duration: 3,   icon: 'F' },
   shrink:    { name: 'SMOL MODE',     color: '#ec4899', duration: 5,   icon: 'K' },
   ghost:     { name: 'NOPE',          color: '#94a3b8', duration: 2.5, icon: 'G' },
   magnet:    { name: 'PERSONAL SPACE', color: '#f97316', duration: 3.5, icon: 'R' },
-  blink:     { name: 'YOINK',         color: '#c084fc', duration: 0,   icon: 'B' },
-  overclock: { name: 'MAXIMUM EFFORT', color: '#ef4444', duration: 4,   icon: 'O' },
+  dash:      { name: 'GTFO',          color: '#06b6d4', duration: 0.5, icon: 'D' },
 };
 
 const POWERUP_SPAWN_MIN = 7;
@@ -1446,7 +1441,7 @@ const BOSS_TYPES = [
 ];
 
 // ============================================================
-// Shockwave (for EMP, shield, etc.)
+// Shockwave (for EMP, dash, etc.)
 // ============================================================
 class Shockwave {
   constructor(x, y, maxRadius, color, life) {
@@ -1998,11 +1993,10 @@ class Game {
 
     this.effects = {
       slowmo: { active: false, remaining: 0, duration: 0 },
-      shield: { active: false, remaining: 0, duration: 0 },
       shrink: { active: false, remaining: 0, duration: 0 },
       ghost: { active: false, remaining: 0, duration: 0 },
       magnet: { active: false, remaining: 0, duration: 0 },
-      overclock: { active: false, remaining: 0, duration: 0 },
+      dash: { active: false, remaining: 0, duration: 0 },
     };
 
     this.lastPowerupType = null;
@@ -2017,7 +2011,6 @@ class Game {
     this.nextBossTime = BOSS_INTERVAL;
     this.bossLevel = 0;
     this._lastAnnouncedPhase = -1;
-    this.forceFieldFlash = 0;
     this.deathContext = null;
     this.touchOffsetY = 50;
     this.safeArea = { top: 0, bottom: 0, left: 0, right: 0 };
@@ -2193,12 +2186,10 @@ class Game {
     this._lastAnnouncedPhase = 0;
 
     this.effects.slowmo = { active: false, remaining: 0, duration: 0 };
-    this.effects.shield = { active: false, remaining: 0, duration: 0 };
     this.effects.shrink = { active: false, remaining: 0, duration: 0 };
     this.effects.ghost = { active: false, remaining: 0, duration: 0 };
     this.effects.magnet = { active: false, remaining: 0, duration: 0 };
-    this.effects.overclock = { active: false, remaining: 0, duration: 0 };
-    this.forceFieldFlash = 0;
+    this.effects.dash = { active: false, remaining: 0, duration: 0 };
     this.lastPowerupType = null;
     this.deathContext = null;
     this._lastShotWasCounter = false;
@@ -2324,7 +2315,7 @@ class Game {
     // --- Move player ---
     const prevX = this.player.x;
     const prevY = this.player.y;
-    const lerp = this.effects.overclock.active ? PLAYER_LERP * 2.2 : PLAYER_LERP;
+    const lerp = this.effects.dash.active ? PLAYER_LERP * 4 : PLAYER_LERP;
     this.player.x += (this.targetX - this.player.x) * lerp;
     this.player.y += (this.targetY - this.player.y) * lerp;
     this.player.vx = this.player.x - prevX;
@@ -2397,31 +2388,12 @@ class Game {
       const hitDist = pr + p.radius;
 
       if (dist < hitDist) {
-        if (this.effects.ghost.active) {
-          // Ghost — projectiles pass through, small shimmer
+        if (this.effects.ghost.active || this.effects.dash.active) {
+          // Ghost/Dash — projectiles pass through
           if (Math.random() < 0.3) {
-            this.particles.push(new Particle(p.x, p.y, 0, 0, 0.2, '#94a3b8', 1.5));
+            const c = this.effects.dash.active ? '#06b6d4' : '#94a3b8';
+            this.particles.push(new Particle(p.x, p.y, 0, 0, 0.2, c, 1.5));
           }
-          continue;
-        }
-        if (this.effects.shield.active) {
-          // Force field impact — hex crack particles
-          const hitAngle = Math.atan2(p.y - this.player.y, p.x - this.player.x);
-          for (let j = 0; j < 12; j++) {
-            const a = hitAngle + (Math.random() - 0.5) * 1.2;
-            const sp = 40 + Math.random() * 80;
-            this.particles.push(new Particle(p.x, p.y, Math.cos(a) * sp, Math.sin(a) * sp, 0.35, '#10b981', 2));
-          }
-          // White flash particles at impact
-          for (let j = 0; j < 4; j++) {
-            const a = hitAngle + (Math.random() - 0.5) * 0.5;
-            this.particles.push(new Particle(p.x, p.y, Math.cos(a) * 60, Math.sin(a) * 60, 0.2, '#fff', 3));
-          }
-          // Localized shockwave
-          this.shockwaves.push(new Shockwave(p.x, p.y, 35, '#10b981', 0.25));
-          this.forceFieldFlash = 0.15;
-          this.projectiles.splice(i, 1);
-          this.dodgedCount++;
           continue;
         }
         this.deathContext = {
@@ -2504,25 +2476,11 @@ class Game {
       }
 
       if (bossCollided) {
-        if (this.effects.ghost.active) {
-          // Ghost — pass through bosses
+        if (this.effects.ghost.active || this.effects.dash.active) {
+          // Ghost/Dash — pass through bosses
           if (Math.random() < 0.2) {
-            this.particles.push(new Particle(boss.x, boss.y, 0, 0, 0.25, '#94a3b8', 2));
-          }
-        } else if (this.effects.shield.active) {
-          const killed = boss.hit();
-          this.shockwaves.push(new Shockwave(boss.x, boss.y, 60, boss.color, 0.4));
-          for (let j = 0; j < 15; j++) {
-            const a = Math.random() * Math.PI * 2;
-            this.particles.push(new Particle(boss.x, boss.y, Math.cos(a) * 120, Math.sin(a) * 120, 0.5, '#10b981', 3));
-          }
-          this.forceFieldFlash = 0.15;
-          if (killed) {
-            this.bossDeathEffect(boss);
-            this.bosses.splice(i, 1);
-            this.bossesDefeated++;
-            this.dodgedCount += 10;
-            continue;
+            const c = this.effects.dash.active ? '#06b6d4' : '#94a3b8';
+            this.particles.push(new Particle(boss.x, boss.y, 0, 0, 0.25, c, 2));
           }
         } else {
           this.deathContext = {
@@ -2553,7 +2511,7 @@ class Game {
     }
 
     // --- Update effects ---
-    for (const key of ['slowmo', 'shield', 'shrink', 'ghost', 'magnet', 'overclock']) {
+    for (const key of ['slowmo', 'shrink', 'ghost', 'magnet', 'dash']) {
       const eff = this.effects[key];
       if (eff.active) {
         eff.remaining -= dt;
@@ -2563,9 +2521,6 @@ class Game {
         }
       }
     }
-
-    // --- Force field flash timer ---
-    if (this.forceFieldFlash > 0) this.forceFieldFlash -= dt;
 
     // --- Shockwaves ---
     for (let i = this.shockwaves.length - 1; i >= 0; i--) {
@@ -2587,7 +2542,7 @@ class Game {
 
     // Player trail
     if (Math.random() < 0.3) {
-      const trailColor = this.effects.ghost.active ? '#94a3b8' : this.effects.overclock.active ? '#ef4444' : this.effects.shield.active ? '#10b981' : this.effects.shrink.active ? '#ec4899' : '#00f0ff';
+      const trailColor = this.effects.ghost.active ? '#94a3b8' : this.effects.dash.active ? '#06b6d4' : this.effects.shrink.active ? '#ec4899' : '#00f0ff';
       this.particles.push(new Particle(
         this.player.x, this.player.y,
         (Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20,
@@ -2683,26 +2638,8 @@ class Game {
       this.effects.slowmo.remaining = POWERUP_TYPES.slowmo.duration;
       this.effects.slowmo.duration = POWERUP_TYPES.slowmo.duration;
 
-    } else if (pu.type === 'shield') {
-      // === SHIELD ANIMATION ===
-      // Expanding bubble
-      this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 60, '#10b981', 0.5));
-      this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 40, '#fff', 0.3));
-      // Hexagonal shield flash particles
-      for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * Math.PI * 2;
-        this.particles.push(new Particle(
-          this.player.x + Math.cos(a) * 20, this.player.y + Math.sin(a) * 20,
-          Math.cos(a) * 40, Math.sin(a) * 40, 0.6, '#10b981', 3
-        ));
-      }
-      this.effects.shield.active = true;
-      this.effects.shield.remaining = POWERUP_TYPES.shield.duration;
-      this.effects.shield.duration = POWERUP_TYPES.shield.duration;
-
     } else if (pu.type === 'shrink') {
       // === SHRINK ANIMATION ===
-      // Imploding particles toward player
       for (let i = 0; i < 16; i++) {
         const a = (i / 16) * Math.PI * 2;
         const dist = 60 + Math.random() * 30;
@@ -2718,7 +2655,6 @@ class Game {
 
     } else if (pu.type === 'ghost') {
       // === GHOST ANIMATION ===
-      // Phase-out shimmer — ring of fading particles
       this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 80, '#94a3b8', 0.5));
       for (let i = 0; i < 14; i++) {
         const a = (i / 14) * Math.PI * 2;
@@ -2733,7 +2669,6 @@ class Game {
 
     } else if (pu.type === 'magnet') {
       // === REPULSE ANIMATION ===
-      // Blast wave that pushes everything back
       this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 200, '#f97316', 0.6));
       this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 120, '#fff', 0.3));
       for (let i = 0; i < 10; i++) {
@@ -2747,62 +2682,25 @@ class Game {
       this.effects.magnet.remaining = POWERUP_TYPES.magnet.duration;
       this.effects.magnet.duration = POWERUP_TYPES.magnet.duration;
 
-    } else if (pu.type === 'blink') {
-      // === BLINK (INSTANT TELEPORT) ===
-      // Find safest spot — farthest from all projectiles
-      const oldX = this.player.x;
-      const oldY = this.player.y;
-      let bestX = this.w / 2, bestY = this.h / 2, bestDist = 0;
-      for (let tries = 0; tries < 20; tries++) {
-        const tx = 40 + Math.random() * (this.w - 80);
-        const ty = 40 + Math.random() * (this.h - 80);
-        let minDist = Infinity;
-        for (const p of this.projectiles) {
-          const d = Math.sqrt((p.x - tx) ** 2 + (p.y - ty) ** 2);
-          if (d < minDist) minDist = d;
-        }
-        for (const boss of this.bosses) {
-          const d = Math.sqrt((boss.x - tx) ** 2 + (boss.y - ty) ** 2);
-          if (d < minDist) minDist = d;
-        }
-        if (minDist > bestDist) { bestDist = minDist; bestX = tx; bestY = ty; }
-      }
-      // Teleport
-      this.player.x = bestX;
-      this.player.y = bestY;
-      this.targetX = bestX;
-      this.targetY = bestY;
-      // Exit particles at old position
+    } else if (pu.type === 'dash') {
+      // === DASH ANIMATION ===
+      // Directional burst with afterimage
+      const vx = this.player.vx || 0;
+      const vy = this.player.vy || 0;
+      const speed = Math.sqrt(vx * vx + vy * vy);
+      const dashAngle = speed > 0.5 ? Math.atan2(vy, vx) : Math.random() * Math.PI * 2;
       for (let i = 0; i < 12; i++) {
-        const a = Math.random() * Math.PI * 2;
-        this.particles.push(new Particle(oldX, oldY, Math.cos(a) * 70, Math.sin(a) * 70, 0.4, '#c084fc', 2.5));
-      }
-      this.shockwaves.push(new Shockwave(oldX, oldY, 50, '#c084fc', 0.4));
-      // Entry particles at new position
-      for (let i = 0; i < 12; i++) {
-        const a = (i / 12) * Math.PI * 2;
-        const dist = 50 + Math.random() * 20;
-        this.particles.push(new Particle(
-          bestX + Math.cos(a) * dist, bestY + Math.sin(a) * dist,
-          -Math.cos(a) * 60, -Math.sin(a) * 60, 0.4, '#c084fc', 2.5
-        ));
-      }
-      this.shockwaves.push(new Shockwave(bestX, bestY, 60, '#c084fc', 0.5));
-
-    } else if (pu.type === 'overclock') {
-      // === OVERCLOCK ANIMATION ===
-      // Speed burst — directional particles
-      this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 100, '#ef4444', 0.5));
-      for (let i = 0; i < 16; i++) {
-        const a = Math.random() * Math.PI * 2;
+        const spread = (Math.random() - 0.5) * 1.2;
+        const a = dashAngle + Math.PI + spread;
         this.particles.push(new Particle(
           this.player.x, this.player.y,
-          Math.cos(a) * 90, Math.sin(a) * 90, 0.4, '#ef4444', 2
+          Math.cos(a) * 100, Math.sin(a) * 100, 0.4, '#06b6d4', 2.5
         ));
       }
-      this.effects.overclock.active = true;
-      this.effects.overclock.remaining = POWERUP_TYPES.overclock.duration;
-      this.effects.overclock.duration = POWERUP_TYPES.overclock.duration;
+      this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 80, '#06b6d4', 0.4));
+      this.effects.dash.active = true;
+      this.effects.dash.remaining = POWERUP_TYPES.dash.duration;
+      this.effects.dash.duration = POWERUP_TYPES.dash.duration;
     }
   }
 
@@ -3286,7 +3184,7 @@ class Game {
     // Player
     if (this.running) {
       const pr = this.getPlayerRadius();
-      const playerColor = this.effects.ghost.active ? '#94a3b8' : this.effects.overclock.active ? '#ef4444' : this.effects.shield.active ? '#10b981' : this.effects.shrink.active ? '#ec4899' : '#00f0ff';
+      const playerColor = this.effects.ghost.active ? '#94a3b8' : this.effects.dash.active ? '#06b6d4' : this.effects.shrink.active ? '#ec4899' : '#00f0ff';
 
       // Magnet repel ring
       if (this.effects.magnet.active) {
@@ -3306,19 +3204,19 @@ class Game {
         ctx.globalAlpha = 1;
       }
 
-      // Overclock speed lines
-      if (this.effects.overclock.active) {
+      // Dash speed streak
+      if (this.effects.dash.active) {
         const speed = Math.sqrt(this.player.vx ** 2 + this.player.vy ** 2);
         if (speed > 0.5) {
           const angle = Math.atan2(-this.player.vy, -this.player.vx);
-          for (let li = 0; li < 3; li++) {
-            const offset = (li - 1) * 0.4;
+          for (let li = 0; li < 4; li++) {
+            const offset = (li - 1.5) * 0.35;
             const lineAngle = angle + offset;
-            const startR = pr + 8;
-            const lineLen = Math.min(speed * 4, 30);
-            ctx.globalAlpha = 0.4 - li * 0.1;
-            ctx.strokeStyle = '#ef4444';
-            ctx.lineWidth = 1.5;
+            const startR = pr + 6;
+            const lineLen = Math.min(speed * 5, 40);
+            ctx.globalAlpha = 0.5 - li * 0.1;
+            ctx.strokeStyle = '#06b6d4';
+            ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(
               this.player.x + Math.cos(lineAngle) * startR,
@@ -3332,50 +3230,6 @@ class Game {
           }
           ctx.globalAlpha = 1;
         }
-      }
-
-      // Force field hex segments
-      if (this.effects.shield.active) {
-        const segments = 6;
-        const fieldRadius = pr + 14;
-        const segGap = 0.12;
-        const baseRotation = this.gameTime * 2;
-        const isFlashing = this.forceFieldFlash > 0;
-
-        for (let si = 0; si < segments; si++) {
-          const segAngle = (si / segments) * Math.PI * 2 + baseRotation;
-          const arcLen = (Math.PI * 2 / segments) - segGap;
-          const shimmer = isFlashing ? 0.7 : (0.15 + Math.sin(this.gameTime * 8 + si * 1.7) * 0.1 + Math.random() * 0.05);
-
-          ctx.globalAlpha = shimmer;
-          ctx.strokeStyle = isFlashing ? '#fff' : '#10b981';
-          ctx.lineWidth = isFlashing ? 3.5 : 2.5;
-          ctx.beginPath();
-          ctx.arc(this.player.x, this.player.y, fieldRadius, segAngle, segAngle + arcLen);
-          ctx.stroke();
-
-          // Edge caps at segment ends
-          const capLen = 4;
-          for (const endA of [segAngle, segAngle + arcLen]) {
-            const cx = this.player.x + Math.cos(endA) * fieldRadius;
-            const cy = this.player.y + Math.sin(endA) * fieldRadius;
-            const nx = Math.cos(endA);
-            const ny = Math.sin(endA);
-            ctx.beginPath();
-            ctx.moveTo(cx - ny * capLen, cy + nx * capLen);
-            ctx.lineTo(cx + ny * capLen, cy - nx * capLen);
-            ctx.stroke();
-          }
-        }
-
-        // Outer glow ring
-        ctx.globalAlpha = isFlashing ? 0.15 : 0.06;
-        ctx.strokeStyle = '#10b981';
-        ctx.lineWidth = 8;
-        ctx.beginPath();
-        ctx.arc(this.player.x, this.player.y, fieldRadius, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.globalAlpha = 1;
       }
 
       // Ghost flicker effect
@@ -3476,7 +3330,7 @@ class Game {
     document.getElementById('bias-right').textContent = `${bias.right}%`;
     document.getElementById('brain-insight').textContent = this.brain.getInsight();
 
-    for (const key of ['slowmo', 'shield', 'shrink', 'ghost', 'magnet', 'overclock']) {
+    for (const key of ['slowmo', 'shrink', 'ghost', 'magnet', 'dash']) {
       const eff = this.effects[key];
       const el = document.getElementById(`pu-${key}`);
       const bar = document.getElementById(`pu-${key}-bar`);
