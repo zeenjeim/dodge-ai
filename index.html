@@ -425,6 +425,31 @@
       border-color: rgba(255,51,85,0.3);
     }
 
+    .menu-btn.daily {
+      border-color: #facc15;
+      color: #facc15;
+    }
+    .menu-btn.daily:hover {
+      background: rgba(250, 204, 21, 0.15);
+      border-color: #fde047;
+      color: #fde047;
+    }
+
+    #daily-hud {
+      position: fixed;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #facc15;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      z-index: 30;
+      display: none;
+      text-shadow: 0 0 10px rgba(250, 204, 21, 0.5);
+    }
+
     .start-hint { color: #444; font-size: 11px; margin-top: 16px; }
 
     /* --- Modals --- */
@@ -721,6 +746,9 @@
   <div class="powerup-indicator" id="pu-dash">GTFO <div class="pu-bar"><div class="pu-bar-fill" id="pu-dash-bar"></div></div></div>
 </div>
 
+<!-- Daily Challenge HUD Label -->
+<div id="daily-hud">DAILY CHALLENGE</div>
+
 <!-- AI Brain Panel -->
 <div id="brain-panel">
   <h3>AI Brain</h3>
@@ -781,6 +809,7 @@
   <div class="best-time" id="start-best"></div>
   <div class="menu-buttons">
     <button class="menu-btn primary" id="btn-start">PLAY</button>
+    <button class="menu-btn daily" id="btn-daily">DAILY CHALLENGE</button>
     <button class="menu-btn" id="btn-howto">HOW TO PLAY</button>
     <button class="menu-btn" id="btn-stats">STATS</button>
     <button class="menu-btn" id="btn-contact">CONTACT</button>
@@ -2286,13 +2315,25 @@ class Game {
       }
     }, { passive: false });
 
-    document.getElementById('btn-start').onclick = () => this.start();
-    document.getElementById('btn-retry').onclick = () => this.start();
+    document.getElementById('btn-start').onclick = () => {
+      this.isDailyChallenge = false;
+      this.start();
+    };
+    document.getElementById('btn-daily').onclick = () => this.startDaily();
+    document.getElementById('btn-retry').onclick = () => {
+      if (this.isDailyChallenge) {
+        this.startDaily();
+      } else {
+        this.start();
+      }
+    };
     document.getElementById('btn-share').onclick = () => this.share();
     document.getElementById('btn-menu').onclick = () => {
       document.getElementById('gameover-screen').classList.remove('show');
       document.getElementById('start-screen').classList.remove('hidden');
       document.getElementById('ad-zone').style.display = 'none';
+      document.getElementById('daily-hud').style.display = 'none';
+      this.isDailyChallenge = false;
       this.updateStartScreen();
       this.idleLoop();
     };
@@ -2353,6 +2394,16 @@ class Game {
   updateStartScreen() {
     const el = document.getElementById('start-best');
     el.textContent = this.bestTime > 0 ? `Best: ${this.bestTime.toFixed(1)}s` : '';
+
+    // Update daily challenge button with today's best
+    const dailyBtn = document.getElementById('btn-daily');
+    const todayKey = 'dodge-ai-daily-' + getTodayUTC();
+    const dailyBest = parseFloat(localStorage.getItem(todayKey) || '0');
+    if (dailyBest > 0) {
+      dailyBtn.textContent = `DAILY CHALLENGE (${dailyBest.toFixed(1)}s)`;
+    } else {
+      dailyBtn.textContent = 'DAILY CHALLENGE';
+    }
   }
 
   start() {
@@ -2410,6 +2461,9 @@ class Game {
     this.brain.reset();
     this.lastTime = performance.now();
 
+    // Show/hide daily challenge HUD label
+    document.getElementById('daily-hud').style.display = this.isDailyChallenge ? 'block' : 'none';
+
     this.announcePhase();
     requestAnimationFrame(t => this.loop(t));
 
@@ -2420,6 +2474,13 @@ class Game {
     if (_sessionGamesPlayed === 1) {
       trackEvent('milestone-first-game', 'First game this session');
     }
+  }
+
+  startDaily() {
+    const seed = getDailySeed();
+    this.rng = mulberry32(seed);
+    this.isDailyChallenge = true;
+    this.start();
   }
 
   loop(timestamp) {
@@ -3166,16 +3227,29 @@ class Game {
 
   die() {
     // Analytics: death event with phase info
-    trackEvent(
-      `death-phase-${this.phase + 1}`,
-      `Died at ${this.gameTime.toFixed(1)}s in Phase ${this.phase + 1}: ${PHASE_DEFS[Math.min(this.phase, PHASE_DEFS.length - 1)].name}`
-    );
+    if (this.isDailyChallenge) {
+      trackEvent('daily-death', `Daily ${getTodayUTC()}: ${this.gameTime.toFixed(1)}s Phase ${this.phase + 1}`);
+    } else {
+      trackEvent(
+        `death-phase-${this.phase + 1}`,
+        `Died at ${this.gameTime.toFixed(1)}s in Phase ${this.phase + 1}: ${PHASE_DEFS[Math.min(this.phase, PHASE_DEFS.length - 1)].name}`
+      );
+    }
 
     this.running = false;
     this.brain.lastThreatLevel = this.threatLevel;
     this.brain.save();
     this.totalGames++;
     localStorage.setItem('dodge-ai-games', this.totalGames.toString());
+
+    // Track daily challenge best time per UTC date
+    if (this.isDailyChallenge) {
+      const todayKey = 'dodge-ai-daily-' + getTodayUTC();
+      const prevDailyBest = parseFloat(localStorage.getItem(todayKey) || '0');
+      if (this.gameTime > prevDailyBest) {
+        localStorage.setItem(todayKey, this.gameTime.toFixed(1));
+      }
+    }
 
     for (let i = 0; i < 50; i++) {
       const angle = Math.random() * Math.PI * 2;
@@ -3300,7 +3374,13 @@ class Game {
       'Phase 5. Respect. You earned that death.',
       'Phase 6. You absolute legend. Still dead though.',
     ];
-    document.getElementById('go-phase').textContent = phaseQuips[Math.min(this.phase, 5)];
+    if (this.isDailyChallenge) {
+      document.getElementById('go-phase').textContent = `Daily Challenge - ${getTodayUTC()}`;
+      document.getElementById('go-phase').style.color = '#facc15';
+    } else {
+      document.getElementById('go-phase').textContent = phaseQuips[Math.min(this.phase, 5)];
+      document.getElementById('go-phase').style.color = '';
+    }
     document.getElementById('go-dodged').textContent = this.dodgedCount;
     document.getElementById('go-closest').textContent = this.closestCall === Infinity ? '0px' : `${Math.round(this.closestCall)}px`;
     document.getElementById('go-games').textContent = this.totalGames;
