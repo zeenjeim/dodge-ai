@@ -787,6 +787,15 @@
 // DODGE AI — Survive the Learning Machine (v3)
 // ============================================================
 
+// Utility: Stack-with-decay weighting — recent samples weighted heavier
+function decayWeight(sampleTime, currentTime) {
+  const age = currentTime - sampleTime;
+  if (age < 10) return 3.0;
+  if (age < 20) return 2.0;
+  if (age < 30) return 1.0;
+  return 0.5;
+}
+
 // Utility: Convert radian angle to cardinal/ordinal direction name
 function getDirectionName(angle) {
   // Normalize angle to [0, 2*PI)
@@ -840,6 +849,306 @@ const POWERUP_LIFETIME = 6;
 const POWERUP_RADIUS = 16;
 
 // ============================================================
+// Pattern Detectors (feed into AIBrain for counter-pattern firing)
+// ============================================================
+
+class DirectionBiasDetector {
+  constructor() {
+    this.samples = []; // { direction, angle, time }
+    this.maxSamples = 100;
+    this._lastCalloutDirection = null;
+  }
+
+  update(dx, dy, gameTime) {
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 3) return;
+    const angle = Math.atan2(dy, dx);
+    let direction;
+    if (angle > -0.785 && angle <= 0.785) direction = 'right';
+    else if (angle > 0.785 && angle <= 2.356) direction = 'down';
+    else if (angle > -2.356 && angle <= -0.785) direction = 'up';
+    else direction = 'left';
+    this.samples.push({ direction, angle, time: gameTime });
+    if (this.samples.length > this.maxSamples) this.samples.shift();
+  }
+
+  getActivePattern(gameTime) {
+    if (this.samples.length < 15) return null;
+    const counts = { left: 0, right: 0, up: 0, down: 0 };
+    let totalWeight = 0;
+    for (const s of this.samples) {
+      const w = decayWeight(s.time, gameTime);
+      counts[s.direction] += w;
+      totalWeight += w;
+    }
+    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const dominantPct = (entries[0][1] / totalWeight) * 100;
+    if (dominantPct < 32) return null;
+
+    let cwCount = 0, ccwCount = 0;
+    const recent = this.samples.slice(-30);
+    for (let i = 1; i < recent.length; i++) {
+      let diff = recent[i].angle - recent[i - 1].angle;
+      while (diff > Math.PI) diff -= 2 * Math.PI;
+      while (diff < -Math.PI) diff += 2 * Math.PI;
+      if (diff > 0.1) cwCount++;
+      else if (diff < -0.1) ccwCount++;
+    }
+    const rotationBias = cwCount > ccwCount * 1.5 ? 'clockwise' : ccwCount > cwCount * 1.5 ? 'counterclockwise' : null;
+
+    return {
+      type: 'direction-bias',
+      direction: entries[0][0],
+      pct: Math.round(dominantPct),
+      rotation: rotationBias,
+      confidence: Math.min(1, this.samples.length / 60),
+    };
+  }
+
+  serialize() {
+    const pattern = this.getActivePattern(this.samples.length > 0 ? this.samples[this.samples.length - 1].time : 0);
+    return pattern ? { direction: pattern.direction, rotation: pattern.rotation } : null;
+  }
+  deserialize(data) {}
+}
+
+class SafeZoneDetector {
+  constructor() {
+    this.visits = [];
+    this.maxVisits = 200;
+    this.zoneNames = ['top-left', 'top-center', 'top-right', 'mid-left', 'center', 'mid-right', 'bottom-left', 'bottom-center', 'bottom-right'];
+  }
+
+  update(px, py, gameTime, w, h) {
+    const zx = Math.min(2, Math.floor((px / w) * 3));
+    const zy = Math.min(2, Math.floor((py / h) * 3));
+    const zone = zy * 3 + zx;
+    this.visits.push({ zone, time: gameTime });
+    if (this.visits.length > this.maxVisits) this.visits.shift();
+  }
+
+  getActivePattern(gameTime) {
+    if (this.visits.length < 20) return null;
+    const counts = new Array(9).fill(0);
+    let totalWeight = 0;
+    for (const v of this.visits) {
+      const w = decayWeight(v.time, gameTime);
+      counts[v.zone] += w;
+      totalWeight += w;
+    }
+    let maxIdx = 0;
+    for (let i = 1; i < 9; i++) if (counts[i] > counts[maxIdx]) maxIdx = i;
+    const dominantPct = (counts[maxIdx] / totalWeight) * 100;
+    if (dominantPct < 20) return null;
+
+    return {
+      type: 'safe-zone',
+      zone: maxIdx,
+      zoneName: this.zoneNames[maxIdx],
+      pct: Math.round(dominantPct),
+      confidence: Math.min(1, this.visits.length / 100),
+    };
+  }
+
+  getZoneCenter(zone, w, h) {
+    const zx = zone % 3;
+    const zy = Math.floor(zone / 3);
+    return { x: (zx + 0.5) * (w / 3), y: (zy + 0.5) * (h / 3) };
+  }
+
+  serialize() {
+    const pattern = this.getActivePattern(this.visits.length > 0 ? this.visits[this.visits.length - 1].time : 0);
+    return pattern ? { zone: pattern.zone, zoneName: pattern.zoneName } : null;
+  }
+  deserialize(data) {}
+}
+
+class DodgeSequenceDetector {
+  constructor() {
+    this.sequences = [];
+    this.currentSeq = '';
+    this.seqStartTime = 0;
+    this.maxSeqs = 30;
+    this.lastDirTime = 0;
+  }
+
+  update(dx, dy, gameTime) {
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 3) return;
+    const angle = Math.atan2(dy, dx);
+    let dir;
+    if (angle > -0.785 && angle <= 0.785) dir = 'R';
+    else if (angle > 0.785 && angle <= 2.356) dir = 'D';
+    else if (angle > -2.356 && angle <= -0.785) dir = 'U';
+    else dir = 'L';
+
+    if (gameTime - this.lastDirTime > 1.5 || this.currentSeq.length >= 6) {
+      if (this.currentSeq.length >= 3) {
+        this.sequences.push({ dirs: this.currentSeq, time: gameTime });
+        if (this.sequences.length > this.maxSeqs) this.sequences.shift();
+      }
+      this.currentSeq = '';
+      this.seqStartTime = gameTime;
+    }
+
+    if (this.currentSeq.length === 0 || this.currentSeq[this.currentSeq.length - 1] !== dir) {
+      this.currentSeq += dir;
+    }
+    this.lastDirTime = gameTime;
+  }
+
+  getActivePattern(gameTime) {
+    if (this.sequences.length < 5) return null;
+
+    const freqMap = {};
+    for (const seq of this.sequences) {
+      for (let i = 0; i <= seq.dirs.length - 3; i++) {
+        const sub = seq.dirs.substring(i, i + 3);
+        freqMap[sub] = (freqMap[sub] || 0) + decayWeight(seq.time, gameTime);
+      }
+    }
+
+    let bestSeq = null, bestScore = 0;
+    for (const [seq, score] of Object.entries(freqMap)) {
+      if (score > bestScore) { bestScore = score; bestSeq = seq; }
+    }
+
+    if (!bestSeq || bestScore < 4) return null;
+
+    const dirNames = { R: 'right', L: 'left', U: 'up', D: 'down' };
+    const readable = bestSeq.split('').map(d => dirNames[d]).join('-');
+
+    return {
+      type: 'dodge-sequence',
+      sequence: bestSeq,
+      readable: readable,
+      score: Math.round(bestScore),
+      confidence: Math.min(1, bestScore / 10),
+    };
+  }
+
+  predictNext(currentDir) {
+    const pattern = this.getActivePattern(this.lastDirTime);
+    if (!pattern) return null;
+    const seq = pattern.sequence;
+    const idx = seq.indexOf(currentDir);
+    if (idx >= 0 && idx < seq.length - 1) {
+      return seq[idx + 1];
+    }
+    return null;
+  }
+
+  serialize() {
+    const pattern = this.getActivePattern(this.lastDirTime);
+    return pattern ? { sequence: pattern.sequence } : null;
+  }
+  deserialize(data) {}
+}
+
+class PanicDetector {
+  constructor() {
+    this.speedSamples = [];
+    this.reversals = [];
+    this.edgeEvents = [];
+    this.prevVx = 0;
+    this.prevVy = 0;
+    this.maxSamples = 100;
+  }
+
+  update(px, py, vx, vy, gameTime, w, h) {
+    const speed = Math.sqrt(vx * vx + vy * vy);
+    this.speedSamples.push({ speed, time: gameTime });
+    if (this.speedSamples.length > this.maxSamples) this.speedSamples.shift();
+
+    if (this.prevVx !== 0 || this.prevVy !== 0) {
+      const prevSpeed = Math.sqrt(this.prevVx * this.prevVx + this.prevVy * this.prevVy);
+      if (speed > 2 && prevSpeed > 2) {
+        const dot = vx * this.prevVx + vy * this.prevVy;
+        const normalized = dot / (speed * prevSpeed);
+        if (normalized < -0.3) {
+          this.reversals.push({ time: gameTime, x: px, y: py, angle: Math.atan2(vy, vx) });
+          if (this.reversals.length > 30) this.reversals.shift();
+        }
+      }
+    }
+    this.prevVx = vx;
+    this.prevVy = vy;
+
+    const margin = 40;
+    const edges = [];
+    if (px < margin) edges.push('left');
+    if (px > w - margin) edges.push('right');
+    if (py < margin) edges.push('top');
+    if (py > h - margin) edges.push('bottom');
+    if (edges.length > 0) {
+      this.edgeEvents.push({ time: gameTime, edge: edges.join('-') });
+      if (this.edgeEvents.length > 50) this.edgeEvents.shift();
+    }
+  }
+
+  getActivePattern(gameTime) {
+    const recentReversals = this.reversals.filter(r => gameTime - r.time < 15);
+    if (recentReversals.length >= 5) {
+      const avgAngle = Math.atan2(
+        recentReversals.reduce((s, r) => s + Math.sin(r.angle), 0) / recentReversals.length,
+        recentReversals.reduce((s, r) => s + Math.cos(r.angle), 0) / recentReversals.length
+      );
+      return {
+        type: 'panic-reversal',
+        frequency: recentReversals.length,
+        dominantAngle: avgAngle,
+        confidence: Math.min(1, recentReversals.length / 10),
+        description: 'Panic reversal detected',
+      };
+    }
+
+    const recentEdges = this.edgeEvents.filter(e => gameTime - e.time < 20);
+    if (recentEdges.length >= 10) {
+      const edgeCounts = {};
+      for (const e of recentEdges) {
+        edgeCounts[e.edge] = (edgeCounts[e.edge] || 0) + 1;
+      }
+      const topEdge = Object.entries(edgeCounts).sort((a, b) => b[1] - a[1])[0];
+      return {
+        type: 'cornering',
+        edge: topEdge[0],
+        frequency: topEdge[1],
+        confidence: Math.min(1, topEdge[1] / 15),
+        description: `Cornering tendency: ${topEdge[0]}`,
+      };
+    }
+
+    if (this.speedSamples.length > 30) {
+      const recent = this.speedSamples.filter(s => gameTime - s.time < 10);
+      const older = this.speedSamples.filter(s => gameTime - s.time >= 10 && gameTime - s.time < 20);
+      if (recent.length > 5 && older.length > 5) {
+        const recentAvg = recent.reduce((s, r) => s + r.speed, 0) / recent.length;
+        const olderAvg = older.reduce((s, r) => s + r.speed, 0) / older.length;
+        if (olderAvg > 1 && recentAvg < olderAvg * 0.6) {
+          return {
+            type: 'speed-freeze',
+            recentSpeed: recentAvg,
+            previousSpeed: olderAvg,
+            confidence: 0.7,
+            description: 'Speed drop under pressure',
+          };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  serialize() {
+    return {
+      avgReversalFreq: this.reversals.length,
+      cornerPreference: this.edgeEvents.length > 0 ? this.edgeEvents[this.edgeEvents.length - 1].edge : null,
+    };
+  }
+  deserialize(data) {}
+}
+
+// ============================================================
 // AI Brain
 // ============================================================
 class AIBrain {
@@ -854,6 +1163,10 @@ class AIBrain {
     this.playerMovedSinceShot = false;
     this.zoneVisits = new Array(9).fill(0);
     this._savedProfile = null;
+    this.directionDetector = new DirectionBiasDetector();
+    this.safeZoneDetector = new SafeZoneDetector();
+    this.dodgeSequenceDetector = new DodgeSequenceDetector();
+    this.panicDetector = new PanicDetector();
     this.load();
   }
 
@@ -862,6 +1175,10 @@ class AIBrain {
     this.lastPlayerPos = null;
     this.lastProjectileTime = 0;
     this.playerMovedSinceShot = false;
+    this.directionDetector = new DirectionBiasDetector();
+    this.safeZoneDetector = new SafeZoneDetector();
+    this.dodgeSequenceDetector = new DodgeSequenceDetector();
+    this.panicDetector = new PanicDetector();
   }
 
   trackPosition(x, y, time, w, h) {
@@ -892,6 +1209,12 @@ class AIBrain {
         this.dodgeDirections.push({ dx: dx / dist, dy: dy / dist, time });
         if (this.dodgeDirections.length > 80) this.dodgeDirections.shift();
       }
+      // Feed pattern detectors (time is in ms, detectors use seconds)
+      const timeSec = time / 1000;
+      this.directionDetector.update(dx, dy, timeSec);
+      this.safeZoneDetector.update(x, y, timeSec, w, h);
+      this.dodgeSequenceDetector.update(dx, dy, timeSec);
+      this.panicDetector.update(x, y, dx, dy, timeSec, w, h);
     }
     this.lastPlayerPos = { x, y };
   }
@@ -955,6 +1278,27 @@ class AIBrain {
     return Math.min(97, Math.round(75 + (s - 30) * 0.22));
   }
 
+  getHighestConfidencePattern(gameTime) {
+    const patterns = [
+      this.directionDetector.getActivePattern(gameTime),
+      this.safeZoneDetector.getActivePattern(gameTime),
+      this.dodgeSequenceDetector.getActivePattern(gameTime),
+      this.panicDetector.getActivePattern(gameTime),
+    ].filter(Boolean);
+    if (patterns.length === 0) return null;
+    patterns.sort((a, b) => b.confidence - a.confidence);
+    return patterns[0];
+  }
+
+  getActivePatternCount(gameTime) {
+    return [
+      this.directionDetector.getActivePattern(gameTime),
+      this.safeZoneDetector.getActivePattern(gameTime),
+      this.dodgeSequenceDetector.getActivePattern(gameTime),
+      this.panicDetector.getActivePattern(gameTime),
+    ].filter(Boolean).length;
+  }
+
   getInsight() {
     const dom = this.getDominantDodge();
     const reaction = this.getAvgReaction();
@@ -970,6 +1314,14 @@ class AIBrain {
     }
     if (conf > 60) msgs.push('I know your moves better than you do.');
     if (conf > 80) msgs.push('At this point I\'m just showing off.');
+    const nowSec = Date.now() / 1000;
+    const dirPattern = this.directionDetector.getActivePattern(nowSec);
+    if (dirPattern && dirPattern.rotation) msgs.push(`${dirPattern.rotation === 'clockwise' ? 'Clockwise' : 'Counterclockwise'} dodger. Predictable.`);
+    const safePattern = this.safeZoneDetector.getActivePattern(nowSec);
+    if (safePattern) msgs.push(`Your ${safePattern.zoneName} obsession is noted.`);
+    const panicPattern = this.panicDetector.getActivePattern(nowSec);
+    if (panicPattern && panicPattern.type === 'panic-reversal') msgs.push(`Panic reversals detected. Delicious.`);
+    if (panicPattern && panicPattern.type === 'cornering') msgs.push(`Hugging the ${panicPattern.edge}? Bold choice.`);
     return msgs[Math.floor(Date.now() / 2500) % msgs.length] || 'Processing your failures...';
   }
 
@@ -995,6 +1347,10 @@ class AIBrain {
         sessionsPlayed: sessionsPlayed,
         lastPlayedAt: Date.now(),
         dominantPatterns: dominantPatterns.slice(0, 3),
+        panicProfile: this.panicDetector.serialize(),
+        dodgeSequenceSummary: this.dodgeSequenceDetector.serialize(),
+        safeZoneSummary: this.safeZoneDetector.serialize(),
+        directionSummary: this.directionDetector.serialize(),
       }));
     } catch (e) {}
   }
