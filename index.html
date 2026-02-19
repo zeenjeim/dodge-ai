@@ -1100,17 +1100,17 @@ function trackEvent(name, title) {
 
 const PHASE_DEFS = [
   { name: 'SCANNING',    dur: 20, color: '#ff3355', desc: 'The AI is taking notes. Like a really creepy diary.',
-    spawnRate: 1.2,  count: 2, speed: 3.5,  aimPct: 0.25, burstChance: 0,    homingChance: 0,    splitterChance: 0,    bouncerChance: 0,    waveChance: 0,    accelChance: 0 },
+    spawnRate: 1.2,  count: 2, speed: 3.5,  aimPct: 0.25, burstChance: 0,    homingChance: 0,    splitterChance: 0,    bouncerChance: 0,    waveChance: 0,    accelChance: 0,    spiralChance: 0,    clusterChance: 0,    mineChance: 0 },
   { name: 'TARGETING',   dur: 20, color: '#ff6633', desc: 'It knows your name now. And your dodging habits.',
-    spawnRate: 0.8,  count: 2, speed: 3.8,  aimPct: 0.7,  burstChance: 0.25, homingChance: 0,    splitterChance: 0,    bouncerChance: 0.15, waveChance: 0,    accelChance: 0 },
+    spawnRate: 0.8,  count: 2, speed: 3.8,  aimPct: 0.7,  burstChance: 0.25, homingChance: 0,    splitterChance: 0,    bouncerChance: 0.15, waveChance: 0,    accelChance: 0,    spiralChance: 0,    clusterChance: 0,    mineChance: 0 },
   { name: 'PREDICTING',  dur: 20, color: '#8b5cf6', desc: 'Shooting where you WILL be. Basically precrime.',
-    spawnRate: 0.65, count: 3, speed: 4.5,  aimPct: 0.8,  burstChance: 0.3,  homingChance: 0.1,  splitterChance: 0.2,  bouncerChance: 0.15, waveChance: 0,    accelChance: 0.1 },
+    spawnRate: 0.65, count: 3, speed: 4.5,  aimPct: 0.8,  burstChance: 0.3,  homingChance: 0.1,  splitterChance: 0.2,  bouncerChance: 0.15, waveChance: 0,    accelChance: 0.1,  spiralChance: 0.1,  clusterChance: 0,    mineChance: 0 },
   { name: 'TIMING',      dur: 20, color: '#3b82f6', desc: 'It timed your reflexes. This is getting personal.',
-    spawnRate: 0.55, count: 3, speed: 5.0,  aimPct: 0.85, burstChance: 0.35, homingChance: 0.15, splitterChance: 0.2,  bouncerChance: 0.15, waveChance: 0.1,  accelChance: 0.2 },
+    spawnRate: 0.55, count: 3, speed: 5.0,  aimPct: 0.85, burstChance: 0.35, homingChance: 0.15, splitterChance: 0.2,  bouncerChance: 0.15, waveChance: 0.1,  accelChance: 0.2,  spiralChance: 0.15, clusterChance: 0.1,  mineChance: 0 },
   { name: 'HUNTING',     dur: 30, color: '#14b8a6', desc: 'Homing missiles. Because regular death was too boring.',
-    spawnRate: 0.45, count: 4, speed: 5.5,  aimPct: 0.9,  burstChance: 0.4,  homingChance: 0.25, splitterChance: 0.25, bouncerChance: 0.2,  waveChance: 0.15, accelChance: 0.2 },
+    spawnRate: 0.45, count: 4, speed: 5.5,  aimPct: 0.9,  burstChance: 0.4,  homingChance: 0.25, splitterChance: 0.25, bouncerChance: 0.2,  waveChance: 0.15, accelChance: 0.2,  spiralChance: 0.15, clusterChance: 0.15, mineChance: 0.1 },
   { name: 'EVOLVED',     dur: Infinity, color: '#e879f9', desc: 'Full Skynet mode. You had a good run. Emphasis on had.',
-    spawnRate: 0.35, count: 4, speed: 6.0,  aimPct: 0.95, burstChance: 0.45, homingChance: 0.3,  splitterChance: 0.3,  bouncerChance: 0.2,  waveChance: 0.2,  accelChance: 0.25 },
+    spawnRate: 0.35, count: 4, speed: 6.0,  aimPct: 0.95, burstChance: 0.45, homingChance: 0.3,  splitterChance: 0.3,  bouncerChance: 0.2,  waveChance: 0.2,  accelChance: 0.25, spiralChance: 0.2,  clusterChance: 0.2,  mineChance: 0.15 },
 ];
 
 // Deep-copy for evolved ramp so we don't mutate the originals
@@ -1799,7 +1799,7 @@ class Shockwave {
 }
 
 // ============================================================
-// Projectile — supports normal, splitter, bouncer, wave, accel
+// Projectile — supports normal, splitter, bouncer, wave, accel, spiral, cluster, mine
 // ============================================================
 class Projectile {
   constructor(x, y, vx, vy, color, opts = {}) {
@@ -2650,6 +2650,9 @@ class Game {
         bouncerChance: Math.min(0.3, 0.2 + ramp * 0.02),
         waveChance: Math.min(0.3, 0.2 + ramp * 0.02),
         accelChance: Math.min(0.35, 0.25 + ramp * 0.02),
+        spiralChance: Math.min(0.3, 0.2 + ramp * 0.02),
+        clusterChance: Math.min(0.3, 0.2 + ramp * 0.02),
+        mineChance: Math.min(0.25, 0.15 + ramp * 0.02),
       };
     }
 
@@ -3139,6 +3142,8 @@ class Game {
   }
 
   spawnProjectileFromWarning(warning) {
+    // Cap total projectile count for performance (cluster/mine children can multiply quickly)
+    if (this.projectiles.length >= 80) return;
     const def = this.getPhaseDef();
     const phase = this.phase;
     let targetX, targetY;
@@ -3259,6 +3264,9 @@ class Game {
     else if (typeRoll < def.splitterChance + def.bouncerChance) type = 'bouncer';
     else if (typeRoll < def.splitterChance + def.bouncerChance + def.waveChance) type = 'wave';
     else if (typeRoll < def.splitterChance + def.bouncerChance + def.waveChance + def.accelChance) type = 'accel';
+    else if (typeRoll < def.splitterChance + def.bouncerChance + def.waveChance + def.accelChance + def.spiralChance) type = 'spiral';
+    else if (typeRoll < def.splitterChance + def.bouncerChance + def.waveChance + def.accelChance + def.spiralChance + def.clusterChance) type = 'cluster';
+    else if (typeRoll < def.splitterChance + def.bouncerChance + def.waveChance + def.accelChance + def.spiralChance + def.clusterChance + def.mineChance) type = 'mine';
 
     let color = def.color;
     if (isHoming) color = '#ffaa00';
@@ -3266,12 +3274,18 @@ class Game {
     else if (type === 'bouncer') color = '#00ff88';
     else if (type === 'wave') color = '#a78bfa';
     else if (type === 'accel') color = '#ff4400';
+    else if (type === 'spiral') color = '#00ffaa';
+    else if (type === 'cluster') color = '#ff8800';
+    else if (type === 'mine') color = '#ff0066';
 
+    const opts = { homing: isHoming, type };
+    if (type === 'cluster') opts.fuseTime = 0.8 + this.rng() * 0.4;
+    if (type === 'mine') { opts.travelTime = 0.5; opts.dwellTime = 2.0 + this.rng() * 1.0; }
     const proj = new Projectile(
       warning.x, warning.y,
       (dx / dist) * speed, (dy / dist) * speed,
       color,
-      { homing: isHoming, type }
+      opts
     );
     if (this._lastShotWasCounter) {
       proj.isCounter = true;
