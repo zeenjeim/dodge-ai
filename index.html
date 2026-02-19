@@ -1697,6 +1697,18 @@ class Projectile {
       ctx.fill();
     }
 
+    // Counter-pattern purple glow overlay
+    if (this.isCounter) {
+      ctx.globalAlpha = 0.35;
+      ctx.shadowColor = '#8b5cf6';
+      ctx.shadowBlur = 12;
+      ctx.strokeStyle = '#8b5cf6';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius + 5, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
     ctx.globalAlpha = 1;
     ctx.shadowBlur = 0;
   }
@@ -2229,6 +2241,10 @@ class Game {
     this._currentCalloutType = null;
     this._calloutCooldown = 0;
     this._calloutTypeCounts = {};
+    this._patternCheckCounter = 0;
+    this._detectedPatterns = {};
+    this._tauntTimer = 0;
+    this._lastShotWasCounter = false;
     clearTimeout(this._calloutTimer);
 
     this.player.x = this.w / 2;
@@ -2327,6 +2343,52 @@ class Game {
     this.player.y = Math.max(pr + sa.top, Math.min(this.h - pr - sa.bottom, this.player.y));
 
     this.brain.trackPosition(this.player.x, this.player.y, this.gameTime * 1000, this.w, this.h);
+
+    // --- Pattern detection callouts (check every ~60 frames) ---
+    this._patternCheckCounter = (this._patternCheckCounter || 0) + 1;
+    if (this._patternCheckCounter >= 60) {
+      this._patternCheckCounter = 0;
+      this._detectedPatterns = this._detectedPatterns || {};
+      const gameTimeSec = this.gameTime;
+      const patterns = [
+        this.brain.directionDetector.getActivePattern(gameTimeSec),
+        this.brain.safeZoneDetector.getActivePattern(gameTimeSec),
+        this.brain.dodgeSequenceDetector.getActivePattern(gameTimeSec),
+        this.brain.panicDetector.getActivePattern(gameTimeSec),
+      ].filter(Boolean);
+
+      for (const p of patterns) {
+        const key = p.type;
+        if (!this._detectedPatterns[key] && p.confidence > 0.5) {
+          this._detectedPatterns[key] = true;
+          const messages = {
+            'direction-bias': p.rotation
+              ? `${p.rotation === 'clockwise' ? 'Clockwise' : 'Counter-clockwise'}? Really? Noted.`
+              : `You dodge ${p.direction} ${p.pct}% of the time. Adorable.`,
+            'safe-zone': `You love that ${p.zoneName}. Filing that away.`,
+            'dodge-sequence': `${p.readable} — I see a pattern forming.`,
+            'panic-reversal': `Panic reversals detected. That's basically a homing beacon.`,
+            'cornering': `Edge hugger detected. The ${p.edge} isn't going to save you.`,
+            'speed-freeze': `Speed drop when pressured. Exploitable.`,
+          };
+          if (messages[key]) this.showLearningMessage('detect', messages[key]);
+          break;
+        }
+      }
+
+      // Taunt if patterns persist (every ~30 checks after first detection)
+      this._tauntTimer = (this._tauntTimer || 0) + 1;
+      if (this._tauntTimer >= 30 && Object.keys(this._detectedPatterns).length >= 2) {
+        this._tauntTimer = 0;
+        const taunts = [
+          'Still doing the same thing? Bold strategy.',
+          'I already told you I see that. You just don\'t care, do you?',
+          'At this point I\'m predicting your predictions.',
+          'You\'re making this too easy. Change it up. Or don\'t. I\'m entertained either way.',
+        ];
+        this.showLearningMessage('taunt', taunts[Math.floor(Math.random() * taunts.length)]);
+      }
+    }
 
     // --- Spawn projectiles ---
     if (this.spawnTimer <= 0 && this.phaseAnnounceTimer <= 0 && this.bossAnnounceTimer <= 0) {
@@ -2878,6 +2940,76 @@ class Game {
       } else { targetX = px; targetY = py; }
     }
 
+    // Counter-pattern targeting (AI fires based on detected patterns)
+    const counterChance = this.brain.getConfidence() / 100 * 0.4;
+    if (Math.random() < counterChance) {
+      const gameTimeSec = this.gameTime;
+      const pattern = this.brain.getHighestConfidencePattern(gameTimeSec);
+      if (pattern) {
+        let counterFired = false;
+        switch (pattern.type) {
+          case 'safe-zone': {
+            const zoneCenter = this.brain.safeZoneDetector.getZoneCenter(pattern.zone, this.w, this.h);
+            targetX = zoneCenter.x + (Math.random() - 0.5) * 50;
+            targetY = zoneCenter.y + (Math.random() - 0.5) * 50;
+            this.showLearningMessage('counter', `Targeting your ${pattern.zoneName} safe zone.`);
+            counterFired = true;
+            break;
+          }
+          case 'direction-bias': {
+            if (pattern.rotation) {
+              this.showLearningMessage('counter', `${pattern.rotation === 'clockwise' ? 'Clockwise' : 'Counter-clockwise'}? Really? I had you in seconds.`);
+            } else {
+              this.showLearningMessage('counter', `You dodge ${pattern.direction} ${pattern.pct}% of the time. Aiming there.`);
+            }
+            const predicted = this.brain.getPredictedDodgeTarget(px, py, this.w, this.h);
+            if (predicted) { targetX = predicted.x; targetY = predicted.y; }
+            counterFired = true;
+            break;
+          }
+          case 'panic-reversal': {
+            targetX = px + Math.cos(pattern.dominantAngle) * 100;
+            targetY = py + Math.sin(pattern.dominantAngle) * 100;
+            this.showLearningMessage('counter', `Exploiting your panic reflex.`);
+            counterFired = true;
+            break;
+          }
+          case 'cornering': {
+            const edgeTarget = this._getEdgeTarget(pattern.edge);
+            if (edgeTarget) { targetX = edgeTarget.x; targetY = edgeTarget.y; }
+            this.showLearningMessage('counter', `Hugging the ${pattern.edge}? Here's a welcome gift.`);
+            counterFired = true;
+            break;
+          }
+          case 'dodge-sequence': {
+            const nextDir = this.brain.dodgeSequenceDetector.predictNext(
+              this.player.vx > 1 ? 'R' : this.player.vx < -1 ? 'L' : this.player.vy > 1 ? 'D' : 'U'
+            );
+            if (nextDir) {
+              const offsets = { R: [80, 0], L: [-80, 0], U: [0, -80], D: [0, 80] };
+              const off = offsets[nextDir];
+              targetX = px + off[0] + (Math.random() - 0.5) * 30;
+              targetY = py + off[1] + (Math.random() - 0.5) * 30;
+              this.showLearningMessage('counter', `Let's see if you do ${pattern.readable} again.`);
+              counterFired = true;
+            }
+            break;
+          }
+          case 'speed-freeze': {
+            targetX = px;
+            targetY = py;
+            this.showLearningMessage('counter', `Speed drop detected. Easy target.`);
+            counterFired = true;
+            break;
+          }
+        }
+
+        if (counterFired) {
+          this._lastShotWasCounter = true;
+        }
+      }
+    }
+
     const dx = targetX - warning.x;
     const dy = targetY - warning.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -2904,8 +3036,24 @@ class Game {
       color,
       { homing: isHoming, type }
     );
+    if (this._lastShotWasCounter) {
+      proj.isCounter = true;
+      this._lastShotWasCounter = false;
+    }
     this.projectiles.push(proj);
     this.brain.onProjectileFired(this.gameTime * 1000);
+  }
+
+  _getEdgeTarget(edge) {
+    const parts = edge.split('-');
+    let x = this.w / 2, y = this.h / 2;
+    for (const part of parts) {
+      if (part === 'left') x = this.w * 0.15;
+      if (part === 'right') x = this.w * 0.85;
+      if (part === 'top') y = this.h * 0.15;
+      if (part === 'bottom') y = this.h * 0.85;
+    }
+    return { x, y };
   }
 
   announceBoss() {
