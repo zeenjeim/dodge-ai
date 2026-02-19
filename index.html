@@ -924,6 +924,22 @@ function getDirectionName(angle) {
   return names[sector];
 }
 
+// Analytics: fire-and-forget event tracking via GoatCounter
+// All calls are guarded -- never throws, never blocks gameplay
+function trackEvent(name, title) {
+  try {
+    if (window.goatcounter && window.goatcounter.count) {
+      window.goatcounter.count({
+        path: name,
+        title: title || name,
+        event: true,
+      });
+    }
+  } catch (e) {
+    // Silently ignore -- analytics must never affect gameplay
+  }
+}
+
 const PHASE_DEFS = [
   { name: 'SCANNING',    dur: 20, color: '#ff3355', desc: 'The AI is taking notes. Like a really creepy diary.',
     spawnRate: 1.2,  count: 2, speed: 3.5,  aimPct: 0.25, burstChance: 0,    homingChance: 0,    splitterChance: 0,    bouncerChance: 0,    waveChance: 0,    accelChance: 0 },
@@ -3629,5 +3645,8 @@ class Game {
 const game = new Game();
 window._game = game;
 </script>
+<!-- Analytics: GoatCounter (privacy-first, no cookies) -->
+<script data-goatcounter="https://DODGEAI.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>
