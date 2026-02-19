@@ -984,6 +984,41 @@ function getDailySeed() {
   return fnv1aHash('dodge-ai-daily-' + getTodayUTC());
 }
 
+// Personal best list management (top 5 survival times)
+const BESTS_KEY = 'dodge-ai-bests';
+const MAX_BESTS = 5;
+
+function loadBests() {
+  try {
+    return JSON.parse(localStorage.getItem(BESTS_KEY)) || [];
+  } catch { return []; }
+}
+
+function saveBest(gameTime, isDaily) {
+  const bests = loadBests();
+  bests.push({
+    time: parseFloat(gameTime.toFixed(1)),
+    date: getTodayUTC(),
+    daily: isDaily,
+  });
+  bests.sort((a, b) => b.time - a.time);
+  const top5 = bests.slice(0, MAX_BESTS);
+  localStorage.setItem(BESTS_KEY, JSON.stringify(top5));
+  return top5;
+}
+
+function migrateBestTime() {
+  const oldBest = parseFloat(localStorage.getItem('dodge-ai-best'));
+  const newBests = localStorage.getItem(BESTS_KEY);
+  if (oldBest > 0 && !newBests) {
+    localStorage.setItem(BESTS_KEY, JSON.stringify([{
+      time: oldBest,
+      date: 'legacy',
+      daily: false,
+    }]));
+  }
+}
+
 // Analytics: fire-and-forget event tracking via GoatCounter
 // All calls are guarded -- never throws, never blocks gameplay
 function trackEvent(name, title) {
@@ -2208,7 +2243,13 @@ class Game {
     this.bossesDefeated = 0;
     this.closestCall = Infinity;
     this.totalGames = parseInt(localStorage.getItem('dodge-ai-games') || '0');
-    this.bestTime = parseFloat(localStorage.getItem('dodge-ai-best') || '0');
+    migrateBestTime();
+    const bests = loadBests();
+    if (bests.length > 0) {
+      this.bestTime = bests[0].time;
+    } else {
+      this.bestTime = parseFloat(localStorage.getItem('dodge-ai-best') || '0');
+    }
 
     this.player = { x: 0, y: 0, vx: 0, vy: 0 };
     this.targetX = 0;
@@ -2392,8 +2433,10 @@ class Game {
   }
 
   updateStartScreen() {
+    const bests = loadBests();
+    const best = bests.length > 0 ? bests[0].time : 0;
     const el = document.getElementById('start-best');
-    el.textContent = this.bestTime > 0 ? `Best: ${this.bestTime.toFixed(1)}s` : '';
+    el.textContent = best > 0 ? `Best: ${best.toFixed(1)}s` : '';
 
     // Update daily challenge button with today's best
     const dailyBtn = document.getElementById('btn-daily');
@@ -3263,11 +3306,14 @@ class Game {
 
     this.renderDeathFrame();
 
-    const isNewBest = this.gameTime > this.bestTime;
+    const currentBests = loadBests();
+    const currentBest = currentBests.length > 0 ? currentBests[0].time : 0;
+    const isNewBest = this.gameTime > currentBest;
     if (isNewBest) {
       this.bestTime = this.gameTime;
       localStorage.setItem('dodge-ai-best', this.bestTime.toFixed(1));
     }
+    saveBest(this.gameTime, this.isDailyChallenge);
 
     // 300ms freeze with indicator, then 500ms particle fade, then game over
     setTimeout(() => this.startDeathParticles(), 300);
