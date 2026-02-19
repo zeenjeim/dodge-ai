@@ -78,12 +78,12 @@ Plans:
   1. At least 3 new projectile types (e.g., spiral, cluster, delayed) appear in later game phases alongside existing types
   2. Environmental hazards (moving walls, shrinking arena, or gravity wells) change the playable space during gameplay
   3. Players can unlock at least 2 new abilities (e.g., dash, decoy) that are earned through play and persist across sessions
-**Plans**: TBD
+**Plans**: 3 plans (3 waves, sequential -- all modify index.html)
 
 Plans:
-- [ ] 05-01: New projectile types
-- [ ] 05-02: Environmental hazards
-- [ ] 05-03: Unlockable player abilities
+- [ ] 05-01-PLAN.md — 3 new projectile types (spiral, cluster, mine) with phase-gated spawning
+- [ ] 05-02-PLAN.md — 3 environmental hazards (gravity well, danger zone, arena shrink) with AI-triggered spawning
+- [ ] 05-03-PLAN.md — 4 unlockable player abilities (dash, decoy, phase shift, time warp) with milestone progression
 
 ## Progress
 
@@ -100,4 +100,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 ---
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-02-19 after Phase 4 completion*
+*Last updated: 2026-02-19 after Phase 5 planning*
