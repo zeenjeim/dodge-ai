@@ -2590,6 +2590,8 @@ class Game {
     this.powerups = [];
     this.shockwaves = [];
     this.bosses = [];
+    this.hazards = [];
+    this.hazardCooldown = 0;
     this.dodgedCount = 0;
     this.bossesDefeated = 0;
     this.closestCall = Infinity;
@@ -2839,6 +2841,8 @@ class Game {
     this.powerups = [];
     this.shockwaves = [];
     this.bosses = [];
+    this.hazards = [];
+    this.hazardCooldown = 0;
     this.dodgedCount = 0;
     this.bossesDefeated = 0;
     this.closestCall = Infinity;
@@ -3017,6 +3021,65 @@ class Game {
     this.brain.trackPosition(this.player.x, this.player.y, this.gameTime * 1000, this.w, this.h);
     this.updateThreatLevel(dt);
     this.updateEndgameCycle(dt);
+
+    // --- Hazards ---
+    this.hazardCooldown = Math.max(0, this.hazardCooldown - dt);
+    if (this.shouldSpawnHazard()) this.spawnHazard();
+    for (let i = this.hazards.length - 1; i >= 0; i--) {
+      const h = this.hazards[i];
+      h.update(dt);
+      if (h.isExpired()) { this.hazards.splice(i, 1); continue; }
+
+      // Gravity well: pull player
+      if (h.type === 'gravity') {
+        const force = h.applyGravityToPlayer(this.player, dt);
+        if (force && !this.effects.ghost.active) {
+          this.player.x += force.fx;
+          this.player.y += force.fy;
+        }
+      }
+
+      // Danger zone: damage if player stays inside >1s
+      if (h.type === 'danger-zone') {
+        if (h.isPlayerInside(this.player.x, this.player.y)) {
+          if (!this.effects.ghost.active) {
+            h.playerInsideTime += dt;
+            if (h.playerInsideTime > 1.0) {
+              this.deathContext = { type: 'hazard', subtype: 'danger-zone', color: '#dc2626', x: h.x, y: h.y, vx: 0, vy: 0, angle: 0, playerX: this.player.x, playerY: this.player.y, bossName: null, homing: false };
+              this.die();
+              return;
+            }
+          }
+        } else {
+          h.playerInsideTime = 0;
+        }
+      }
+
+      // Arena shrink: constrain player position
+      if (h.type === 'shrink') {
+        const bounds = h.getArenaBounds(this.w, this.h);
+        if (bounds && !this.effects.ghost.active) {
+          this.player.x = Math.max(bounds.left + 10, Math.min(bounds.right - 10, this.player.x));
+          this.player.y = Math.max(bounds.top + 10, Math.min(bounds.bottom - 10, this.player.y));
+        }
+      }
+    }
+
+    // Gravity wells also pull nearby projectiles
+    for (const h of this.hazards) {
+      if (h.type === 'gravity' && h.phase === 'active') {
+        for (const p of this.projectiles) {
+          const dx = h.x - p.x;
+          const dy = h.y - p.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < h.radius && dist > 5) {
+            const force = (h.strength * 0.5 / (dist * dist)) * h.radius * dt;
+            p.vx += (dx / dist) * force;
+            p.vy += (dy / dist) * force;
+          }
+        }
+      }
+    }
 
     // --- Spawn projectiles ---
     if (this.spawnTimer <= 0 && this.phaseAnnounceTimer <= 0 && this.bossAnnounceTimer <= 0) {
@@ -3336,6 +3399,7 @@ class Game {
       this.dodgedCount += this.projectiles.length;
       this.projectiles = [];
       this.warnings = [];
+      this.hazards = [];
 
     } else if (pu.type === 'slowmo') {
       // === SLOW-MO ANIMATION ===
@@ -3619,6 +3683,44 @@ class Game {
       if (part === 'bottom') y = this.h * 0.85;
     }
     return { x, y };
+  }
+
+  shouldSpawnHazard() {
+    if (this.hazards.length >= 2) return false;
+    if (this.gameTime < 20) return false;
+    if (this.hazardCooldown > 0) return false;
+    const pattern = this.brain.getHighestConfidencePattern(this.gameTime);
+    if (!pattern || pattern.confidence < 0.6) return false;
+    return this.rng() < (this.threatLevel * 0.25);
+  }
+
+  spawnHazard() {
+    const pattern = this.brain.getHighestConfidencePattern(this.gameTime);
+    if (!pattern) return;
+
+    let hazard;
+    if (pattern.type === 'safe-zone' && this.phase >= 1) {
+      const zoneCenter = this.brain.safeZoneDetector.getZoneCenter(pattern.zone, this.w, this.h);
+      hazard = new Hazard(zoneCenter.x, zoneCenter.y, 'gravity', {
+        radius: 70 + this.rng() * 30, duration: 8 + this.rng() * 4
+      });
+    } else if (pattern.type === 'cornering' && this.phase >= 2) {
+      const edgeTarget = this._getEdgeTarget(pattern.edge);
+      const w = 120 + this.rng() * 60;
+      const h = 120 + this.rng() * 60;
+      hazard = new Hazard(edgeTarget.x, edgeTarget.y, 'danger-zone', {
+        width: w, height: h, duration: 10 + this.rng() * 5
+      });
+    } else if (this.threatLevel > 0.65 && this.phase >= 3) {
+      hazard = new Hazard(0, 0, 'shrink', {
+        shrinkAmount: 40 + this.rng() * 30, duration: 12 + this.rng() * 4
+      });
+    } else {
+      return;
+    }
+
+    this.hazards.push(hazard);
+    this.hazardCooldown = 10;
   }
 
   announceBoss() {
@@ -4063,6 +4165,9 @@ class Game {
 
     // Power-ups
     for (const pu of this.powerups) pu.draw(ctx);
+
+    // Hazards (background layer, drawn before projectiles)
+    for (const hz of this.hazards) hz.draw(ctx, w, h);
 
     // Shockwaves
     for (const sw of this.shockwaves) sw.draw(ctx);
