@@ -5,28 +5,28 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** The AI feels genuinely intelligent — it learns your patterns, predicts your movement, and makes every death feel earned.
-**Current focus:** Phase 5 in progress (New Mechanics). Plan 02 complete.
+**Current focus:** ALL PHASES COMPLETE. 13/13 plans delivered.
 
 ## Current Position
 
-Phase: 5 of 5 (New Mechanics) — In progress
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-19 — Completed 05-02-PLAN.md (environmental hazards)
+Phase: 5 of 5 (New Mechanics) — COMPLETE
+Plan: 3 of 3 in current phase
+Status: PROJECT COMPLETE
+Last activity: 2026-02-19 — Completed 05-03-PLAN.md (unlockable abilities)
 
-Progress: [████████████░] 92% overall (12/13 plans)
+Progress: [█████████████] 100% overall (13/13 plans)
 Phase 1: [██████████] 100% (2/2 plans)
 Phase 2: [██████████] 100% (3/3 plans)
 Phase 3: [██████████] 100% (3/3 plans)
 Phase 4: [██████████] 100% (2/2 plans)
-Phase 5: [██████░░░░] 67% (2/3 plans)
+Phase 5: [██████████] 100% (3/3 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
+- Total plans completed: 13
 - Average duration: ~7min
-- Total execution time: ~90min
+- Total execution time: ~97min
 
 **By Phase:**
 
@@ -36,10 +36,10 @@ Phase 5: [██████░░░░] 67% (2/3 plans)
 | 02-ai-intelligence | 3/3 | ~30min | ~10min |
 | 03-growth-foundation | 3/3 | ~12min | ~4min |
 | 04-retention | 2/2 | ~12min | ~6min |
-| 05-new-mechanics | 2/3 | ~11min | ~5.5min |
+| 05-new-mechanics | 3/3 | ~18min | ~6min |
 
 **Recent Trend:**
-- Last 5 plans: 04-01 (~8min), 04-02 (~4min), 05-01 (~6min), 05-02 (~5min)
+- Last 5 plans: 04-02 (~4min), 05-01 (~6min), 05-02 (~5min), 05-03 (~7min)
 - Trend: Consistent execution speed, single-file changes keep plans fast
 
 *Updated after each plan completion*
@@ -97,6 +97,11 @@ Recent decisions affecting current work:
 - [05-02]: Gravity wells pull both player and projectiles (projectiles at 50% strength)
 - [05-02]: Danger zone 1s grace period before kill; Ghost blocks all hazard effects
 - [05-02]: Arena shrink phase-gated to phase >= 3
+- [05-03]: Abilities use real-time dt for cooldowns, Math.random() for cosmetics -- daily seed unaffected
+- [05-03]: Phase Shift blocks projectile damage only -- hazards still hurt
+- [05-03]: Time Warp slows projectiles to 30% AND player to 70% (risk/reward)
+- [05-03]: Milestone thresholds: dashBurst=300s total, decoy=900s, phaseShift=60s best, timeWarp=2400s
+- [05-03]: Priority ordering (dashBurst > decoy > phaseShift > timeWarp) for activation
 
 ### Pending Todos
 
@@ -104,12 +109,12 @@ None.
 
 ### Blockers/Concerns
 
-- Brownfield codebase (~4350 lines single file after environmental hazards) -- well past complexity threshold
+- Codebase is ~4700 lines in single HTML file -- any future work should consider extraction
 - OG image placeholder needs real asset created (could leverage generateShareCard() pattern)
 - GoatCounter account not yet created -- analytics no-ops until DODGEAI placeholder is replaced with real site code
 
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Completed 05-02-PLAN.md. Phase 5 plan 2 of 3 done. Next: 05-03 (boss abilities / final plan).
+Stopped at: ALL PHASES COMPLETE. 13/13 plans delivered across 5 phases.
 Resume file: None
