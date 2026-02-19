@@ -23,7 +23,7 @@
 
 ### Retention
 
-- [ ] **RET-01**: Daily challenge mode with date-seeded AI configuration (same for all players)
+- [x] **RET-01**: Daily challenge mode with date-seeded AI configuration (same for all players)
 - [ ] **RET-02**: Streak tracking for consecutive daily challenge completions
 - [ ] **RET-03**: Streak rewards escalate (cosmetic titles, bragging rights)
 - [ ] **RET-04**: Streak penalty uses gentle ramp-down, not hard reset
@@ -91,7 +91,7 @@
 | AI-04 | Phase 2 | Complete |
 | AI-05 | Phase 2 | Complete |
 | AI-06 | Phase 2 | Complete |
-| RET-01 | Phase 4 | Pending |
+| RET-01 | Phase 4 | Complete |
 | RET-02 | Phase 4 | Pending |
 | RET-03 | Phase 4 | Pending |
 | RET-04 | Phase 4 | Pending |
@@ -111,4 +111,4 @@
 
 ---
 *Requirements defined: 2026-02-18*
-*Last updated: 2026-02-19 after Phase 3 completion*
+*Last updated: 2026-02-19 after Phase 4 completion*
