@@ -5,27 +5,28 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** The AI feels genuinely intelligent — it learns your patterns, predicts your movement, and makes every death feel earned.
-**Current focus:** Phase 4 complete (Retention). Ready for Phase 5.
+**Current focus:** Phase 5 in progress (New Mechanics). Plan 01 complete.
 
 ## Current Position
 
-Phase: 4 of 5 (Retention) — Complete
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-02-19 — Completed 04-02-PLAN.md (personal best list)
+Phase: 5 of 5 (New Mechanics) — In progress
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-19 — Completed 05-01-PLAN.md (new projectile types)
 
-Progress: [██████████░░] 77% overall (10/13 plans)
+Progress: [███████████░] 85% overall (11/13 plans)
 Phase 1: [██████████] 100% (2/2 plans)
 Phase 2: [██████████] 100% (3/3 plans)
 Phase 3: [██████████] 100% (3/3 plans)
 Phase 4: [██████████] 100% (2/2 plans)
+Phase 5: [███░░░░░░░] 33% (1/3 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
+- Total plans completed: 11
 - Average duration: ~8min
-- Total execution time: ~79min
+- Total execution time: ~85min
 
 **By Phase:**
 
@@ -35,9 +36,10 @@ Phase 4: [██████████] 100% (2/2 plans)
 | 02-ai-intelligence | 3/3 | ~30min | ~10min |
 | 03-growth-foundation | 3/3 | ~12min | ~4min |
 | 04-retention | 2/2 | ~12min | ~6min |
+| 05-new-mechanics | 1/3 | ~6min | ~6min |
 
 **Recent Trend:**
-- Last 5 plans: 03-01 (~5min), 03-02 (~4min), 03-03 (~3min), 04-01 (~8min), 04-02 (~4min)
+- Last 5 plans: 03-03 (~3min), 04-01 (~8min), 04-02 (~4min), 05-01 (~6min)
 - Trend: Consistent execution speed, single-file changes keep plans fast
 
 *Updated after each plan completion*
@@ -85,6 +87,11 @@ Recent decisions affecting current work:
 - [04-02]: Legacy dodge-ai-best migrated to new format with date='legacy' on first load
 - [04-02]: Backward compatibility: dodge-ai-best key still written alongside new format
 - [04-02]: Share card daily badge placed below DODGE AI title in gold (#facc15)
+- [05-01]: Spiral uses sin-based perpendicular oscillation for readable corkscrew lanes
+- [05-01]: Cluster fuse 0.8-1.2s via this.rng() with 6-child ring explosion
+- [05-01]: Mine dwell 2.0-3.0s with pulsing glow telegraph, 4-bullet aimed detonation
+- [05-01]: Projectile cap at 80 prevents cluster/mine child multiplication runaway
+- [05-01]: Child projectiles from cluster/mine use splitChildren=true for consistent rendering
 
 ### Pending Todos
 
@@ -92,12 +99,12 @@ None.
 
 ### Blockers/Concerns
 
-- Brownfield codebase (~3900 lines single file after personal bests additions) — approaching complexity threshold
+- Brownfield codebase (~4100 lines single file after new projectile types) -- well past complexity threshold
 - OG image placeholder needs real asset created (could leverage generateShareCard() pattern)
-- GoatCounter account not yet created — analytics no-ops until DODGEAI placeholder is replaced with real site code
+- GoatCounter account not yet created -- analytics no-ops until DODGEAI placeholder is replaced with real site code
 
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Completed 04-02-PLAN.md. Phase 4 complete. Next: Phase 5 planning.
+Stopped at: Completed 05-01-PLAN.md. Phase 5 plan 1 of 3 done. Next: 05-02 (environmental hazards).
 Resume file: None
