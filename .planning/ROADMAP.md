@@ -25,11 +25,6 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Depends on**: Nothing (first phase)
 **Requirements**: POLISH-01, POLISH-02, POLISH-03, POLISH-04
 **Plans**: 2 plans
-**Success Criteria** (what must be TRUE):
-  1. Player sees a death replay indicator showing which projectile killed them and from what direction
-  2. On mobile, the player character is offset above the touch point so the finger never obscures it
-  3. Pull-to-refresh, swipe-back, and pinch-to-zoom are all disabled during gameplay on mobile browsers
-  4. Game canvas respects device safe areas (notch, home indicator) with no content clipped on iOS or Android
 
 Plans:
 - [x] 01-01-PLAN.md — Death context capture, freeze-frame kill indicator, and game-over kill text
@@ -39,12 +34,6 @@ Plans:
 **Goal**: The AI visibly learns player patterns, adapts its attacks, and stays fair
 **Depends on**: Phase 1 (death feedback supports AI transparency — player sees what killed them before AI explains why)
 **Requirements**: AI-01, AI-02, AI-03, AI-04, AI-05, AI-06
-**Success Criteria** (what must be TRUE):
-  1. During gameplay, visible messages appear showing what the AI has learned ("Detected clockwise dodge pattern", "You favor the top-left zone")
-  2. The AI fires projectiles that specifically counter the player's observed habits (targeting safe zones, predicting dodge direction)
-  3. A first-time player and a veteran player face noticeably different AI aggression levels within the same session
-  4. The AI never escalates faster than a defined cap per session, preventing a frustration spiral where the game feels unbeatable
-  5. AI learning data persists across sessions via localStorage — the AI remembers returning players
 **Plans**: 3 plans (3 waves, sequential — all modify index.html)
 
 Plans:
@@ -61,12 +50,12 @@ Plans:
   2. Google Search Console shows the game indexed with VideoGame rich result (JSON-LD structured data renders in search)
   3. Page HTML includes visible text content (title, description, how-to-play) that search engines can index beyond the canvas
   4. A lightweight analytics dashboard (Plausible or equivalent) tracks sessions, retention, and drop-off points without requiring cookie consent
-**Plans**: TBD
+**Plans**: 3 plans (3 waves, sequential — all modify index.html)
 
 Plans:
-- [ ] 03-01: SEO foundation (meta tags, JSON-LD, visible text content)
-- [ ] 03-02: Visual share card generator
-- [ ] 03-03: Analytics integration
+- [ ] 03-01-PLAN.md — SEO foundation: meta tags, OG/Twitter Card, JSON-LD VideoGame, below-fold content section
+- [ ] 03-02-PLAN.md — Visual share card: 1200x630 canvas-generated PNG with stats and AI commentary
+- [ ] 03-03-PLAN.md — Analytics: GoatCounter integration with lifecycle events and drop-off tracking
 
 ### Phase 4: Retention
 **Goal**: Players have a reason to come back every day and a streak they don't want to break
@@ -113,4 +102,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 ---
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-02-19 after Phase 2 completion*
+*Last updated: 2026-02-19 after Phase 3 planning*
