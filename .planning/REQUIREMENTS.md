@@ -30,9 +30,9 @@
 
 ### New Mechanics
 
-- [ ] **MECH-01**: New projectile types beyond current 6 (e.g., spiral, cluster, delayed)
-- [ ] **MECH-02**: Environmental hazards that change the dodge space (moving walls, shrinking arena, gravity wells)
-- [ ] **MECH-03**: Unlockable player abilities (dash, brief invulnerability, decoy)
+- [x] **MECH-01**: New projectile types beyond current 6 (e.g., spiral, cluster, delayed)
+- [x] **MECH-02**: Environmental hazards that change the dodge space (moving walls, shrinking arena, gravity wells)
+- [x] **MECH-03**: Unlockable player abilities (dash, brief invulnerability, decoy)
 
 ### Growth & Virality
 
@@ -95,9 +95,9 @@
 | RET-02 | Phase 4 | Pending |
 | RET-03 | Phase 4 | Pending |
 | RET-04 | Phase 4 | Pending |
-| MECH-01 | Phase 5 | Pending |
-| MECH-02 | Phase 5 | Pending |
-| MECH-03 | Phase 5 | Pending |
+| MECH-01 | Phase 5 | Complete |
+| MECH-02 | Phase 5 | Complete |
+| MECH-03 | Phase 5 | Complete |
 | GROW-01 | Phase 3 | Complete |
 | GROW-02 | Phase 3 | Complete |
 | GROW-03 | Phase 3 | Complete |
@@ -111,4 +111,4 @@
 
 ---
 *Requirements defined: 2026-02-18*
-*Last updated: 2026-02-19 after Phase 4 completion*
+*Last updated: 2026-02-19 after Phase 5 completion*

@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: AI Intelligence** - The AI visibly learns, adapts, and feels fair
 - [x] **Phase 3: Growth Foundation** - Game is discoverable, shareable, and measured
 - [x] **Phase 4: Retention** - Daily challenge and streaks give players a reason to return
-- [ ] **Phase 5: New Mechanics** - Fresh projectiles, hazards, and abilities keep gameplay evolving
+- [x] **Phase 5: New Mechanics** - Fresh projectiles, hazards, and abilities keep gameplay evolving
 
 ## Phase Details
 
@@ -81,9 +81,9 @@ Plans:
 **Plans**: 3 plans (3 waves, sequential -- all modify index.html)
 
 Plans:
-- [ ] 05-01-PLAN.md — 3 new projectile types (spiral, cluster, mine) with phase-gated spawning
-- [ ] 05-02-PLAN.md — 3 environmental hazards (gravity well, danger zone, arena shrink) with AI-triggered spawning
-- [ ] 05-03-PLAN.md — 4 unlockable player abilities (dash, decoy, phase shift, time warp) with milestone progression
+- [x] 05-01-PLAN.md — 3 new projectile types (spiral, cluster, mine) with phase-gated spawning
+- [x] 05-02-PLAN.md — 3 environmental hazards (gravity well, danger zone, arena shrink) with AI-triggered spawning
+- [x] 05-03-PLAN.md — 4 unlockable player abilities (dash, decoy, phase shift, time warp) with milestone progression
 
 ## Progress
 
@@ -96,8 +96,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 2. AI Intelligence | 3/3 | Complete | 2026-02-19 |
 | 3. Growth Foundation | 3/3 | Complete | 2026-02-19 |
 | 4. Retention | 2/2 | Complete | 2026-02-19 |
-| 5. New Mechanics | 0/3 | Not started | - |
+| 5. New Mechanics | 3/3 | Complete | 2026-02-19 |
 
 ---
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-02-19 after Phase 5 planning*
+*Last updated: 2026-02-19 after Phase 5 completion*
