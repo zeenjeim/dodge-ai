@@ -550,37 +550,6 @@
 
     .modal-close:hover { color: #fff; }
 
-    .feedback-area {
-      width: 100%;
-      min-height: 100px;
-      background: rgba(0,0,0,0.3);
-      border: 1px solid rgba(139, 92, 246, 0.2);
-      border-radius: 4px;
-      color: #ccc;
-      font-family: 'Courier New', monospace;
-      font-size: 12px;
-      padding: 10px;
-      resize: vertical;
-      margin-bottom: 12px;
-    }
-
-    .feedback-area:focus { outline: none; border-color: rgba(139, 92, 246, 0.5); }
-
-    .feedback-submit {
-      padding: 8px 24px;
-      background: rgba(139, 92, 246, 0.2);
-      border: 1px solid rgba(139, 92, 246, 0.3);
-      color: #8b5cf6;
-      font-family: 'Courier New', monospace;
-      font-size: 11px;
-      letter-spacing: 1px;
-      cursor: pointer;
-      border-radius: 4px;
-      transition: all 0.2s;
-    }
-
-    .feedback-submit:hover { background: rgba(139, 92, 246, 0.3); border-color: #8b5cf6; }
-
     .stats-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -920,9 +889,7 @@
     <button class="menu-btn" id="btn-howto">HOW TO PLAY</button>
     <button class="menu-btn" id="btn-stats">STATS</button>
     <button class="menu-btn" id="btn-contact">CONTACT</button>
-    <button class="menu-btn" id="btn-feedback">FEEDBACK</button>
   </div>
-  <button class="menu-btn small" id="btn-reset-ai">RESET AI</button>
   <div class="start-hint">Mouse or touch. Try not to cry.</div>
 </div>
 
@@ -949,17 +916,6 @@
   </div>
 </div>
 
-<!-- Feedback Modal -->
-<div class="modal-overlay" id="modal-feedback">
-  <div class="modal-content">
-    <button class="modal-close" data-close="modal-feedback">&times;</button>
-    <h2>Talk to Me</h2>
-    <p>Go ahead, roast me. Compliment me. Tell me the AI killed you unfairly. I'll pretend to care. (Saved locally — I'm not that kind of app.)</p>
-    <textarea class="feedback-area" id="feedback-text" placeholder="Your hot take goes here..."></textarea>
-    <button class="feedback-submit" id="btn-submit-feedback">SEND IT</button>
-    <div id="feedback-status" style="font-size:11px;color:#10b981;margin-top:8px;display:none">Filed under 'stuff I'll actually read.' Thanks.</div>
-  </div>
-</div>
 
 <!-- Game Over Screen -->
 <div id="gameover-screen">
@@ -3489,28 +3445,6 @@ class Game {
     document.getElementById('btn-contact').onclick = () => {
       window.location.href = 'mailto:znjeim@gmail.com';
     };
-    document.getElementById('btn-feedback').onclick = () => {
-      document.getElementById('modal-feedback').classList.add('show');
-    };
-    document.getElementById('btn-submit-feedback').onclick = () => {
-      const text = document.getElementById('feedback-text').value.trim();
-      if (!text) return;
-      try {
-        const existing = JSON.parse(localStorage.getItem('dodge-ai-feedback') || '[]');
-        existing.push({ text, time: new Date().toISOString() });
-        localStorage.setItem('dodge-ai-feedback', JSON.stringify(existing));
-      } catch(e) {}
-      document.getElementById('feedback-text').value = '';
-      const status = document.getElementById('feedback-status');
-      status.style.display = 'block';
-      setTimeout(() => { status.style.display = 'none'; }, 3000);
-    };
-    document.getElementById('btn-reset-ai').onclick = () => {
-      if (confirm('Reset AI brain data? This cannot be undone.')) {
-        localStorage.removeItem('dodge-ai-brain');
-        this.brain = new AIBrain();
-      }
-    };
 
     // Modal close buttons
     document.querySelectorAll('.modal-close').forEach(btn => {
@@ -3790,25 +3724,41 @@ class Game {
           this.shockwaves.push(new Shockwave(bx, by, 60, '#fff', 0.3));
         }
       } else {
-        // Black hole is live — pull and destroy projectiles
+        // Black hole is live — orbital gravity with slow-to-fast spiral
         const vx = this.effects.vortex.x;
         const vy = this.effects.vortex.y;
         const screenDiag = Math.sqrt(this.w * this.w + this.h * this.h);
-        const pullRadius = screenDiag * 0.8;
-        const destroyRadius = 44;
-        const pullForce = 800;
+        const captureRadius = screenDiag * 0.9;   // wide capture zone
+        const destroyRadius = 30;                  // consumed at center
+        const innerOrbit = 80;                     // tight orbit zone
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
           const p = this.projectiles[i];
           const dx = vx - p.x;
           const dy = vy - p.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < destroyRadius) {
+            // Destroyed — purple burst
             this.particles.push(new Particle(p.x, p.y, 0, 0, 0.3, '#a855f7', 1.5));
             this.projectiles.splice(i, 1);
-          } else if (dist < pullRadius && dist > 1) {
-            const strength = (1 - dist / pullRadius) * pullForce * dt;
-            p.vx += (dx / dist) * strength;
-            p.vy += (dy / dist) * strength;
+          } else if (dist < captureRadius && dist > 1) {
+            // Normalize direction toward black hole
+            const nx = dx / dist;
+            const ny = dy / dist;
+            // Tangent (perpendicular) for orbital spin
+            const tx = -ny;
+            const ty = nx;
+            // Closeness: 0 at edge, 1 at center
+            const closeness = 1 - dist / captureRadius;
+            // Radial pull: gentle at edge, strong near center (cubic ramp)
+            const radialStrength = (40 + 600 * closeness * closeness * closeness) * dt;
+            // Orbital spin: strong at mid-range, fades at center (gets consumed)
+            const orbitStrength = (150 + 300 * closeness) * (dist > innerOrbit ? 1 : dist / innerOrbit) * dt;
+            // Override projectile velocity for full black hole control
+            const spiralFactor = Math.min(closeness * 1.5, 1); // blend: 0=free, 1=captured
+            const targetVx = nx * radialStrength + tx * orbitStrength;
+            const targetVy = ny * radialStrength + ty * orbitStrength;
+            p.vx = p.vx * (1 - spiralFactor) + targetVx * spiralFactor;
+            p.vy = p.vy * (1 - spiralFactor) + targetVy * spiralFactor;
           }
         }
       }
