@@ -73,10 +73,7 @@
       overflow: hidden;
       font-family: 'Courier New', monospace;
       color: #e0e0e0;
-      touch-action: none;
       -webkit-touch-callout: none;
-      -webkit-user-select: none;
-      user-select: none;
       cursor: default;
       overscroll-behavior: none;
     }
@@ -85,8 +82,14 @@
       display: block;
       position: fixed;
       top: 0; left: 0;
+      z-index: 1;
       cursor: none;
+      pointer-events: none;
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
     }
+    canvas.active { pointer-events: auto; }
 
     /* --- HUD --- */
     #hud {
@@ -162,12 +165,10 @@
     #pu-slowmo .pu-bar-fill { background: #3b82f6; }
     #pu-shrink { background: rgba(236,72,153,0.2); color: #ec4899; border: 1px solid rgba(236,72,153,0.3); }
     #pu-shrink .pu-bar-fill { background: #ec4899; }
-    #pu-ghost { background: rgba(148,163,184,0.2); color: #94a3b8; border: 1px solid rgba(148,163,184,0.3); }
-    #pu-ghost .pu-bar-fill { background: #94a3b8; }
     #pu-magnet { background: rgba(249,115,22,0.2); color: #f97316; border: 1px solid rgba(249,115,22,0.3); }
     #pu-magnet .pu-bar-fill { background: #f97316; }
-    #pu-dash { background: rgba(6,182,212,0.2); color: #06b6d4; border: 1px solid rgba(6,182,212,0.3); }
-    #pu-dash .pu-bar-fill { background: #06b6d4; }
+    #pu-vortex { background: rgba(168,85,247,0.2); color: #a855f7; border: 1px solid rgba(168,85,247,0.3); }
+    #pu-vortex .pu-bar-fill { background: #a855f7; }
 
     /* --- AI Brain Panel --- */
     #brain-panel {
@@ -425,29 +426,60 @@
       border-color: rgba(255,51,85,0.3);
     }
 
-    .menu-btn.daily {
-      border-color: #facc15;
-      color: #facc15;
-    }
-    .menu-btn.daily:hover {
-      background: rgba(250, 204, 21, 0.15);
-      border-color: #fde047;
-      color: #fde047;
-    }
-
-    #daily-hud {
+    /* --- Mute Button --- */
+    #mute-btn {
       position: fixed;
-      top: 8px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: #facc15;
-      font-family: 'Courier New', monospace;
-      font-size: 14px;
+      top: max(16px, calc(8px + var(--sa-top)));
+      right: max(230px, calc(220px + var(--sa-right)));
+      z-index: 15;
+      background: rgba(10, 10, 30, 0.7);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 50%;
+      width: 32px; height: 32px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      color: #888;
+      font-size: 16px;
+      transition: all 0.2s;
+    }
+    #mute-btn:hover { border-color: rgba(255,255,255,0.3); color: #ccc; }
+    #mute-btn.muted { color: #ff3355; border-color: rgba(255,51,85,0.3); }
+
+    /* --- Heat Bar --- */
+    #heat-bar-container {
+      position: fixed;
+      top: max(60px, calc(52px + var(--sa-top)));
+      left: max(16px, calc(8px + var(--sa-left)));
+      z-index: 10;
+      pointer-events: none;
+      width: 120px;
+    }
+    #heat-label {
+      font-size: 9px;
+      color: #666;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    #heat-bar {
+      width: 100%;
+      height: 4px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 2px;
+      margin-top: 2px;
+      overflow: hidden;
+    }
+    #heat-bar-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 2px;
+      transition: width 0.1s linear, background 0.3s;
+    }
+    #heat-tier {
+      font-size: 10px;
       font-weight: bold;
       letter-spacing: 2px;
-      z-index: 30;
-      display: none;
-      text-shadow: 0 0 10px rgba(250, 204, 21, 0.5);
+      margin-top: 2px;
+      min-height: 14px;
     }
 
     .start-hint { color: #444; font-size: 11px; margin-top: 16px; }
@@ -618,12 +650,6 @@
       font-size: 0.8rem;
     }
 
-    .bests-list .best-daily {
-      color: #facc15;
-      font-size: 0.7rem;
-      margin-left: 4px;
-    }
-
     .bests-list .bests-empty {
       color: #555;
       font-style: italic;
@@ -728,12 +754,15 @@
       #hud { top: max(8px, calc(4px + var(--sa-top))); left: max(8px, calc(4px + var(--sa-left))); }
       #hud-time { font-size: 24px; }
       #phase-announce .phase-name { font-size: 28px; }
+      #mute-btn { right: max(170px, calc(160px + var(--sa-right))); width: 28px; height: 28px; font-size: 14px; }
+      #heat-bar-container { top: max(50px, calc(42px + var(--sa-top))); width: 90px; }
     }
 
     /* --- SEO Content (below fold) --- */
     .seo-content {
-      position: relative;
-      z-index: 1;
+      position: absolute;
+      left: -9999px;
+      pointer-events: none;
       max-width: 800px;
       margin: 0 auto;
       padding: 60px 24px 80px;
@@ -804,13 +833,19 @@
 <div id="hud-powerups">
   <div class="powerup-indicator" id="pu-slowmo">BULLET TIME <div class="pu-bar"><div class="pu-bar-fill" id="pu-slowmo-bar"></div></div></div>
   <div class="powerup-indicator" id="pu-shrink">SMOL MODE <div class="pu-bar"><div class="pu-bar-fill" id="pu-shrink-bar"></div></div></div>
-  <div class="powerup-indicator" id="pu-ghost">NOPE <div class="pu-bar"><div class="pu-bar-fill" id="pu-ghost-bar"></div></div></div>
+  <div class="powerup-indicator" id="pu-vortex">BLACK HOLE <div class="pu-bar"><div class="pu-bar-fill" id="pu-vortex-bar"></div></div></div>
   <div class="powerup-indicator" id="pu-magnet">PERSONAL SPACE <div class="pu-bar"><div class="pu-bar-fill" id="pu-magnet-bar"></div></div></div>
-  <div class="powerup-indicator" id="pu-dash">GTFO <div class="pu-bar"><div class="pu-bar-fill" id="pu-dash-bar"></div></div></div>
 </div>
 
-<!-- Daily Challenge HUD Label -->
-<div id="daily-hud">DAILY CHALLENGE</div>
+<!-- Mute Button -->
+<button id="mute-btn" title="Toggle Sound">&#9834;</button>
+
+<!-- Heat Bar -->
+<div id="heat-bar-container" style="display:none">
+  <div id="heat-label">HEAT</div>
+  <div id="heat-bar"><div id="heat-bar-fill"></div></div>
+  <div id="heat-tier"></div>
+</div>
 
 <!-- AI Brain Panel -->
 <div id="brain-panel">
@@ -882,7 +917,6 @@
   <div class="best-time" id="start-best"></div>
   <div class="menu-buttons">
     <button class="menu-btn primary" id="btn-start">PLAY</button>
-    <button class="menu-btn daily" id="btn-daily">DAILY CHALLENGE</button>
     <button class="menu-btn" id="btn-howto">HOW TO PLAY</button>
     <button class="menu-btn" id="btn-stats">STATS</button>
     <button class="menu-btn" id="btn-contact">CONTACT</button>
@@ -993,7 +1027,7 @@
     <li>6 escalating phases from SCANNING to EVOLVED</li>
     <li>Multiple projectile types with unique behaviors</li>
     <li>Boss fights with health bars and attack patterns</li>
-    <li>6 power-ups including Bullet Time, EMP, and GTFO dash</li>
+    <li>5 power-ups including Bullet Time, EMP, and Black Hole vortex</li>
     <li>AI brain panel showing live analysis of your play style</li>
     <li>No download required -- plays directly in your browser</li>
     <li>Works on desktop and mobile</li>
@@ -1028,37 +1062,6 @@ function getDirectionName(angle) {
   return names[sector];
 }
 
-// Seeded PRNG: FNV-1a string hash returning unsigned 32-bit integer
-function fnv1aHash(str) {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return h >>> 0;
-}
-
-// Seeded PRNG: Mulberry32 — returns a function producing floats [0, 1)
-function mulberry32(seed) {
-  return function() {
-    seed = (seed + 0x6D2B79F5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), seed | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-// Returns today's date as "YYYY-MM-DD" in UTC
-function getTodayUTC() {
-  const d = new Date();
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
-}
-
-// Returns today's daily challenge seed (deterministic per UTC date)
-function getDailySeed() {
-  return fnv1aHash('dodge-ai-daily-' + getTodayUTC());
-}
-
 // Personal best list management (top 5 survival times)
 const BESTS_KEY = 'dodge-ai-bests';
 const MAX_BESTS = 5;
@@ -1069,12 +1072,11 @@ function loadBests() {
   } catch { return []; }
 }
 
-function saveBest(gameTime, isDaily) {
+function saveBest(gameTime) {
   const bests = loadBests();
   bests.push({
     time: parseFloat(gameTime.toFixed(1)),
-    date: getTodayUTC(),
-    daily: isDaily,
+    date: new Date().toISOString().slice(0, 10),
   });
   bests.sort((a, b) => b.time - a.time);
   const top5 = bests.slice(0, MAX_BESTS);
@@ -1138,12 +1140,11 @@ const BOSS_INTERVAL = 25; // seconds between bosses
 const BOSS_LIFETIME = 12; // seconds a boss lives
 
 const POWERUP_TYPES = {
-  slowmo:    { name: 'BULLET TIME',    color: '#3b82f6', duration: 4,   icon: 'S' },
+  slowmo:    { name: 'BULLET TIME',    color: '#3b82f6', duration: 8,   icon: 'S' },
   emp:       { name: 'KABOOM',        color: '#facc15', duration: 0,   icon: 'E' },
-  shrink:    { name: 'SMOL MODE',     color: '#ec4899', duration: 5,   icon: 'K' },
-  ghost:     { name: 'NOPE',          color: '#94a3b8', duration: 2.5, icon: 'G' },
-  magnet:    { name: 'PERSONAL SPACE', color: '#f97316', duration: 3.5, icon: 'R' },
-  dash:      { name: 'GTFO',          color: '#06b6d4', duration: 0.5, icon: 'D' },
+  shrink:    { name: 'SMOL MODE',     color: '#ec4899', duration: 10,  icon: 'K' },
+  magnet:    { name: 'PERSONAL SPACE', color: '#f97316', duration: 7,   icon: 'R' },
+  vortex:    { name: 'BLACK HOLE',    color: '#a855f7', duration: 8,   icon: 'V' },
 };
 
 const POWERUP_SPAWN_MIN = 7;
@@ -1809,7 +1810,7 @@ const BOSS_TYPES = [
   { name: 'Sentinel',    shape: 'circle',   color: '#ff3355', behavior: 'homing', special: 'none',    shootInterval: 0 },
   { name: 'Shatterer',   shape: 'triangle', color: '#ff6633', behavior: 'homing', special: 'scatter', shootInterval: 2 },
   { name: 'Pulsar',      shape: 'hexagon',  color: '#a855f7', behavior: 'orbit',  special: 'ring',    shootInterval: 3 },
-  { name: 'Mr Wiggles',  shape: 'diamond',  color: '#10b981', behavior: 'snake',  special: 'none',    shootInterval: 0 },
+  { name: 'Mr Wiggles',  shape: 'diamond',  color: '#10b981', behavior: 'snake',  special: 'trail',   shootInterval: 1.5 },
   { name: 'The Void',    shape: 'star',     color: '#f43f5e', behavior: 'homing', special: 'both',    shootInterval: 2.5 },
 ];
 
@@ -2201,9 +2202,12 @@ class Boss {
     this.segments = [];
     this.posHistory = [];
     if (this.bossType.behavior === 'snake') {
-      this.segments.push({ x: x, y: y });
-      this.segments.push({ x: x, y: y });
+      for (let si = 0; si < 4; si++) this.segments.push({ x: x, y: y });
     }
+    this.trailSegments = [];
+    this.speedBurstTimer = 0;
+    this.speedBurstActive = false;
+    this.speedBurstDuration = 0;
 
     // Pulsar orbit
     this.orbitAngle = Math.random() * Math.PI * 2;
@@ -2224,15 +2228,35 @@ class Boss {
       this.x += (targetX - this.x) * 0.03 * 60 * dt;
       this.y += (targetY - this.y) * 0.03 * 60 * dt;
     } else if (this.bossType.behavior === 'snake') {
-      // Snake-like with wave motion
+      // Snake with wave motion + speed burst
       const dx = playerX - this.x;
       const dy = playerY - this.y;
       const dist = Math.sqrt(dx * dx + dy * dy) || 1;
       const perpX = -dy / dist;
       const perpY = dx / dist;
-      const wave = Math.sin(this.age * 3) * 30 * dt;
-      this.x += (dx / dist) * this.speed * dt * 60 + perpX * wave;
-      this.y += (dy / dist) * this.speed * dt * 60 + perpY * wave;
+      const wave = Math.sin(this.age * 3) * 50 * dt;
+
+      // Speed burst every 4 seconds
+      this.speedBurstTimer += dt;
+      if (this.speedBurstTimer >= 4 && !this.speedBurstActive) {
+        this.speedBurstActive = true;
+        this.speedBurstDuration = 0.5;
+        this.speedBurstTimer = 0;
+      }
+      let speedMult = 1;
+      if (this.speedBurstActive) {
+        speedMult = 2;
+        this.speedBurstDuration -= dt;
+        if (this.speedBurstDuration <= 0) this.speedBurstActive = false;
+      }
+
+      this.x += (dx / dist) * this.speed * speedMult * dt * 60 + perpX * wave;
+      this.y += (dy / dist) * this.speed * speedMult * dt * 60 + perpY * wave;
+
+      // Toxic trail: leave behind poison segments
+      if (this.bossType.special === 'trail' && Math.random() < dt * 3) {
+        this.trailSegments.push({ x: this.x, y: this.y, age: 0, maxAge: 3 });
+      }
     } else {
       // Homing toward player
       const dx = playerX - this.x;
@@ -2252,13 +2276,21 @@ class Boss {
     // Serpent segment tracking
     if (this.bossType.behavior === 'snake') {
       this.posHistory.push({ x: this.x, y: this.y });
-      if (this.posHistory.length > 40) this.posHistory.shift();
+      if (this.posHistory.length > 80) this.posHistory.shift();
       if (this.posHistory.length > 5) {
         for (let i = 0; i < this.segments.length; i++) {
           const histIdx = Math.max(0, this.posHistory.length - 1 - (i + 1) * 10);
           this.segments[i].x = this.posHistory[histIdx].x;
           this.segments[i].y = this.posHistory[histIdx].y;
         }
+      }
+    }
+
+    // Update trail segments
+    for (let ti = this.trailSegments.length - 1; ti >= 0; ti--) {
+      this.trailSegments[ti].age += dt;
+      if (this.trailSegments[ti].age > this.trailSegments[ti].maxAge) {
+        this.trailSegments.splice(ti, 1);
       }
     }
 
@@ -2289,6 +2321,19 @@ class Boss {
       }
     }
 
+    if (special === 'trail') {
+      // Spit attack: fire homing projectiles from head and segments
+      const sources = [{ x: this.x, y: this.y }, ...this.segments.slice(0, 2)];
+      for (const src of sources) {
+        const a = Math.atan2(playerY - src.y, playerX - src.x);
+        const spd = 3 + this.level * 0.2;
+        this.pendingProjectiles.push(new Projectile(
+          src.x, src.y, Math.cos(a) * spd, Math.sin(a) * spd,
+          '#10b981', { type: 'normal', radius: 3, homing: true }
+        ));
+      }
+    }
+
     if (special === 'ring' || special === 'both') {
       for (let i = 0; i < 8; i++) {
         const a = (i / 8) * Math.PI * 2;
@@ -2305,7 +2350,11 @@ class Boss {
     return this.hp <= 0;
   }
 
-  isExpired() { return this.age > this.lifetime; }
+  isExpired() {
+    // Sentinel stays alive — it's a persistent threat, not a timer
+    if (this.bossType.name === 'Sentinel') return false;
+    return this.age > this.lifetime;
+  }
 
   getCollisionPoints() {
     const points = [{ x: this.x, y: this.y, radius: this.radius }];
@@ -2342,6 +2391,21 @@ class Boss {
         ctx.fillStyle = this.color;
         ctx.beginPath();
         drawShape(ctx, seg.x, seg.y, segR * pulse, 'diamond', this.rotationAngle + i * 0.5);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    // Toxic trail segments
+    if (this.trailSegments) {
+      for (const ts of this.trailSegments) {
+        const tAlpha = 0.4 * (1 - ts.age / ts.maxAge);
+        ctx.globalAlpha = tAlpha;
+        ctx.fillStyle = '#10b981';
+        ctx.shadowColor = '#10b981';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(ts.x, ts.y, 6 * (1 - ts.age / ts.maxAge * 0.3), 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 0;
       }
@@ -2391,13 +2455,15 @@ class Boss {
     ctx.textBaseline = 'middle';
     ctx.fillText(this.bossType.name.toUpperCase(), this.x, this.y - this.radius - 12);
 
-    // Lifetime bar
-    const lifeRatio = Math.max(0, 1 - this.age / this.lifetime);
-    ctx.globalAlpha = 0.5;
-    ctx.fillStyle = '#333';
-    ctx.fillRect(this.x - 20, this.y + this.radius + 12, 40, 3);
-    ctx.fillStyle = this.color;
-    ctx.fillRect(this.x - 20, this.y + this.radius + 12, 40 * lifeRatio, 3);
+    // Lifetime bar (skip for persistent bosses like Sentinel)
+    if (this.bossType.name !== 'Sentinel') {
+      const lifeRatio = Math.max(0, 1 - this.age / this.lifetime);
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = '#333';
+      ctx.fillRect(this.x - 20, this.y + this.radius + 12, 40, 3);
+      ctx.fillStyle = this.color;
+      ctx.fillRect(this.x - 20, this.y + this.radius + 12, 40 * lifeRatio, 3);
+    }
 
     ctx.globalAlpha = 1;
     ctx.shadowBlur = 0;
@@ -2462,128 +2528,632 @@ class PowerUp {
 }
 
 // ============================================================
-// Hazard — Environmental hazards triggered by AI brain
+// Sound Engine — Symphonic Synthwave (Web Audio API)
 // ============================================================
-class Hazard {
-  constructor(x, y, type, opts = {}) {
-    this.x = x;
-    this.y = y;
-    this.type = type; // 'gravity', 'danger-zone', 'shrink'
-    this.radius = opts.radius || 80;        // gravity well radius
-    this.strength = opts.strength || 120;    // gravity pull strength
-    this.width = opts.width || 0;            // danger zone width
-    this.height = opts.height || 0;          // danger zone height
-    this.telegraphTime = opts.telegraph || 2.5; // seconds of preview
-    this.activeTime = opts.duration || 10.0;
-    this.age = 0;
-    this.phase = 'telegraph';
-    // Danger zone: player must leave within 1s after activation
-    this.playerInsideTime = 0;
-    // Arena shrink: how much border encroaches (pixels)
-    this.shrinkAmount = opts.shrinkAmount || 60;
+class SoundEngine {
+  constructor() {
+    this.ctx = null;
+    this.muted = false;
+    this.musicPlaying = false;
+    this.musicBPM = 88;
+    this.musicIntensity = 0;
+    this._targetIntensity = 0;
+    this._targetBPM = 88;
+    this._beatTimer = null;
+    this._initialized = false;
+    this._measureCount = 0;
+    this._chordIndex = -1;
+    this._arpStep = 0;
+    this._masterGain = null;
+    this._compressor = null;
+    this._reverb = null;
+    this._reverbSend = null;
+    // Cinematic minor progression: Cm -> Ab -> Eb -> Bb (i-VI-III-VII)
+    this._chords = [
+      { root: 65.41, notes: [65.41, 77.78, 98.00] },   // Cm: C2, Eb2, G2
+      { root: 51.91, notes: [51.91, 65.41, 77.78] },   // Ab: Ab1, C2, Eb2
+      { root: 77.78, notes: [77.78, 98.00, 116.54] },  // Eb: Eb2, G2, Bb2
+      { root: 58.27, notes: [58.27, 73.42, 87.31] },   // Bb: Bb1, D2, F2
+    ];
   }
 
-  update(dt) {
-    this.age += dt;
-    if (this.age < this.telegraphTime) this.phase = 'telegraph';
-    else if (this.age < this.telegraphTime + this.activeTime) this.phase = 'active';
-    else this.phase = 'expired';
+  init() {
+    if (this._initialized) return;
+    try {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      // Master output chain: gain -> compressor -> destination
+      this._compressor = this.ctx.createDynamicsCompressor();
+      this._compressor.threshold.value = -18;
+      this._compressor.knee.value = 12;
+      this._compressor.ratio.value = 4;
+      this._compressor.attack.value = 0.003;
+      this._compressor.release.value = 0.15;
+      this._compressor.connect(this.ctx.destination);
+      this._masterGain = this.ctx.createGain();
+      this._masterGain.gain.value = 0.75;
+      this._masterGain.connect(this._compressor);
+      // Reverb send (convolver with procedural impulse response)
+      this._reverb = this._createReverb();
+      this._reverbSend = this.ctx.createGain();
+      this._reverbSend.gain.value = 0.2;
+      this._reverbSend.connect(this._reverb);
+      this._reverb.connect(this._masterGain);
+      this._initialized = true;
+    } catch (e) {}
   }
 
-  // Gravity well: pull player toward center
-  applyGravityToPlayer(player, dt) {
-    if (this.phase !== 'active' || this.type !== 'gravity') return null;
-    const dx = this.x - player.x;
-    const dy = this.y - player.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < this.radius && dist > 5) {
-      const force = (this.strength / (dist * dist)) * this.radius * dt;
-      return { fx: (dx / dist) * force, fy: (dy / dist) * force };
-    }
-    return null;
-  }
-
-  // Danger zone: check if player is inside
-  isPlayerInside(px, py) {
-    if (this.type !== 'danger-zone' || this.phase !== 'active') return false;
-    return px > this.x - this.width / 2 && px < this.x + this.width / 2 &&
-           py > this.y - this.height / 2 && py < this.y + this.height / 2;
-  }
-
-  // Arena shrink: get the reduced arena bounds
-  getArenaBounds(fullW, fullH) {
-    if (this.type !== 'shrink' || this.phase !== 'active') return null;
-    const progress = Math.min(1, (this.age - this.telegraphTime) / 2);
-    const s = this.shrinkAmount * progress;
-    return { left: s, top: s, right: fullW - s, bottom: fullH - s };
-  }
-
-  draw(ctx, fullW, fullH) {
-    if (this.phase === 'expired') return;
-    const isTelegraph = this.phase === 'telegraph';
-
-    if (this.type === 'gravity') {
-      const alpha = isTelegraph
-        ? 0.10 + Math.sin(this.age * 4) * 0.03
-        : 0.18 + Math.sin(this.age * 6) * 0.05;
-      ctx.globalAlpha = alpha;
-      ctx.strokeStyle = '#8b5cf6';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-      ctx.stroke();
-      if (!isTelegraph) {
-        const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
-        grad.addColorStop(0, 'rgba(139, 92, 246, 0.10)');
-        grad.addColorStop(1, 'rgba(139, 92, 246, 0)');
-        ctx.fillStyle = grad;
-        ctx.fill();
+  _createReverb() {
+    const len = this.ctx.sampleRate * 2;
+    const impulse = this.ctx.createBuffer(2, len, this.ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = impulse.getChannelData(0);
+      for (let i = 0; i < len; i++) {
+        d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
       }
-      ctx.globalAlpha = 1;
     }
-
-    else if (this.type === 'danger-zone') {
-      const alpha = isTelegraph
-        ? 0.08 + Math.sin(this.age * 3) * 0.03
-        : 0.15 + Math.sin(this.age * 5) * 0.04;
-      ctx.globalAlpha = alpha;
-      ctx.strokeStyle = '#dc2626';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
-      if (!isTelegraph) {
-        ctx.fillStyle = 'rgba(220, 38, 38, 0.06)';
-        ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
-      }
-      ctx.globalAlpha = 1;
-    }
-
-    else if (this.type === 'shrink') {
-      const bounds = this.getArenaBounds(fullW, fullH);
-      const alpha = isTelegraph
-        ? 0.06 + Math.sin(this.age * 3) * 0.02
-        : 0.15;
-      ctx.globalAlpha = alpha;
-      ctx.strokeStyle = '#22d3ee';
-      ctx.lineWidth = 3;
-      if (bounds) {
-        ctx.strokeRect(bounds.left, bounds.top, bounds.right - bounds.left, bounds.bottom - bounds.top);
-        ctx.fillStyle = 'rgba(34, 211, 238, 0.03)';
-        ctx.fillRect(0, 0, fullW, bounds.top);
-        ctx.fillRect(0, bounds.bottom, fullW, fullH - bounds.bottom);
-        ctx.fillRect(0, bounds.top, bounds.left, bounds.bottom - bounds.top);
-        ctx.fillRect(bounds.right, bounds.top, fullW - bounds.right, bounds.bottom - bounds.top);
-      } else {
-        const s = this.shrinkAmount;
-        ctx.setLineDash([8, 4]);
-        ctx.strokeRect(s, s, fullW - s * 2, fullH - s * 2);
-        ctx.setLineDash([]);
-      }
-      ctx.globalAlpha = 1;
-    }
+    const conv = this.ctx.createConvolver();
+    conv.buffer = impulse;
+    return conv;
   }
 
-  isExpired() { return this.phase === 'expired'; }
+  _out() { return this._masterGain || this.ctx.destination; }
+
+  resume() {
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+  }
+
+  toggleMute() {
+    this.muted = !this.muted;
+    if (this.muted) this.stopMusic();
+    return this.muted;
+  }
+
+  // --- Background Music ---
+  startMusic() {
+    if (!this.ctx || this.musicPlaying || this.muted) return;
+    this.musicPlaying = true;
+    this._measureCount = 0;
+    this._chordIndex = -1;
+    this._arpStep = 0;
+    this._scheduleMeasure();
+  }
+
+  stopMusic() {
+    this.musicPlaying = false;
+    if (this._beatTimer) { clearTimeout(this._beatTimer); this._beatTimer = null; }
+  }
+
+  updateMusicIntensity(phase, threatLevel) {
+    if (!this.ctx) return;
+    // Set targets — actual values lerp smoothly in _scheduleMeasure
+    this._targetIntensity = Math.min(1, (phase / 5) * 0.6 + threatLevel * 0.4);
+    this._targetBPM = 88 + this._targetIntensity * 72;
+  }
+
+  _scheduleMeasure() {
+    if (!this.musicPlaying || this.muted) return;
+    // Smooth lerp toward target intensity and BPM (15% per measure)
+    const lr = 0.15;
+    this.musicIntensity += (this._targetIntensity - this.musicIntensity) * lr;
+    this.musicBPM += (this._targetBPM - this.musicBPM) * lr;
+    const beatDur = 60 / this.musicBPM;
+    const workaheadMs = 100;
+    const measureDur = beatDur * 4;
+    const now = this.ctx.currentTime + 0.05;
+    const I = this.musicIntensity;
+    // Smooth fade factor: 0 at threshold, 1 at threshold+0.1
+    const fade = (threshold) => Math.max(0, Math.min(1, (I - threshold) / 0.1));
+    // Advance chord every 2 measures
+    if (this._measureCount % 2 === 0) {
+      this._chordIndex = (this._chordIndex + 1) % this._chords.length;
+    }
+    const chord = this._chords[this._chordIndex];
+
+    // === STRINGS PAD (always present — orchestral foundation) ===
+    this._scheduleStringPad(chord.notes, now, measureDur + 0.05);
+
+    // === DRUMS ===
+    for (let beat = 0; beat < 4; beat++) {
+      const bt = now + beat * beatDur;
+      // Kick on 1 and 3
+      if (beat === 0 || beat === 2) this._scheduleKick(bt);
+      // Hi-hat on 2 and 4
+      if (beat === 1 || beat === 3) this._scheduleHiHat(bt);
+      // Eighth-note hi-hats fade in around I=0.4
+      if (I > 0.35) this._scheduleHiHat(bt + beatDur / 2, fade(0.35) * 0.5);
+      // Snare fades in around I=0.25
+      if ((beat === 1 || beat === 3) && I > 0.2) this._scheduleSnare(bt, fade(0.2));
+    }
+
+    // === SUB BASS (fades in around I=0.15) ===
+    if (I > 0.1) {
+      const subFade = fade(0.1);
+      this._scheduleSubBass(chord.root, now, beatDur * 2, subFade);
+      this._scheduleSubBass(chord.root, now + beatDur * 2, beatDur * 2, subFade);
+    }
+
+    // === SYNTH BASS (fades in around I=0.35) ===
+    if (I > 0.3) {
+      const synthFade = fade(0.3);
+      this._scheduleSynthBass(chord.root * 2, now, beatDur * 0.9, synthFade);
+      this._scheduleSynthBass(chord.root * 2, now + beatDur * 2, beatDur * 0.45, synthFade);
+      this._scheduleSynthBass(chord.root * 2, now + beatDur * 2.5, beatDur * 0.45, synthFade);
+    }
+
+    // === ARPEGGIATOR (fades in around I=0.45) ===
+    if (I > 0.4) {
+      const arpFade = fade(0.4);
+      const arpNotes = chord.notes.map(f => f * 8); // octave 5
+      const stepsPerBeat = I > 0.7 ? 4 : 2;
+      const arpInterval = beatDur / stepsPerBeat;
+      for (let beat = 0; beat < 4; beat++) {
+        for (let sub = 0; sub < stepsPerBeat; sub++) {
+          const at = now + beat * beatDur + sub * arpInterval;
+          const noteIdx = this._arpStep % arpNotes.length;
+          this._scheduleArpNote(arpNotes[noteIdx], at, arpInterval * 0.7, arpFade);
+          this._arpStep++;
+        }
+      }
+    }
+
+    // === LEAD MELODY (fades in around I=0.65) ===
+    if (I > 0.6) {
+      this._scheduleLeadPhrase(chord.notes, now, measureDur, fade(0.6));
+    }
+
+    this._measureCount++;
+    this._beatTimer = setTimeout(
+      () => this._scheduleMeasure(),
+      measureDur * 1000 - workaheadMs
+    );
+  }
+
+  // --- Music Instruments ---
+
+  _scheduleStringPad(notes, t, dur) {
+    const I = this.musicIntensity;
+    const vol = 0.025 + I * 0.015;
+    const cutoff = 600 + I * 900;
+    const attack = Math.max(0.1, 0.5 - I * 0.25);
+    notes.forEach(freq => {
+      // 3 detuned sawtooth oscillators per note = lush strings
+      [-7, 0, 7].forEach(detune => {
+        const osc = this.ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.value = freq * 4; // octave 4 for strings
+        osc.detune.value = detune + (Math.random() - 0.5) * 3;
+        const lp = this.ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.value = cutoff;
+        lp.Q.value = 0.7;
+        const g = this.ctx.createGain();
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(vol, t + attack);
+        g.gain.setValueAtTime(vol, t + dur - 0.2);
+        g.gain.linearRampToValueAtTime(0, t + dur);
+        osc.connect(lp);
+        lp.connect(g);
+        g.connect(this._out());
+        // Reverb send for spaciousness
+        const rs = this.ctx.createGain();
+        rs.gain.value = 0.35;
+        lp.connect(rs);
+        rs.connect(this._reverbSend);
+        osc.start(t);
+        osc.stop(t + dur + 0.01);
+      });
+    });
+  }
+
+  _scheduleKick(t) {
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(150, t);
+    osc.frequency.exponentialRampToValueAtTime(35, t + 0.1);
+    g.gain.setValueAtTime(0.3 + this.musicIntensity * 0.1, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    osc.connect(g);
+    g.connect(this._out());
+    osc.start(t);
+    osc.stop(t + 0.2);
+  }
+
+  _scheduleHiHat(t, volScale = 1) {
+    const bufSz = this.ctx.sampleRate * 0.04;
+    const buf = this.ctx.createBuffer(1, bufSz, this.ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < bufSz; i++) d[i] = Math.random() * 2 - 1;
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const hp = this.ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 8000;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime((0.06 + this.musicIntensity * 0.04) * volScale, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+    src.connect(hp);
+    hp.connect(g);
+    g.connect(this._out());
+    src.start(t);
+  }
+
+  _scheduleSnare(t, fadeAmt = 1) {
+    // Noise body
+    const bufSz = this.ctx.sampleRate * 0.12;
+    const buf = this.ctx.createBuffer(1, bufSz, this.ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < bufSz; i++) d[i] = Math.random() * 2 - 1;
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 3000;
+    bp.Q.value = 0.8;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime((0.1 + this.musicIntensity * 0.05) * fadeAmt, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    src.connect(bp);
+    bp.connect(g);
+    g.connect(this._out());
+    src.start(t);
+    // Tonal snap
+    const osc = this.ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(200, t);
+    osc.frequency.exponentialRampToValueAtTime(100, t + 0.05);
+    const g2 = this.ctx.createGain();
+    g2.gain.setValueAtTime(0.08 * fadeAmt, t);
+    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+    osc.connect(g2);
+    g2.connect(this._out());
+    osc.start(t);
+    osc.stop(t + 0.06);
+  }
+
+  _scheduleSubBass(freq, t, dur, fadeAmt = 1) {
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    const g = this.ctx.createGain();
+    const vol = (0.14 + this.musicIntensity * 0.08) * fadeAmt;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.02);
+    g.gain.setValueAtTime(vol, t + dur - 0.04);
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    osc.connect(g);
+    g.connect(this._out());
+    osc.start(t);
+    osc.stop(t + dur + 0.01);
+  }
+
+  _scheduleSynthBass(freq, t, dur, fadeAmt = 1) {
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.value = freq;
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(300 + this.musicIntensity * 600, t);
+    lp.frequency.exponentialRampToValueAtTime(200, t + dur);
+    lp.Q.value = 3;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime((0.07 + this.musicIntensity * 0.04) * fadeAmt, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(lp);
+    lp.connect(g);
+    g.connect(this._out());
+    osc.start(t);
+    osc.stop(t + dur + 0.01);
+  }
+
+  _scheduleArpNote(freq, t, dur, fadeAmt = 1) {
+    const osc = this.ctx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.value = freq;
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 2000 + this.musicIntensity * 2000;
+    lp.Q.value = 1;
+    const g = this.ctx.createGain();
+    const vol = (0.03 + this.musicIntensity * 0.015) * fadeAmt;
+    g.gain.setValueAtTime(vol, t);
+    g.gain.setValueAtTime(vol * 0.6, t + dur * 0.5);
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    osc.connect(lp);
+    lp.connect(g);
+    g.connect(this._out());
+    // Arp reverb send
+    const rs = this.ctx.createGain();
+    rs.gain.value = 0.25;
+    lp.connect(rs);
+    rs.connect(this._reverbSend);
+    osc.start(t);
+    osc.stop(t + dur + 0.01);
+  }
+
+  _scheduleLeadPhrase(chordNotes, startTime, measureDur, fadeAmt = 1) {
+    const beatDur = measureDur / 4;
+    const leadNotes = chordNotes.map(f => f * 8); // octave 5
+    // Melodic pattern using chord tones (-1 = rest)
+    const pattern = [0, -1, 2, 1, -1, 2, 0, 1];
+    const noteLen = beatDur / 2;
+    pattern.forEach((idx, i) => {
+      if (idx === -1) return;
+      const freq = leadNotes[idx % leadNotes.length];
+      const t = startTime + i * noteLen;
+      const osc = this.ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      const lp = this.ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 3000;
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.03 * fadeAmt, t + 0.02);
+      g.gain.setValueAtTime(0.025 * fadeAmt, t + noteLen * 0.6);
+      g.gain.linearRampToValueAtTime(0, t + noteLen * 0.9);
+      osc.connect(lp);
+      lp.connect(g);
+      g.connect(this._out());
+      // Lead reverb send
+      const rs = this.ctx.createGain();
+      rs.gain.value = 0.45;
+      lp.connect(rs);
+      rs.connect(this._reverbSend);
+      osc.start(t);
+      osc.stop(t + noteLen);
+    });
+  }
+
+  // --- Sound Effects ---
+
+  playCollect() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(200, t);
+    osc.frequency.exponentialRampToValueAtTime(800, t + 0.15);
+    g.gain.setValueAtTime(0.2, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    osc.connect(g); g.connect(this._out());
+    osc.start(t); osc.stop(t + 0.15);
+  }
+
+  playEMP() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const out = this._out();
+    // Deep boom
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(60, t);
+    osc.frequency.exponentialRampToValueAtTime(20, t + 0.5);
+    g.gain.setValueAtTime(0.5, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    osc.connect(g); g.connect(out);
+    osc.start(t); osc.stop(t + 0.5);
+    // Crackle
+    const bufLen = this.ctx.sampleRate * 0.4;
+    const buf = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufLen * 0.15));
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const g2 = this.ctx.createGain();
+    g2.gain.setValueAtTime(0.25, t);
+    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+    src.connect(g2); g2.connect(out);
+    src.start(t);
+  }
+
+  playNearMiss() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const bufLen = this.ctx.sampleRate * 0.08;
+    const buf = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / bufLen);
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.frequency.value = 2000; bp.Q.value = 2;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.12, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+    src.connect(bp); bp.connect(g); g.connect(this._out());
+    src.start(t);
+  }
+
+  playPhase() {
+    // Epic orchestral level transition: timpani + rising strings + cymbal + chime
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const out = this._out();
+    // 1. Timpani impact
+    const timp = this.ctx.createOscillator();
+    const timpG = this.ctx.createGain();
+    timp.type = 'sine';
+    timp.frequency.setValueAtTime(80, t);
+    timp.frequency.exponentialRampToValueAtTime(45, t + 0.4);
+    timpG.gain.setValueAtTime(0.35, t);
+    timpG.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    timp.connect(timpG); timpG.connect(out);
+    timp.start(t); timp.stop(t + 0.5);
+    // 2. Rising strings swell (filtered sawtooth chord sweeping up)
+    [130.81, 155.56, 196.00, 261.63].forEach(startFreq => {
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(startFreq, t);
+      osc.frequency.exponentialRampToValueAtTime(startFreq * 2, t + 0.8);
+      const lp = this.ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(300, t);
+      lp.frequency.linearRampToValueAtTime(3000, t + 0.7);
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.05, t + 0.35);
+      g.gain.setValueAtTime(0.05, t + 0.7);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
+      osc.connect(lp); lp.connect(g); g.connect(out);
+      // Reverb for epic wash
+      if (this._reverbSend) {
+        const rs = this.ctx.createGain();
+        rs.gain.value = 0.5;
+        lp.connect(rs); rs.connect(this._reverbSend);
+      }
+      osc.start(t); osc.stop(t + 1.0);
+    });
+    // 3. Cymbal crash at the swell peak
+    const crashLen = this.ctx.sampleRate * 0.8;
+    const crashBuf = this.ctx.createBuffer(1, crashLen, this.ctx.sampleRate);
+    const cd = crashBuf.getChannelData(0);
+    for (let i = 0; i < crashLen; i++) cd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / crashLen, 1.5);
+    const crashSrc = this.ctx.createBufferSource();
+    crashSrc.buffer = crashBuf;
+    const crashHP = this.ctx.createBiquadFilter();
+    crashHP.type = 'highpass'; crashHP.frequency.value = 4000;
+    const crashG = this.ctx.createGain();
+    crashG.gain.setValueAtTime(0.12, t + 0.3);
+    crashG.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+    crashSrc.connect(crashHP); crashHP.connect(crashG); crashG.connect(out);
+    crashSrc.start(t + 0.3);
+    // 4. Triumphant major chime at peak (C5, E5, G5)
+    [523.25, 659.25, 783.99].forEach((freq, i) => {
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0, t + 0.5 + i * 0.08);
+      g.gain.linearRampToValueAtTime(0.1, t + 0.55 + i * 0.08);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 1.3 + i * 0.08);
+      osc.connect(g); g.connect(out);
+      if (this._reverbSend) {
+        const rs = this.ctx.createGain();
+        rs.gain.value = 0.5;
+        g.connect(rs); rs.connect(this._reverbSend);
+      }
+      osc.start(t + 0.5 + i * 0.08);
+      osc.stop(t + 1.4 + i * 0.08);
+    });
+  }
+
+  playBossSpawn() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const out = this._out();
+    // Ominous brass-like swell
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.value = 65.41; // C2
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(200, t);
+    lp.frequency.linearRampToValueAtTime(800, t + 0.5);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.18, t + 0.3);
+    g.gain.setValueAtTime(0.18, t + 0.5);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+    osc.connect(lp); lp.connect(g); g.connect(out);
+    osc.start(t); osc.stop(t + 0.8);
+    // Sub rumble
+    const sub = this.ctx.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.value = 40;
+    const sg = this.ctx.createGain();
+    sg.gain.setValueAtTime(0.25, t);
+    sg.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+    sub.connect(sg); sg.connect(out);
+    sub.start(t); sub.stop(t + 0.6);
+  }
+
+  playDeath() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const out = this._out();
+    // Descending tone
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(400, t);
+    osc.frequency.exponentialRampToValueAtTime(60, t + 0.5);
+    g.gain.setValueAtTime(0.25, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    osc.connect(g); g.connect(out);
+    osc.start(t); osc.stop(t + 0.5);
+    // Crunch noise
+    const bufLen = this.ctx.sampleRate * 0.3;
+    const buf = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufLen * 0.1));
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const g2 = this.ctx.createGain();
+    g2.gain.setValueAtTime(0.15, t + 0.05);
+    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    src.connect(g2); g2.connect(out);
+    src.start(t + 0.05);
+  }
+
+  playBossKill() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const out = this._out();
+    // Boom
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(80, t);
+    osc.frequency.exponentialRampToValueAtTime(30, t + 0.4);
+    g.gain.setValueAtTime(0.35, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+    osc.connect(g); g.connect(out);
+    osc.start(t); osc.stop(t + 0.4);
+    // Crackle
+    const bufLen = this.ctx.sampleRate * 0.5;
+    const buf = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufLen * 0.2)) * 0.3;
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const g2 = this.ctx.createGain();
+    g2.gain.value = 0.15;
+    src.connect(g2); g2.connect(out);
+    src.start(t);
+    // Satisfying ring
+    const osc2 = this.ctx.createOscillator();
+    const g3 = this.ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.value = 880;
+    g3.gain.setValueAtTime(0.1, t + 0.1);
+    g3.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+    osc2.connect(g3); g3.connect(out);
+    osc2.start(t + 0.1); osc2.stop(t + 0.6);
+  }
+
+  playStreakMilestone() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const out = this._out();
+    const notes = [523, 659, 784]; // C5, E5, G5
+    notes.forEach((freq, i) => {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      g.gain.setValueAtTime(0.12, t + i * 0.1);
+      g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.1 + 0.2);
+      osc.connect(g); g.connect(out);
+      osc.start(t + i * 0.1);
+      osc.stop(t + i * 0.1 + 0.2);
+    });
+  }
 }
+
+const soundEngine = new SoundEngine();
 
 // ============================================================
 // Main Game
@@ -2602,8 +3172,6 @@ class Game {
     this.powerups = [];
     this.shockwaves = [];
     this.bosses = [];
-    this.hazards = [];
-    this.hazardCooldown = 0;
     this.dodgedCount = 0;
     this.bossesDefeated = 0;
     this.closestCall = Infinity;
@@ -2623,9 +3191,8 @@ class Game {
     this.effects = {
       slowmo: { active: false, remaining: 0, duration: 0 },
       shrink: { active: false, remaining: 0, duration: 0 },
-      ghost: { active: false, remaining: 0, duration: 0 },
       magnet: { active: false, remaining: 0, duration: 0 },
-      dash: { active: false, remaining: 0, duration: 0 },
+      vortex: { active: false, remaining: 0, duration: 0, x: 0, y: 0, delay: 0 },
     };
 
     // Ability system
@@ -2642,6 +3209,13 @@ class Game {
 
     this.lastPowerupType = null;
     this.brain = new AIBrain();
+    this.rng = Math.random;
+    this._lastShotWasCounter = false;
+    this.threatLevel = 0;
+    this.endgameMode = null;
+    this.endgameCycleTimer = 0;
+    this.recentCounterMisses = 0;
+    this._threatAtCapDuration = 0;
 
     this.spawnTimer = 0;
     this.lastTime = 0;
@@ -2651,12 +3225,20 @@ class Game {
     this.pickupAnnounceTimer = 0;
     this.nextBossTime = BOSS_INTERVAL;
     this.bossLevel = 0;
-    this._lastAnnouncedPhase = -1;
+    this._lastAnnouncedPhase = 0;
     this.deathContext = null;
+
+    // Screen shake & flash (EMP)
+    this.screenShake = { x: 0, y: 0, intensity: 0 };
+    this.flashAlpha = 0;
+    this.flashColor = '#fff';
+
+    // Streak/Heat system
+    this.streak = { heat: 0, tier: 0, tierName: '', peakTier: 0, peakTierName: '' };
+    this.nearMissCooldown = 0;
+
     this.touchOffsetY = 50;
     this.safeArea = { top: 0, bottom: 0, left: 0, right: 0 };
-    this.rng = Math.random;
-    this.isDailyChallenge = false;
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -2850,25 +3432,20 @@ class Game {
       }, { passive: false });
     }
 
-    document.getElementById('btn-start').onclick = () => {
-      this.isDailyChallenge = false;
-      this.start();
+    // Mute button
+    document.getElementById('mute-btn').onclick = () => {
+      const muted = soundEngine.toggleMute();
+      document.getElementById('mute-btn').classList.toggle('muted', muted);
+      document.getElementById('mute-btn').innerHTML = muted ? '&#9835;' : '&#9834;';
     };
-    document.getElementById('btn-daily').onclick = () => this.startDaily();
-    document.getElementById('btn-retry').onclick = () => {
-      if (this.isDailyChallenge) {
-        this.startDaily();
-      } else {
-        this.start();
-      }
-    };
+
+    document.getElementById('btn-start').onclick = () => this.start();
+    document.getElementById('btn-retry').onclick = () => this.start();
     document.getElementById('btn-share').onclick = () => this.share();
     document.getElementById('btn-menu').onclick = () => {
       document.getElementById('gameover-screen').classList.remove('show');
       document.getElementById('start-screen').classList.remove('hidden');
       document.getElementById('ad-zone').style.display = 'none';
-      document.getElementById('daily-hud').style.display = 'none';
-      this.isDailyChallenge = false;
       this.updateStartScreen();
       this.idleLoop();
     };
@@ -2901,8 +3478,7 @@ class Game {
         bestsHTML += '<ol>';
         bests.forEach((b, i) => {
           const dateStr = b.date === 'legacy' ? 'Pre-update' : new Date(b.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-          const dailyBadge = b.daily ? '<span class="best-daily">DAILY</span>' : '';
-          bestsHTML += `<li><span class="best-rank">${i + 1}.</span><span class="best-time">${b.time.toFixed(1)}s</span><span class="best-date">${dateStr}${dailyBadge}</span></li>`;
+          bestsHTML += `<li><span class="best-rank">${i + 1}.</span><span class="best-time">${b.time.toFixed(1)}s</span><span class="best-date">${dateStr}</span></li>`;
         });
         bestsHTML += '</ol>';
       }
@@ -2950,29 +3526,16 @@ class Game {
     const best = bests.length > 0 ? bests[0].time : 0;
     const el = document.getElementById('start-best');
     el.textContent = best > 0 ? `Best: ${best.toFixed(1)}s` : '';
-
-    // Update daily challenge button with today's best
-    const dailyBtn = document.getElementById('btn-daily');
-    const todayKey = 'dodge-ai-daily-' + getTodayUTC();
-    const dailyBest = parseFloat(localStorage.getItem(todayKey) || '0');
-    if (dailyBest > 0) {
-      dailyBtn.textContent = `DAILY CHALLENGE (${dailyBest.toFixed(1)}s)`;
-    } else {
-      dailyBtn.textContent = 'DAILY CHALLENGE';
-    }
   }
 
   start() {
     document.getElementById('start-screen').classList.add('hidden');
     document.getElementById('gameover-screen').classList.remove('show');
+    this.canvas.classList.add('active');
     document.getElementById('ad-zone').style.display = 'none';
     document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('show'));
 
-    // Reset RNG to Math.random for normal play (daily mode sets it before calling start)
-    if (!this.isDailyChallenge) {
-      this.rng = Math.random;
-    }
-
+    this.rng = Math.random;
     this.running = true;
     this.gameTime = 0;
     this.phase = 0;
@@ -2982,8 +3545,6 @@ class Game {
     this.powerups = [];
     this.shockwaves = [];
     this.bosses = [];
-    this.hazards = [];
-    this.hazardCooldown = 0;
     this.dodgedCount = 0;
     this.bossesDefeated = 0;
     this.closestCall = Infinity;
@@ -2997,9 +3558,8 @@ class Game {
 
     this.effects.slowmo = { active: false, remaining: 0, duration: 0 };
     this.effects.shrink = { active: false, remaining: 0, duration: 0 };
-    this.effects.ghost = { active: false, remaining: 0, duration: 0 };
     this.effects.magnet = { active: false, remaining: 0, duration: 0 };
-    this.effects.dash = { active: false, remaining: 0, duration: 0 };
+    this.effects.vortex = { active: false, remaining: 0, duration: 0, x: 0, y: 0, delay: 0 };
     // Reset ability active states and cooldowns (but NOT unlocked status)
     for (const a of Object.values(this.abilities)) {
       a.cooldown = 0; a.active = false; a.remaining = 0;
@@ -3026,8 +3586,19 @@ class Game {
     this.brain.reset();
     this.lastTime = performance.now();
 
-    // Show/hide daily challenge HUD label
-    document.getElementById('daily-hud').style.display = this.isDailyChallenge ? 'block' : 'none';
+    // Reset streak/heat
+    this.streak = { heat: 0, tier: 0, tierName: '', peakTier: 0, peakTierName: '' };
+    this.nearMissCooldown = 0;
+    this.screenShake = { x: 0, y: 0, intensity: 0 };
+    this.flashAlpha = 0;
+
+    // Sound
+    soundEngine.init();
+    soundEngine.resume();
+    soundEngine.startMusic();
+
+    // Heat bar visible
+    document.getElementById('heat-bar-container').style.display = 'block';
 
     this.announcePhase();
     requestAnimationFrame(t => this.loop(t));
@@ -3041,13 +3612,6 @@ class Game {
     }
   }
 
-  startDaily() {
-    const seed = getDailySeed();
-    this.rng = mulberry32(seed);
-    this.isDailyChallenge = true;
-    this.start();
-  }
-
   loop(timestamp) {
     if (!this.running) return;
     try {
@@ -3056,8 +3620,16 @@ class Game {
       this.update(dt);
       this.render();
       this.updateUI();
+      this._loopErrors = 0;
     } catch (e) {
       console.error('Game loop error:', e);
+      this._loopErrors = (this._loopErrors || 0) + 1;
+      if (this._loopErrors > 10) {
+        console.error('Too many loop errors, stopping game');
+        this.running = false;
+        this.canvas.classList.remove('active');
+        return;
+      }
     }
     requestAnimationFrame(t => this.loop(t));
   }
@@ -3157,7 +3729,7 @@ class Game {
     // --- Move player ---
     const prevX = this.player.x;
     const prevY = this.player.y;
-    let lerp = this.effects.dash.active ? PLAYER_LERP * 4 : PLAYER_LERP;
+    let lerp = PLAYER_LERP;
     if (this.abilities.timeWarp.active) lerp *= 0.7;
     this.player.x += (this.targetX - this.player.x) * lerp;
     this.player.y += (this.targetY - this.player.y) * lerp;
@@ -3172,65 +3744,6 @@ class Game {
     this.brain.trackPosition(this.player.x, this.player.y, this.gameTime * 1000, this.w, this.h);
     this.updateThreatLevel(dt);
     this.updateEndgameCycle(dt);
-
-    // --- Hazards ---
-    this.hazardCooldown = Math.max(0, this.hazardCooldown - dt);
-    if (this.shouldSpawnHazard()) this.spawnHazard();
-    for (let i = this.hazards.length - 1; i >= 0; i--) {
-      const h = this.hazards[i];
-      h.update(dt);
-      if (h.isExpired()) { this.hazards.splice(i, 1); continue; }
-
-      // Gravity well: pull player
-      if (h.type === 'gravity') {
-        const force = h.applyGravityToPlayer(this.player, dt);
-        if (force && !this.effects.ghost.active) {
-          this.player.x += force.fx;
-          this.player.y += force.fy;
-        }
-      }
-
-      // Danger zone: damage if player stays inside >1s
-      if (h.type === 'danger-zone') {
-        if (h.isPlayerInside(this.player.x, this.player.y)) {
-          if (!this.effects.ghost.active) {
-            h.playerInsideTime += dt;
-            if (h.playerInsideTime > 1.0) {
-              this.deathContext = { type: 'hazard', subtype: 'danger-zone', color: '#dc2626', x: h.x, y: h.y, vx: 0, vy: 0, angle: 0, playerX: this.player.x, playerY: this.player.y, bossName: null, homing: false };
-              this.die();
-              return;
-            }
-          }
-        } else {
-          h.playerInsideTime = 0;
-        }
-      }
-
-      // Arena shrink: constrain player position
-      if (h.type === 'shrink') {
-        const bounds = h.getArenaBounds(this.w, this.h);
-        if (bounds && !this.effects.ghost.active) {
-          this.player.x = Math.max(bounds.left + 10, Math.min(bounds.right - 10, this.player.x));
-          this.player.y = Math.max(bounds.top + 10, Math.min(bounds.bottom - 10, this.player.y));
-        }
-      }
-    }
-
-    // Gravity wells also pull nearby projectiles
-    for (const h of this.hazards) {
-      if (h.type === 'gravity' && h.phase === 'active') {
-        for (const p of this.projectiles) {
-          const dx = h.x - p.x;
-          const dy = h.y - p.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < h.radius && dist > 5) {
-            const force = (h.strength * 0.5 / (dist * dist)) * h.radius * dt;
-            p.vx += (dx / dist) * force;
-            p.vy += (dy / dist) * force;
-          }
-        }
-      }
-    }
 
     // --- Spawn projectiles ---
     if (this.spawnTimer <= 0 && this.phaseAnnounceTimer <= 0 && this.bossAnnounceTimer <= 0) {
@@ -3259,6 +3772,44 @@ class Game {
           const strength = (1 - rdist / repelRadius) * repelForce * dt;
           p.vx += (rdx / rdist) * strength;
           p.vy += (rdy / rdist) * strength;
+        }
+      }
+    }
+
+    // --- Vortex gravity well ---
+    if (this.effects.vortex.active) {
+      // Tick down spawn delay
+      if (this.effects.vortex.delay > 0) {
+        const wasPending = this.effects.vortex.delay > 0;
+        this.effects.vortex.delay -= dt;
+        // Black hole just opened — shockwave burst
+        if (wasPending && this.effects.vortex.delay <= 0) {
+          this.effects.vortex.delay = 0;
+          const bx = this.effects.vortex.x, by = this.effects.vortex.y;
+          this.shockwaves.push(new Shockwave(bx, by, 120, '#a855f7', 0.6));
+          this.shockwaves.push(new Shockwave(bx, by, 60, '#fff', 0.3));
+        }
+      } else {
+        // Black hole is live — pull and destroy projectiles
+        const vx = this.effects.vortex.x;
+        const vy = this.effects.vortex.y;
+        const screenDiag = Math.sqrt(this.w * this.w + this.h * this.h);
+        const pullRadius = screenDiag * 0.8;
+        const destroyRadius = 44;
+        const pullForce = 800;
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+          const p = this.projectiles[i];
+          const dx = vx - p.x;
+          const dy = vy - p.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < destroyRadius) {
+            this.particles.push(new Particle(p.x, p.y, 0, 0, 0.3, '#a855f7', 1.5));
+            this.projectiles.splice(i, 1);
+          } else if (dist < pullRadius && dist > 1) {
+            const strength = (1 - dist / pullRadius) * pullForce * dt;
+            p.vx += (dx / dist) * strength;
+            p.vy += (dy / dist) * strength;
+          }
         }
       }
     }
@@ -3316,17 +3867,9 @@ class Game {
       const hitDist = pr + p.radius;
 
       if (dist < hitDist) {
-        if (this.effects.ghost.active || this.effects.dash.active) {
-          // Ghost/Dash — projectiles pass through
-          if (Math.random() < 0.3) {
-            const c = this.effects.dash.active ? '#06b6d4' : '#94a3b8';
-            this.particles.push(new Particle(p.x, p.y, 0, 0, 0.2, c, 1.5));
-          }
-          continue;
-        }
         // Dash Burst: brief invulnerability during teleport
         if (this.abilities.dashBurst.active) continue;
-        // Phase Shift: projectiles pass through, but hazards still hurt
+        // Phase Shift: projectiles pass through
         if (this.abilities.phaseShift.active) {
           if (Math.random() < 0.4) {
             this.particles.push(new Particle(p.x, p.y, 0, 0, 0.15, 'rgba(0,255,170,0.5)', 1.5));
@@ -3413,29 +3956,41 @@ class Game {
       }
 
       if (bossCollided) {
-        if (this.effects.ghost.active || this.effects.dash.active) {
-          // Ghost/Dash — pass through bosses
-          if (Math.random() < 0.2) {
-            const c = this.effects.dash.active ? '#06b6d4' : '#94a3b8';
-            this.particles.push(new Particle(boss.x, boss.y, 0, 0, 0.25, c, 2));
+        this.deathContext = {
+          type: 'boss',
+          subtype: boss.bossType?.shape || 'boss',
+          homing: false,
+          color: boss.color,
+          x: boss.x,
+          y: boss.y,
+          vx: 0,
+          vy: 0,
+          angle: Math.atan2(boss.y - this.player.y, boss.x - this.player.x),
+          playerX: this.player.x,
+          playerY: this.player.y,
+          bossName: boss.bossType?.name || 'Unknown Boss',
+        };
+        this.die();
+        return;
+      }
+
+      // Toxic trail collision
+      if (boss.trailSegments && !this.abilities.phaseShift.active) {
+        for (const ts of boss.trailSegments) {
+          const tdx = ts.x - this.player.x;
+          const tdy = ts.y - this.player.y;
+          const tdist = Math.sqrt(tdx * tdx + tdy * tdy);
+          if (tdist < pr + 8) {
+            this.deathContext = {
+              type: 'boss', subtype: 'toxic-trail', homing: false,
+              color: '#10b981', x: ts.x, y: ts.y, vx: 0, vy: 0,
+              angle: Math.atan2(ts.y - this.player.y, ts.x - this.player.x),
+              playerX: this.player.x, playerY: this.player.y,
+              bossName: 'Mr Wiggles (Toxic Trail)',
+            };
+            this.die();
+            return;
           }
-        } else {
-          this.deathContext = {
-            type: 'boss',
-            subtype: boss.bossType?.shape || 'boss',
-            homing: false,
-            color: boss.color,
-            x: boss.x,
-            y: boss.y,
-            vx: 0,
-            vy: 0,
-            angle: Math.atan2(boss.y - this.player.y, boss.x - this.player.x),
-            playerX: this.player.x,
-            playerY: this.player.y,
-            bossName: boss.bossType?.name || 'Unknown Boss',
-          };
-          this.die();
-          return;
         }
       }
 
@@ -3444,11 +3999,12 @@ class Game {
         this.bosses.splice(i, 1);
         this.bossesDefeated++;
         this.dodgedCount += 5;
+        this.streak.heat = Math.min(100, this.streak.heat + 20);
       }
     }
 
     // --- Update effects ---
-    for (const key of ['slowmo', 'shrink', 'ghost', 'magnet', 'dash']) {
+    for (const key of ['slowmo', 'shrink', 'magnet', 'vortex']) {
       const eff = this.effects[key];
       if (eff.active) {
         eff.remaining -= dt;
@@ -3500,14 +4056,71 @@ class Game {
     }
 
     // Smart particle cap - trim oldest if over limit
-    if (this.particles.length > 400) {
+    if (this.particles.length > 800) {
       this.particles.sort((a, b) => a.life - b.life);
-      this.particles = this.particles.slice(this.particles.length - 250);
+      this.particles = this.particles.slice(this.particles.length - 500);
     }
 
-    // Player trail
-    if (Math.random() < 0.3) {
-      const trailColor = this.effects.ghost.active ? '#94a3b8' : this.effects.dash.active ? '#06b6d4' : this.effects.shrink.active ? '#ec4899' : '#00f0ff';
+    // --- Near-miss detection & streak system ---
+    this.nearMissCooldown = Math.max(0, this.nearMissCooldown - dt);
+    for (const p of this.projectiles) {
+      const ndx = p.x - this.player.x;
+      const ndy = p.y - this.player.y;
+      const ndist = Math.sqrt(ndx * ndx + ndy * ndy);
+      if (ndist < 25 && p.age > 0.15 && this.nearMissCooldown <= 0) {
+        soundEngine.playNearMiss();
+        this.streak.heat = Math.min(100, this.streak.heat + 15);
+        this.nearMissCooldown = 0.15;
+        break;
+      } else if (ndist < 50 && ndist >= 25 && p.age > 0.15 && this.nearMissCooldown <= 0) {
+        this.streak.heat = Math.min(100, this.streak.heat + 5);
+        this.nearMissCooldown = 0.2;
+        break;
+      }
+    }
+
+    // Heat from time alive (+1 per 2 seconds)
+    this.streak.heat = Math.min(100, this.streak.heat + dt * 0.5);
+    // Heat decay
+    this.streak.heat = Math.max(0, this.streak.heat - 3 * dt);
+
+    // Tier calculation
+    const prevTier = this.streak.tier;
+    if (this.streak.heat >= 100) { this.streak.tier = 4; this.streak.tierName = 'UNSTOPPABLE'; }
+    else if (this.streak.heat >= 75) { this.streak.tier = 3; this.streak.tierName = 'ON FIRE'; }
+    else if (this.streak.heat >= 50) { this.streak.tier = 2; this.streak.tierName = 'HOT'; }
+    else if (this.streak.heat >= 25) { this.streak.tier = 1; this.streak.tierName = 'WARM'; }
+    else { this.streak.tier = 0; this.streak.tierName = ''; }
+
+    if (this.streak.tier > this.streak.peakTier) {
+      this.streak.peakTier = this.streak.tier;
+      this.streak.peakTierName = this.streak.tierName;
+    }
+
+    if (this.streak.tier > prevTier && this.streak.tier > 0) {
+      soundEngine.playStreakMilestone();
+    }
+
+    // --- Screen shake decay ---
+    if (this.screenShake.intensity > 0) {
+      this.screenShake.intensity *= Math.pow(0.05, dt);
+      if (this.screenShake.intensity < 0.5) this.screenShake.intensity = 0;
+      this.screenShake.x = (Math.random() - 0.5) * this.screenShake.intensity * 2;
+      this.screenShake.y = (Math.random() - 0.5) * this.screenShake.intensity * 2;
+    }
+
+    // --- Flash decay ---
+    if (this.flashAlpha > 0) {
+      this.flashAlpha = Math.max(0, this.flashAlpha - dt * 3);
+    }
+
+    // --- Update music intensity ---
+    soundEngine.updateMusicIntensity(this.phase, this.threatLevel);
+
+    // Player trail — enhanced by streak tier
+    const trailChance = 0.3 + this.streak.tier * 0.15;
+    if (Math.random() < trailChance) {
+      const trailColor = this.effects.shrink.active ? '#ec4899' : '#00f0ff';
       this.particles.push(new Particle(
         this.player.x, this.player.y,
         (Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20,
@@ -3533,6 +4146,7 @@ class Game {
 
   collectPowerup(pu) {
     const def = pu.def;
+    soundEngine.playCollect();
 
     // Pickup particles — burst outward
     for (let i = 0; i < 20; i++) {
@@ -3554,9 +4168,33 @@ class Game {
 
     if (pu.type === 'emp') {
       // === EMP ANIMATION ===
-      // Big shockwave from player
-      this.shockwaves.push(new Shockwave(this.player.x, this.player.y, Math.max(this.w, this.h) * 0.6, '#facc15', 0.8));
-      this.shockwaves.push(new Shockwave(this.player.x, this.player.y, Math.max(this.w, this.h) * 0.4, '#fff', 0.5));
+      soundEngine.playEMP();
+
+      // Screen flash
+      this.flashAlpha = 0.8;
+      this.flashColor = '#fff';
+      setTimeout(() => { this.flashAlpha = 0.4; this.flashColor = '#ff8800'; }, 100);
+
+      // Screen shake
+      this.screenShake.intensity = 15;
+
+      // 5 staggered shockwaves from player
+      const maxR = Math.max(this.w, this.h) * 0.7;
+      const shockColors = ['#facc15', '#fff', '#ff8800', '#facc15', '#fff'];
+      const shockSpeeds = [0.9, 0.7, 0.8, 0.6, 0.5];
+      for (let si = 0; si < 5; si++) {
+        setTimeout(() => {
+          this.shockwaves.push(new Shockwave(this.player.x, this.player.y, maxR * (0.4 + si * 0.1), shockColors[si], shockSpeeds[si]));
+        }, si * 60);
+      }
+
+      // Fireball at player center
+      for (let fi = 0; fi < 20; fi++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 20 + Math.random() * 60;
+        const colors = ['#ff4400', '#ff8800', '#facc15', '#fff'];
+        this.particles.push(new Particle(this.player.x, this.player.y, Math.cos(a) * sp, Math.sin(a) * sp, 0.6 + Math.random() * 0.3, colors[Math.floor(Math.random() * colors.length)], 4 + Math.random() * 4));
+      }
 
       // Explode each projectile with staggered delay based on distance from player
       const sorted = [...this.projectiles].sort((a, b) => {
@@ -3565,20 +4203,43 @@ class Game {
         return da - db;
       });
       sorted.forEach((p, idx) => {
-        // Staggered explosion particles
         const delay = idx * 0.02;
-        for (let j = 0; j < 6; j++) {
+        // 30 particles per projectile (mix of colors)
+        const empColors = ['#facc15', '#ff8800', '#ff4400', '#fff'];
+        for (let j = 0; j < 30; j++) {
           const a = Math.random() * Math.PI * 2;
-          const particle = new Particle(p.x, p.y, Math.cos(a) * 80, Math.sin(a) * 80, 0.4 + delay, '#facc15', 2.5);
-          this.particles.push(particle);
+          const sp = 40 + Math.random() * 120;
+          this.particles.push(new Particle(p.x, p.y, Math.cos(a) * sp, Math.sin(a) * sp, 0.3 + delay + Math.random() * 0.3, empColors[Math.floor(Math.random() * empColors.length)], 1.5 + Math.random() * 2));
+        }
+        // Debris (larger, slower)
+        for (let j = 0; j < 3; j++) {
+          const a = Math.random() * Math.PI * 2;
+          this.particles.push(new Particle(p.x, p.y, Math.cos(a) * 30, Math.sin(a) * 30, 0.8 + delay, '#ff8800', 4 + Math.random() * 3));
         }
         // Mini shockwave per projectile
-        this.shockwaves.push(new Shockwave(p.x, p.y, 20, '#facc15', 0.3));
+        this.shockwaves.push(new Shockwave(p.x, p.y, 25, '#facc15', 0.3));
       });
 
-      // Kill bosses too
+      // Lingering embers (float upward)
+      for (let e = 0; e < 40; e++) {
+        const ex = this.player.x + (Math.random() - 0.5) * 300;
+        const ey = this.player.y + (Math.random() - 0.5) * 300;
+        const ec = Math.random() < 0.5 ? '#ff8800' : '#facc15';
+        this.particles.push(new Particle(ex, ey, (Math.random() - 0.5) * 15, -20 - Math.random() * 30, 1.5 + Math.random() * 1, ec, 1 + Math.random()));
+      }
+
+      // Kill bosses with extra drama
       for (const boss of this.bosses) {
-        this.bossDeathEffect(boss);
+        // Extra dramatic boss death during EMP: 80 particles + 3 shockwaves
+        for (let bi = 0; bi < 80; bi++) {
+          const a = Math.random() * Math.PI * 2;
+          const sp = 50 + Math.random() * 250;
+          this.particles.push(new Particle(boss.x, boss.y, Math.cos(a) * sp, Math.sin(a) * sp, 0.8, boss.color, 2 + Math.random() * 4));
+        }
+        this.shockwaves.push(new Shockwave(boss.x, boss.y, boss.radius * 5, boss.color, 0.7));
+        this.shockwaves.push(new Shockwave(boss.x, boss.y, boss.radius * 3, '#fff', 0.5));
+        this.shockwaves.push(new Shockwave(boss.x, boss.y, boss.radius * 4, '#ff8800', 0.6));
+        soundEngine.playBossKill();
         this.bossesDefeated++;
         this.dodgedCount += 10;
       }
@@ -3587,7 +4248,6 @@ class Game {
       this.dodgedCount += this.projectiles.length;
       this.projectiles = [];
       this.warnings = [];
-      this.hazards = [];
 
     } else if (pu.type === 'slowmo') {
       // === SLOW-MO ANIMATION ===
@@ -3619,19 +4279,24 @@ class Game {
       this.effects.shrink.remaining = POWERUP_TYPES.shrink.duration;
       this.effects.shrink.duration = POWERUP_TYPES.shrink.duration;
 
-    } else if (pu.type === 'ghost') {
-      // === GHOST ANIMATION ===
-      this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 80, '#94a3b8', 0.5));
-      for (let i = 0; i < 14; i++) {
-        const a = (i / 14) * Math.PI * 2;
+    } else if (pu.type === 'vortex') {
+      // === BLACK HOLE — 1.5s warning, then activates at pickup location ===
+      const bx = pu.x, by = pu.y;
+      // Warning particles spiral inward during delay
+      for (let i = 0; i < 24; i++) {
+        const a = (i / 24) * Math.PI * 2;
+        const dist = 120 + Math.random() * 80;
         this.particles.push(new Particle(
-          this.player.x + Math.cos(a) * 15, this.player.y + Math.sin(a) * 15,
-          Math.cos(a) * 50, Math.sin(a) * 50, 0.6, '#94a3b8', 2
+          bx + Math.cos(a) * dist, by + Math.sin(a) * dist,
+          -Math.cos(a) * 60, -Math.sin(a) * 60, 1.4, '#a855f7', 2
         ));
       }
-      this.effects.ghost.active = true;
-      this.effects.ghost.remaining = POWERUP_TYPES.ghost.duration;
-      this.effects.ghost.duration = POWERUP_TYPES.ghost.duration;
+      this.effects.vortex.active = true;
+      this.effects.vortex.delay = 1.5;
+      this.effects.vortex.remaining = POWERUP_TYPES.vortex.duration + 1.5;
+      this.effects.vortex.duration = POWERUP_TYPES.vortex.duration + 1.5;
+      this.effects.vortex.x = bx;
+      this.effects.vortex.y = by;
 
     } else if (pu.type === 'magnet') {
       // === REPULSE ANIMATION ===
@@ -3648,25 +4313,6 @@ class Game {
       this.effects.magnet.remaining = POWERUP_TYPES.magnet.duration;
       this.effects.magnet.duration = POWERUP_TYPES.magnet.duration;
 
-    } else if (pu.type === 'dash') {
-      // === DASH ANIMATION ===
-      // Directional burst with afterimage
-      const vx = this.player.vx || 0;
-      const vy = this.player.vy || 0;
-      const speed = Math.sqrt(vx * vx + vy * vy);
-      const dashAngle = speed > 0.5 ? Math.atan2(vy, vx) : this.rng() * Math.PI * 2;
-      for (let i = 0; i < 12; i++) {
-        const spread = (Math.random() - 0.5) * 1.2;
-        const a = dashAngle + Math.PI + spread;
-        this.particles.push(new Particle(
-          this.player.x, this.player.y,
-          Math.cos(a) * 100, Math.sin(a) * 100, 0.4, '#06b6d4', 2.5
-        ));
-      }
-      this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 80, '#06b6d4', 0.4));
-      this.effects.dash.active = true;
-      this.effects.dash.remaining = POWERUP_TYPES.dash.duration;
-      this.effects.dash.duration = POWERUP_TYPES.dash.duration;
     }
   }
 
@@ -3873,45 +4519,8 @@ class Game {
     return { x, y };
   }
 
-  shouldSpawnHazard() {
-    if (this.hazards.length >= 2) return false;
-    if (this.gameTime < 20) return false;
-    if (this.hazardCooldown > 0) return false;
-    const pattern = this.brain.getHighestConfidencePattern(this.gameTime);
-    if (!pattern || pattern.confidence < 0.6) return false;
-    return this.rng() < (this.threatLevel * 0.25);
-  }
-
-  spawnHazard() {
-    const pattern = this.brain.getHighestConfidencePattern(this.gameTime);
-    if (!pattern) return;
-
-    let hazard;
-    if (pattern.type === 'safe-zone' && this.phase >= 1) {
-      const zoneCenter = this.brain.safeZoneDetector.getZoneCenter(pattern.zone, this.w, this.h);
-      hazard = new Hazard(zoneCenter.x, zoneCenter.y, 'gravity', {
-        radius: 70 + this.rng() * 30, duration: 8 + this.rng() * 4
-      });
-    } else if (pattern.type === 'cornering' && this.phase >= 2) {
-      const edgeTarget = this._getEdgeTarget(pattern.edge);
-      const w = 120 + this.rng() * 60;
-      const h = 120 + this.rng() * 60;
-      hazard = new Hazard(edgeTarget.x, edgeTarget.y, 'danger-zone', {
-        width: w, height: h, duration: 10 + this.rng() * 5
-      });
-    } else if (this.threatLevel > 0.65 && this.phase >= 3) {
-      hazard = new Hazard(0, 0, 'shrink', {
-        shrinkAmount: 40 + this.rng() * 30, duration: 12 + this.rng() * 4
-      });
-    } else {
-      return;
-    }
-
-    this.hazards.push(hazard);
-    this.hazardCooldown = 10;
-  }
-
   announceBoss() {
+    soundEngine.playBossSpawn();
     this.bossLevel++;
     this.bossAnnounceTimer = BOSS_ANNOUNCE_DURATION / 1000;
     const bossType = BOSS_TYPES[(this.bossLevel - 1) % BOSS_TYPES.length];
@@ -3946,6 +4555,7 @@ class Game {
   }
 
   bossDeathEffect(boss) {
+    soundEngine.playBossKill();
     // Big explosion using boss color
     for (let i = 0; i < 40; i++) {
       const a = Math.random() * Math.PI * 2;
@@ -3970,16 +4580,16 @@ class Game {
 
   die() {
     // Analytics: death event with phase info
-    if (this.isDailyChallenge) {
-      trackEvent('daily-death', `Daily ${getTodayUTC()}: ${this.gameTime.toFixed(1)}s Phase ${this.phase + 1}`);
-    } else {
-      trackEvent(
-        `death-phase-${this.phase + 1}`,
-        `Died at ${this.gameTime.toFixed(1)}s in Phase ${this.phase + 1}: ${PHASE_DEFS[Math.min(this.phase, PHASE_DEFS.length - 1)].name}`
-      );
-    }
+    trackEvent(
+      `death-phase-${this.phase + 1}`,
+      `Died at ${this.gameTime.toFixed(1)}s in Phase ${this.phase + 1}: ${PHASE_DEFS[Math.min(this.phase, PHASE_DEFS.length - 1)].name}`
+    );
 
     this.running = false;
+    this.canvas.classList.remove('active');
+    soundEngine.playDeath();
+    soundEngine.stopMusic();
+    document.getElementById('heat-bar-container').style.display = 'none';
     this.brain.lastThreatLevel = this.threatLevel;
     this.brain.save();
     this.totalGames++;
@@ -3989,15 +4599,6 @@ class Game {
     const newUnlock = this.checkMilestoneUnlocks();
     if (newUnlock) {
       this.unlockAnnounce = { name: newUnlock, timer: 3.0 };
-    }
-
-    // Track daily challenge best time per UTC date
-    if (this.isDailyChallenge) {
-      const todayKey = 'dodge-ai-daily-' + getTodayUTC();
-      const prevDailyBest = parseFloat(localStorage.getItem(todayKey) || '0');
-      if (this.gameTime > prevDailyBest) {
-        localStorage.setItem(todayKey, this.gameTime.toFixed(1));
-      }
     }
 
     for (let i = 0; i < 50; i++) {
@@ -4019,7 +4620,7 @@ class Game {
       this.bestTime = this.gameTime;
       localStorage.setItem('dodge-ai-best', this.bestTime.toFixed(1));
     }
-    saveBest(this.gameTime, this.isDailyChallenge);
+    saveBest(this.gameTime);
 
     // 300ms freeze with indicator, then 500ms particle fade, then game over
     setTimeout(() => this.startDeathParticles(), 300);
@@ -4117,6 +4718,10 @@ class Game {
   }
 
   showGameOver(isNewBest) {
+    // Clean up previous streak display
+    const prevStreak = document.getElementById('go-streak');
+    if (prevStreak) prevStreak.remove();
+
     document.getElementById('go-time').innerHTML = `${this.gameTime.toFixed(1)}<span>s</span>`;
     const phaseQuips = [
       'Died in Phase 1. The tutorial phase. I can\'t even.',
@@ -4126,14 +4731,14 @@ class Game {
       'Phase 5. Respect. You earned that death.',
       'Phase 6. You absolute legend. Still dead though.',
     ];
-    if (this.isDailyChallenge) {
-      document.getElementById('go-phase').textContent = `Daily Challenge - ${getTodayUTC()}`;
-      document.getElementById('go-phase').style.color = '#facc15';
-    } else {
-      document.getElementById('go-phase').textContent = phaseQuips[Math.min(this.phase, 5)];
-      document.getElementById('go-phase').style.color = '';
-    }
+    document.getElementById('go-phase').textContent = phaseQuips[Math.min(this.phase, 5)];
+    document.getElementById('go-phase').style.color = '';
     document.getElementById('go-dodged').textContent = this.dodgedCount;
+    // Streak tier in game over
+    const killedByEl2 = document.getElementById('go-killed-by');
+    if (this.streak.peakTierName) {
+      killedByEl2.insertAdjacentHTML('afterend', `<div id="go-streak" style="color:${this.streak.peakTier >= 3 ? '#ff4400' : this.streak.peakTier >= 2 ? '#ff8800' : '#facc15'}; font-size:12px; letter-spacing:2px; margin-top:6px;">PEAK HEAT: ${this.streak.peakTierName}</div>`);
+    }
     document.getElementById('go-closest').textContent = this.closestCall === Infinity ? '0px' : `${Math.round(this.closestCall)}px`;
     document.getElementById('go-games').textContent = this.totalGames;
     document.getElementById('go-new-best').style.display = isNewBest ? 'block' : 'none';
@@ -4220,13 +4825,6 @@ class Game {
     ctx.fillStyle = '#00f0ff';
     ctx.textBaseline = 'top';
     ctx.fillText('DODGE AI', 60, 40);
-
-    // Daily challenge badge (below title, only in daily mode)
-    if (this.isDailyChallenge) {
-      ctx.font = 'bold 16px "Courier New", monospace';
-      ctx.fillStyle = '#facc15';
-      ctx.fillText(`DAILY CHALLENGE - ${getTodayUTC()}`, 60, 80);
-    }
 
     // AI confidence badge (top right)
     const confidence = this.brain.getConfidence();
@@ -4363,6 +4961,12 @@ class Game {
     ctx.fillStyle = '#06060f';
     ctx.fillRect(0, 0, w, h);
 
+    // Apply screen shake
+    ctx.save();
+    if (this.screenShake.intensity > 0) {
+      ctx.translate(this.screenShake.x, this.screenShake.y);
+    }
+
     // Slowmo tint
     if (this.effects.slowmo.active) {
       ctx.fillStyle = 'rgba(59, 130, 246, 0.04)';
@@ -4391,9 +4995,6 @@ class Game {
 
     // Power-ups
     for (const pu of this.powerups) pu.draw(ctx);
-
-    // Hazards (background layer, drawn before projectiles)
-    for (const hz of this.hazards) hz.draw(ctx, w, h);
 
     // Shockwaves
     for (const sw of this.shockwaves) sw.draw(ctx);
@@ -4428,7 +5029,7 @@ class Game {
     // Player
     if (this.running) {
       const pr = this.getPlayerRadius();
-      const playerColor = this.effects.ghost.active ? '#94a3b8' : this.effects.dash.active ? '#06b6d4' : this.effects.shrink.active ? '#ec4899' : '#00f0ff';
+      const playerColor = this.effects.shrink.active ? '#ec4899' : '#00f0ff';
 
       // Magnet repel ring
       if (this.effects.magnet.active) {
@@ -4448,32 +5049,152 @@ class Game {
         ctx.globalAlpha = 1;
       }
 
-      // Dash speed streak
-      if (this.effects.dash.active) {
-        const speed = Math.sqrt(this.player.vx ** 2 + this.player.vy ** 2);
-        if (speed > 0.5) {
-          const angle = Math.atan2(-this.player.vy, -this.player.vx);
-          for (let li = 0; li < 4; li++) {
-            const offset = (li - 1.5) * 0.35;
-            const lineAngle = angle + offset;
-            const startR = pr + 6;
-            const lineLen = Math.min(speed * 5, 40);
-            ctx.globalAlpha = 0.5 - li * 0.1;
-            ctx.strokeStyle = '#06b6d4';
+      // === BLACK HOLE (Interstellar-style) ===
+      if (this.effects.vortex.active) {
+        const vx = this.effects.vortex.x;
+        const vy = this.effects.vortex.y;
+        const totalDur = this.effects.vortex.duration;
+        const rem = this.effects.vortex.remaining;
+        const delay = this.effects.vortex.delay;
+        const gt = this.gameTime;
+
+        ctx.save();
+
+        if (delay > 0) {
+          // --- FORMING PHASE: warning ripple + growing singularity ---
+          const formProgress = 1 - (delay / 1.5); // 0 -> 1 over 1.5s
+          const warningR = 40 * formProgress;
+
+          // Pulsing warning rings expanding outward
+          for (let r = 0; r < 3; r++) {
+            const ringPhase = (formProgress * 3 + r * 0.33) % 1;
+            const ringR = ringPhase * 120;
+            ctx.globalAlpha = (1 - ringPhase) * 0.3 * formProgress;
+            ctx.strokeStyle = '#a855f7';
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.moveTo(
-              this.player.x + Math.cos(lineAngle) * startR,
-              this.player.y + Math.sin(lineAngle) * startR
-            );
-            ctx.lineTo(
-              this.player.x + Math.cos(lineAngle) * (startR + lineLen),
-              this.player.y + Math.sin(lineAngle) * (startR + lineLen)
-            );
+            ctx.arc(vx, vy, ringR, 0, Math.PI * 2);
             ctx.stroke();
           }
+
+          // Growing dark core
+          ctx.globalAlpha = formProgress * 0.8;
+          const formGrad = ctx.createRadialGradient(vx, vy, 0, vx, vy, warningR);
+          formGrad.addColorStop(0, '#000');
+          formGrad.addColorStop(0.6, 'rgba(88, 28, 135, 0.6)');
+          formGrad.addColorStop(1, 'rgba(168, 85, 247, 0)');
+          ctx.fillStyle = formGrad;
+          ctx.beginPath();
+          ctx.arc(vx, vy, warningR, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Flickering sparks converging
+          for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * Math.PI * 2 + gt * 4;
+            const sparkR = (1 - formProgress) * 80 + 10;
+            ctx.globalAlpha = 0.5 * formProgress;
+            ctx.fillStyle = '#c084fc';
+            ctx.beginPath();
+            ctx.arc(vx + Math.cos(a) * sparkR, vy + Math.sin(a) * sparkR, 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+        } else {
+          // --- ACTIVE BLACK HOLE ---
+          const activeDur = totalDur - 1.5;
+          const activeRem = rem;
+          const life = Math.min(1, activeRem / (activeDur * 0.8)); // fade in last 20%
+          const baseR = 40;
+          const pulse = 1 + Math.sin(gt * 3) * 0.05;
+          const coreR = baseR * pulse;
+
+          // Gravitational lensing glow (outermost halo)
+          const lensR = coreR * 6;
+          const lensGrad = ctx.createRadialGradient(vx, vy, coreR * 2, vx, vy, lensR);
+          lensGrad.addColorStop(0, 'rgba(168, 85, 247, 0.15)');
+          lensGrad.addColorStop(0.3, 'rgba(251, 146, 60, 0.08)');
+          lensGrad.addColorStop(1, 'rgba(168, 85, 247, 0)');
+          ctx.globalAlpha = life;
+          ctx.fillStyle = lensGrad;
+          ctx.beginPath();
+          ctx.arc(vx, vy, lensR, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Accretion disk — tilted ellipse with rotation
+          const diskR = coreR * 3.5;
+          const diskRotation = gt * 0.8;
+          const diskTilt = 0.28;
+
+          // Outer accretion glow rings
+          for (let ring = 4; ring >= 0; ring--) {
+            const rr = diskR + ring * 8;
+            const alpha = (0.3 - ring * 0.05) * life;
+            const hue = 20 + ring * 12;
+            ctx.globalAlpha = alpha;
+            ctx.strokeStyle = `hsl(${hue}, 95%, ${58 + ring * 7}%)`;
+            ctx.lineWidth = 5 - ring * 0.6;
+            ctx.beginPath();
+            ctx.ellipse(vx, vy, rr, rr * diskTilt, diskRotation, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          // Hot inner accretion disk
+          ctx.globalAlpha = 0.8 * life;
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.ellipse(vx, vy, diskR * 0.7, diskR * 0.7 * diskTilt, diskRotation, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.strokeStyle = '#fb923c';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.ellipse(vx, vy, diskR * 0.85, diskR * 0.85 * diskTilt, diskRotation, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Perpendicular cross-disk (vertical ring from Interstellar)
+          ctx.globalAlpha = 0.18 * life;
+          ctx.strokeStyle = '#c084fc';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.ellipse(vx, vy, diskR * 0.6, diskR, diskRotation, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Event horizon (pitch black center)
           ctx.globalAlpha = 1;
+          const bhGrad = ctx.createRadialGradient(vx, vy, 0, vx, vy, coreR * 1.3);
+          bhGrad.addColorStop(0, '#000');
+          bhGrad.addColorStop(0.7, '#000');
+          bhGrad.addColorStop(1, 'rgba(88, 28, 135, 0.8)');
+          ctx.fillStyle = bhGrad;
+          ctx.beginPath();
+          ctx.arc(vx, vy, coreR * 1.3, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Photon ring
+          ctx.globalAlpha = (0.7 + Math.sin(gt * 12) * 0.2) * life;
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(vx, vy, coreR * 1.35, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Orbiting debris particles
+          for (let i = 0; i < 24; i++) {
+            const angle = (i / 24) * Math.PI * 2 + gt * (1.2 + i * 0.12);
+            const orbitR = coreR * 2 + Math.sin(gt * 2 + i) * 12;
+            const squash = 0.25 + Math.abs(Math.sin(angle + diskRotation)) * 0.75;
+            const px = vx + Math.cos(angle) * orbitR;
+            const py = vy + Math.sin(angle) * orbitR * squash;
+            const brightness = 0.3 + Math.abs(Math.sin(angle * 2 + gt)) * 0.7;
+            ctx.globalAlpha = brightness * 0.7 * life;
+            ctx.fillStyle = brightness > 0.6 ? '#fbbf24' : '#fb923c';
+            ctx.beginPath();
+            ctx.arc(px, py, 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
+
+        ctx.restore();
       }
 
       // Time Warp screen tint
@@ -4482,9 +5203,8 @@ class Game {
         ctx.fillRect(0, 0, w, h);
       }
 
-      // Ghost flicker / Phase Shift transparency
-      let ghostAlpha = this.effects.ghost.active ? 0.25 + Math.sin(this.gameTime * 15) * 0.1 : 1;
-      if (this.abilities.phaseShift.active) ghostAlpha = 0.35;
+      // Phase Shift transparency
+      let ghostAlpha = this.abilities.phaseShift.active ? 0.35 : 1;
 
       // Outer glow
       ctx.shadowColor = playerColor;
@@ -4511,39 +5231,39 @@ class Game {
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
 
-      // Ability cooldown indicator near player
-      const abilityOrder = ['dashBurst', 'decoy', 'phaseShift', 'timeWarp'];
-      const readyAbility = abilityOrder.find(n => this.abilities[n].unlocked);
-      if (readyAbility) {
-        const ab = this.abilities[readyAbility];
-        const ringX = this.player.x + 15;
-        const ringY = this.player.y - 15;
-        const ringRadius = 6;
-
-        if (ab.active) {
-          // Active: bright filled ring
-          ctx.globalAlpha = 0.7;
-          ctx.fillStyle = '#00ffaa';
-          ctx.beginPath();
-          ctx.arc(ringX, ringY, ringRadius, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.globalAlpha = 1;
-        } else if (ab.cooldown > 0) {
-          // On cooldown: partial arc showing recharge progress
-          const progress = 1 - (ab.cooldown / ab.maxCooldown);
-          ctx.strokeStyle = 'rgba(0, 255, 170, 0.3)';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(ringX, ringY, ringRadius, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2);
-          ctx.stroke();
-        } else {
-          // Ready: full ring
-          ctx.strokeStyle = 'rgba(0, 255, 170, 0.6)';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(ringX, ringY, ringRadius, 0, Math.PI * 2);
-          ctx.stroke();
+      // Streak visual effects
+      if (this.streak.tier >= 1) {
+        // WARM: golden glow around player
+        const glowAlpha = 0.08 + this.streak.tier * 0.04;
+        const glowR = pr + 10 + this.streak.tier * 8;
+        ctx.globalAlpha = glowAlpha;
+        const heatGrad = ctx.createRadialGradient(this.player.x, this.player.y, pr, this.player.x, this.player.y, glowR);
+        const heatColors = ['rgba(250,204,21,0.3)', 'rgba(250,204,21,0)'];
+        if (this.streak.tier >= 3) {
+          heatColors[0] = 'rgba(255,68,0,0.3)';
+        } else if (this.streak.tier >= 2) {
+          heatColors[0] = 'rgba(249,115,22,0.3)';
         }
+        heatGrad.addColorStop(0, heatColors[0]);
+        heatGrad.addColorStop(1, heatColors[1]);
+        ctx.fillStyle = heatGrad;
+        ctx.beginPath();
+        ctx.arc(this.player.x, this.player.y, glowR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+
+      if (this.streak.tier >= 3) {
+        // ON FIRE: screen edge flame effect
+        const edgeAlpha = 0.04 + (this.streak.tier === 4 ? 0.03 : 0);
+        const pulse = Math.sin(this.gameTime * 4) * 0.02;
+        ctx.globalAlpha = edgeAlpha + pulse;
+        const edgeGrad = ctx.createRadialGradient(w/2, h/2, Math.min(w,h)*0.3, w/2, h/2, Math.min(w,h)*0.7);
+        edgeGrad.addColorStop(0, 'rgba(255,68,0,0)');
+        edgeGrad.addColorStop(1, 'rgba(255,68,0,0.6)');
+        ctx.fillStyle = edgeGrad;
+        ctx.fillRect(0, 0, w, h);
+        ctx.globalAlpha = 1;
       }
 
       // Mobile ability button visibility update
@@ -4553,6 +5273,7 @@ class Game {
         const isMobile = 'ontouchstart' in window;
         abilityBtnEl.style.display = (isMobile && hasAbility && this.running) ? 'block' : 'none';
         if (hasAbility) {
+          const abilityOrder = ['dashBurst', 'decoy', 'phaseShift', 'timeWarp'];
           const ready = abilityOrder.find(n => this.abilities[n].unlocked && this.abilities[n].cooldown <= 0 && !this.abilities[n].active);
           if (ready) {
             const labels = { dashBurst: 'DB', decoy: 'DC', phaseShift: 'PS', timeWarp: 'TW' };
@@ -4565,6 +5286,17 @@ class Game {
           }
         }
       }
+    }
+
+    // Restore screen shake translation
+    ctx.restore();
+
+    // Screen flash overlay (drawn AFTER ctx.restore so it covers full screen)
+    if (this.flashAlpha > 0) {
+      ctx.globalAlpha = this.flashAlpha;
+      ctx.fillStyle = this.flashColor;
+      ctx.fillRect(0, 0, w, h);
+      ctx.globalAlpha = 1;
     }
   }
 
@@ -4636,7 +5368,23 @@ class Game {
     document.getElementById('bias-right').textContent = `${bias.right}%`;
     document.getElementById('brain-insight').textContent = this.brain.getInsight();
 
-    for (const key of ['slowmo', 'shrink', 'ghost', 'magnet', 'dash']) {
+    // Heat bar
+    const heatFill = document.getElementById('heat-bar-fill');
+    const heatTier = document.getElementById('heat-tier');
+    if (heatFill) {
+      heatFill.style.width = `${this.streak.heat}%`;
+      if (this.streak.heat >= 75) { heatFill.style.background = '#ff3355'; }
+      else if (this.streak.heat >= 50) { heatFill.style.background = '#ff8800'; }
+      else if (this.streak.heat >= 25) { heatFill.style.background = '#facc15'; }
+      else { heatFill.style.background = '#3b82f6'; }
+    }
+    if (heatTier) {
+      heatTier.textContent = this.streak.tierName;
+      const tierColors = { '': '#666', 'WARM': '#facc15', 'HOT': '#ff8800', 'ON FIRE': '#ff4400', 'UNSTOPPABLE': '#ff3355' };
+      heatTier.style.color = tierColors[this.streak.tierName] || '#666';
+    }
+
+    for (const key of ['slowmo', 'shrink', 'magnet', 'vortex']) {
       const eff = this.effects[key];
       const el = document.getElementById(`pu-${key}`);
       const bar = document.getElementById(`pu-${key}-bar`);
