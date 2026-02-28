@@ -62,6 +62,9 @@
   }
   </script>
 
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
   <style>
     :root {
       --sa-top: env(safe-area-inset-top, 0px);
@@ -125,9 +128,16 @@
     }
 
     #hud-dodged {
-      font-size: 11px;
-      color: #555;
-      margin-top: 2px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #facc15;
+      margin-top: 4px;
+      text-shadow: 0 0 10px rgba(250,204,21,0.3);
+      transition: transform 0.15s ease-out, text-shadow 0.15s ease-out;
+    }
+    #hud-dodged.pop {
+      transform: scale(1.3);
+      text-shadow: 0 0 20px rgba(250,204,21,0.7);
     }
 
     /* --- Power-up HUD --- */
@@ -645,9 +655,11 @@
       display: none;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: safe center;
       background: rgba(6, 6, 15, 0.95);
       backdrop-filter: blur(4px);
+      overflow-y: auto;
+      padding: 40px 20px;
     }
 
     #gameover-screen.show { display: flex; }
@@ -693,6 +705,128 @@
     .go-btn.primary { border-color: rgba(0, 240, 255, 0.4); color: #00f0ff; }
     .go-btn.primary:hover { background: rgba(0, 240, 255, 0.1); border-color: #00f0ff; }
 
+    /* --- Leaderboard --- */
+    .lb-section {
+      margin-top: 20px;
+      width: 100%;
+      max-width: 360px;
+      text-align: center;
+    }
+
+    .lb-submit {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+
+    .lb-submit input {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #fff;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      width: 160px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .lb-submit input:focus {
+      border-color: rgba(0, 240, 255, 0.5);
+    }
+
+    .lb-submit input::placeholder { color: #444; }
+
+    .lb-submit button {
+      padding: 8px 16px;
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid rgba(0, 240, 255, 0.4);
+      color: #00f0ff;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      letter-spacing: 1px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .lb-submit button:hover {
+      background: rgba(0, 240, 255, 0.2);
+      border-color: #00f0ff;
+    }
+
+    .lb-submit button:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    .lb-status {
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 10px;
+      min-height: 16px;
+    }
+
+    .lb-status.success { color: #22c55e; }
+    .lb-status.error { color: #ff3355; }
+
+    .lb-title {
+      font-size: 10px;
+      color: #555;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+
+    .lb-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .lb-table th {
+      color: #555;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 4px 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-weight: normal;
+    }
+
+    .lb-table td {
+      padding: 6px 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      color: #888;
+    }
+
+    .lb-table .lb-rank { width: 30px; text-align: center; }
+    .lb-table .lb-name { text-align: left; color: #ccc; }
+    .lb-table .lb-time-col { text-align: right; color: #00f0ff; font-weight: bold; }
+    .lb-table .lb-phase-col { text-align: center; color: #8b5cf6; font-size: 11px; }
+
+    .lb-table .rank-1 .lb-rank { color: #ffd700; }
+    .lb-table .rank-2 .lb-rank { color: #c0c0c0; }
+    .lb-table .rank-3 .lb-rank { color: #cd7f32; }
+
+    .lb-table .lb-highlight { background: rgba(0, 240, 255, 0.05); }
+    .lb-table .lb-highlight .lb-name { color: #00f0ff; }
+
+    .lb-empty {
+      color: #444;
+      font-size: 11px;
+      padding: 16px 0;
+    }
+
+    .lb-loading {
+      color: #555;
+      font-size: 11px;
+      padding: 16px 0;
+    }
 
     /* --- Ad Zone Placeholder --- */
     .ad-zone {
@@ -874,6 +1008,7 @@
     <button class="menu-btn primary" id="btn-start">PLAY</button>
     <button class="menu-btn" id="btn-howto">HOW TO PLAY</button>
     <button class="menu-btn" id="btn-stats">STATS</button>
+    <button class="menu-btn" id="btn-leaderboard">LEADERBOARD</button>
     <button class="menu-btn" id="btn-contact">CONTACT</button>
     <button class="menu-btn" id="btn-toggle-brain">AI BRAIN: OFF</button>
   </div>
@@ -903,6 +1038,15 @@
   </div>
 </div>
 
+<!-- Leaderboard Modal -->
+<div class="modal-overlay" id="modal-leaderboard">
+  <div class="modal-content">
+    <button class="modal-close" data-close="modal-leaderboard">&times;</button>
+    <h2>Leaderboard</h2>
+    <div class="lb-title" style="margin-top:8px">GLOBAL TOP 10</div>
+    <div id="modal-lb-body"><div class="lb-loading">Loading...</div></div>
+  </div>
+</div>
 
 <!-- Game Over Screen -->
 <div id="gameover-screen">
@@ -923,6 +1067,15 @@
     </div>
   </div>
   <div class="go-new-best" id="go-new-best" style="display:none">NEW BEST</div>
+  <div class="lb-section" id="go-lb-section">
+    <div class="lb-submit" id="go-lb-submit">
+      <input type="text" id="go-lb-name" placeholder="Your name" maxlength="20" autocomplete="off">
+      <button id="go-lb-btn">SUBMIT</button>
+    </div>
+    <div class="lb-status" id="go-lb-status"></div>
+    <div class="lb-title">GLOBAL TOP 10</div>
+    <div id="go-lb-body"><div class="lb-loading">Loading...</div></div>
+  </div>
   <div class="go-buttons">
     <button class="go-btn" id="btn-share">SHARE</button>
     <button class="go-btn primary" id="btn-retry">RETRY</button>
@@ -989,6 +1142,89 @@ function decayWeight(sampleTime, currentTime) {
   if (age < 20) return 2.0;
   if (age < 30) return 1.0;
   return 0.5;
+}
+
+// ============================================================
+// Leaderboard — Supabase helpers
+// ============================================================
+const SUPABASE_URL = 'https://gbktpawzepghapatbktz.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdia3RwYXd6ZXBnaGFwYXRia3R6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyODg3NDUsImV4cCI6MjA4Nzg2NDc0NX0.8nWtlS68shHMGKq2gwyM-Cy595_-y7jThOtM_OJiGik';
+
+let sb = null;
+try {
+  sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+} catch (e) {
+  console.warn('Supabase init failed:', e);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+let _lbCache = null;
+let _lbCacheTime = 0;
+const LB_CACHE_MS = 30000;
+
+async function fetchLeaderboard(forceRefresh = false) {
+  if (!sb) return [];
+  if (!forceRefresh && _lbCache && Date.now() - _lbCacheTime < LB_CACHE_MS) return _lbCache;
+  try {
+    const { data, error } = await sb.from('leaderboard')
+      .select('name, time_s, phase, dodges, bosses')
+      .order('time_s', { ascending: false })
+      .limit(10);
+    if (error) throw error;
+    _lbCache = data || [];
+    _lbCacheTime = Date.now();
+    return _lbCache;
+  } catch (e) {
+    console.warn('Leaderboard fetch failed:', e);
+    return _lbCache || [];
+  }
+}
+
+async function submitScore(name, time_s, phase, dodges, bosses) {
+  if (!sb) throw new Error('Leaderboard unavailable');
+  const { error } = await sb.from('leaderboard').insert({
+    name: name.trim().slice(0, 20),
+    time_s: parseFloat(time_s.toFixed(1)),
+    phase,
+    dodges,
+    bosses
+  });
+  if (error) throw error;
+  _lbCache = null; // bust cache
+}
+
+function getPlayerName() {
+  return localStorage.getItem('dodge-ai-player-name') || '';
+}
+
+function setPlayerName(name) {
+  localStorage.setItem('dodge-ai-player-name', name.trim().slice(0, 20));
+}
+
+function renderLeaderboard(containerId, rows, highlightName) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  if (!rows || rows.length === 0) {
+    el.innerHTML = '<div class="lb-empty">No scores yet. Be the first!</div>';
+    return;
+  }
+  const hn = (highlightName || '').trim().toLowerCase();
+  let html = '<table class="lb-table"><thead><tr><th class="lb-rank">#</th><th class="lb-name">Name</th><th class="lb-time-col">Time</th><th class="lb-phase-col">Phase</th></tr></thead><tbody>';
+  rows.forEach((r, i) => {
+    const rank = i + 1;
+    const cls = [
+      rank <= 3 ? `rank-${rank}` : '',
+      hn && r.name.trim().toLowerCase() === hn ? 'lb-highlight' : ''
+    ].filter(Boolean).join(' ');
+    html += `<tr class="${cls}"><td class="lb-rank">${rank}</td><td class="lb-name">${escapeHtml(r.name)}</td><td class="lb-time-col">${parseFloat(r.time_s).toFixed(1)}s</td><td class="lb-phase-col">${r.phase}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
 }
 
 // Utility: Convert radian angle to cardinal/ordinal direction name
@@ -1082,7 +1318,7 @@ const POWERUP_TYPES = {
   emp:       { name: 'KABOOM',        color: '#facc15', duration: 0,   icon: 'E' },
   shrink:    { name: 'SMOL MODE',     color: '#ec4899', duration: 10,  icon: 'K' },
   magnet:    { name: 'PERSONAL SPACE', color: '#f97316', duration: 7,   icon: 'R' },
-  vortex:    { name: 'BLACK HOLE',    color: '#a855f7', duration: 8,   icon: 'V' },
+  vortex:    { name: 'BLACK HOLE',    color: '#a855f7', duration: 10,  icon: 'V' },
 };
 
 const POWERUP_SPAWN_MIN = 7;
@@ -1627,6 +1863,41 @@ class Particle {
     ctx.beginPath();
     ctx.arc(this.x, this.y, Math.max(0, this.radius * (this.life / this.maxLife)), 0, Math.PI * 2);
     ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ============================================================
+// Score Popup — floating "+N" text for number-go-up juice
+// ============================================================
+class ScorePopup {
+  constructor(x, y, value, color) {
+    this.x = x;
+    this.y = y;
+    this.value = value;
+    this.color = color || '#facc15';
+    this.life = 0.8;
+    this.maxLife = 0.8;
+    this.vy = -60; // float upward
+    this.scale = value >= 5 ? 1.4 : 1.0;
+  }
+  update(dt) {
+    this.y += this.vy * dt;
+    this.vy *= 0.95;
+    this.life -= dt;
+  }
+  draw(ctx) {
+    const t = this.life / this.maxLife;
+    const easeOut = 1 - Math.pow(1 - Math.min(t * 3, 1), 3); // quick scale-in
+    ctx.globalAlpha = t * 0.9;
+    ctx.fillStyle = this.color;
+    ctx.font = `bold ${Math.round(14 * this.scale * easeOut)}px Courier New`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = 8;
+    ctx.fillText(`+${this.value}`, this.x, this.y);
+    ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
   }
 }
@@ -2297,9 +2568,8 @@ class Boss {
   }
 
   isExpired() {
-    // Sentinel stays alive — it's a persistent threat, not a timer
-    if (this.bossType.name === 'Sentinel') return false;
-    return this.age > this.lifetime;
+    // Bosses never expire — only an EMP can destroy them
+    return false;
   }
 
   getCollisionPoints() {
@@ -2459,11 +2729,29 @@ class PowerUp {
   draw(ctx) {
     const pulse = Math.sin(this.age * 4) * 0.3 + 0.7;
     const fadeOut = this.age > POWERUP_LIFETIME - 1.5 ? Math.max(0, (POWERUP_LIFETIME - this.age) / 1.5) : 1;
+
+    // Rotating dashed ring — instantly distinguishes from bullets
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.age * 1.5);
+    ctx.globalAlpha = 0.4 * fadeOut;
+    ctx.strokeStyle = this.def.color;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.arc(0, 0, POWERUP_RADIUS + 10 + Math.sin(this.age * 3) * 2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // Soft outer glow
     ctx.globalAlpha = 0.15 * pulse * fadeOut;
     ctx.fillStyle = this.def.color;
     ctx.beginPath();
     ctx.arc(this.x, this.y, POWERUP_RADIUS + 8 + Math.sin(this.age * 3) * 3, 0, Math.PI * 2);
     ctx.fill();
+
+    // Core orb
     ctx.globalAlpha = 0.9 * fadeOut;
     ctx.shadowColor = this.def.color;
     ctx.shadowBlur = 20 * pulse;
@@ -2471,7 +2759,17 @@ class PowerUp {
     ctx.beginPath();
     ctx.arc(this.x, this.y, POWERUP_RADIUS * pulse, 0, Math.PI * 2);
     ctx.fill();
+
+    // White border ring — powerups have a ring, bullets don't
     ctx.shadowBlur = 0;
+    ctx.globalAlpha = 0.5 * fadeOut;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, POWERUP_RADIUS * pulse + 1, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Icon text
     ctx.globalAlpha = fadeOut;
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 14px Courier New';
@@ -3124,10 +3422,12 @@ class Game {
     this.projectiles = [];
     this.warnings = [];
     this.particles = [];
+    this.scorePopups = [];
     this.powerups = [];
     this.shockwaves = [];
     this.bosses = [];
     this.dodgedCount = 0;
+    this.dodgePopTimer = 0;
     this.bossesDefeated = 0;
     this.closestCall = Infinity;
     this.totalGames = parseInt(localStorage.getItem('dodge-ai-games') || '0');
@@ -3144,7 +3444,7 @@ class Game {
     this.targetY = 0;
 
     this.effects = {
-      slowmo: { active: false, remaining: 0, duration: 0 },
+      slowmo: { active: false, remaining: 0, duration: 0, blend: 0 },
       shrink: { active: false, remaining: 0, duration: 0 },
       magnet: { active: false, remaining: 0, duration: 0 },
       vortex: { active: false, remaining: 0, duration: 0, x: 0, y: 0, delay: 0 },
@@ -3358,6 +3658,9 @@ class Game {
       onMove(e.touches[0].clientX, e.touches[0].clientY - this.touchOffsetY);
     }, { passive: false });
 
+    // Disable right-click context menu (game-breaking)
+    this.canvas.addEventListener('contextmenu', e => e.preventDefault());
+
     // iOS Safari pinch-to-zoom prevention
     document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
     document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
@@ -3428,6 +3731,60 @@ class Game {
     document.getElementById('btn-contact').onclick = () => {
       window.location.href = 'mailto:znjeim@gmail.com';
     };
+    // Leaderboard modal on start screen
+    document.getElementById('btn-leaderboard').onclick = async () => {
+      document.getElementById('modal-leaderboard').classList.add('show');
+      document.getElementById('modal-lb-body').innerHTML = '<div class="lb-loading">Loading...</div>';
+      const rows = await fetchLeaderboard();
+      renderLeaderboard('modal-lb-body', rows, getPlayerName());
+    };
+
+    // Game over leaderboard submit
+    const lbBtn = document.getElementById('go-lb-btn');
+    const lbInput = document.getElementById('go-lb-name');
+    const lbStatus = document.getElementById('go-lb-status');
+
+    const doSubmit = async () => {
+      const name = lbInput.value.trim();
+      if (!name || name.length < 1) {
+        lbStatus.textContent = 'Enter a name first';
+        lbStatus.className = 'lb-status error';
+        return;
+      }
+      if (name.length > 20) {
+        lbStatus.textContent = 'Name too long (max 20 chars)';
+        lbStatus.className = 'lb-status error';
+        return;
+      }
+      lbBtn.disabled = true;
+      lbStatus.textContent = 'Submitting...';
+      lbStatus.className = 'lb-status';
+      try {
+        await submitScore(
+          name,
+          this._pendingScore.time,
+          this._pendingScore.phase,
+          this._pendingScore.dodges,
+          this._pendingScore.bosses
+        );
+        setPlayerName(name);
+        lbStatus.textContent = 'Score submitted!';
+        lbStatus.className = 'lb-status success';
+        document.getElementById('go-lb-submit').style.display = 'none';
+        const rows = await fetchLeaderboard(true);
+        renderLeaderboard('go-lb-body', rows, name);
+      } catch (e) {
+        lbStatus.textContent = 'Failed to submit. Try again.';
+        lbStatus.className = 'lb-status error';
+        lbBtn.disabled = false;
+      }
+    };
+
+    lbBtn.onclick = doSubmit;
+    lbInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') doSubmit();
+    });
+
     // AI Brain toggle
     const brainVisible = localStorage.getItem('dodge-ai-brain-visible') === 'true';
     const brainPanel = document.getElementById('brain-panel');
@@ -3470,10 +3827,12 @@ class Game {
     this.projectiles = [];
     this.warnings = [];
     this.particles = [];
+    this.scorePopups = [];
     this.powerups = [];
     this.shockwaves = [];
     this.bosses = [];
     this.dodgedCount = 0;
+    this.dodgePopTimer = 0;
     this.bossesDefeated = 0;
     this.closestCall = Infinity;
     this.spawnTimer = 1.2;
@@ -3484,7 +3843,7 @@ class Game {
     this.bossLevel = 0;
     this._lastAnnouncedPhase = 0;
 
-    this.effects.slowmo = { active: false, remaining: 0, duration: 0 };
+    this.effects.slowmo = { active: false, remaining: 0, duration: 0, blend: 0 };
     this.effects.shrink = { active: false, remaining: 0, duration: 0 };
     this.effects.magnet = { active: false, remaining: 0, duration: 0 };
     this.effects.vortex = { active: false, remaining: 0, duration: 0, x: 0, y: 0, delay: 0 };
@@ -3567,7 +3926,9 @@ class Game {
   }
 
   getSlowMod() {
-    let mod = this.effects.slowmo.active ? 0.3 : 1;
+    // Smooth easing via blend (0 = normal, 1 = full slow)
+    const t = this.effects.slowmo.blend || 0;
+    let mod = 1 - t * 0.7; // lerp from 1.0 to 0.3
     if (this.abilities.timeWarp.active) mod *= 0.3;
     return mod;
   }
@@ -3730,11 +4091,11 @@ class Game {
           this.shockwaves.push(new Shockwave(bx, by, 60, '#fff', 0.3));
         }
       } else {
-        // Black hole is live — only captures projectiles that pass near it
+        // Black hole is live — captures and devours projectiles
         const vx = this.effects.vortex.x;
         const vy = this.effects.vortex.y;
-        const gravityRadius = 250;    // larger orbit zone
-        const destroyRadius = 25;     // consumed at center
+        const gravityRadius = 550;    // massive gravity reach
+        const destroyRadius = 55;     // larger annihilation zone
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
           const p = this.projectiles[i];
           const dx = vx - p.x;
@@ -3759,12 +4120,12 @@ class Game {
             const ty = nx * p._bhSpin;
             // How deep into the gravity well (0=edge, 1=center)
             const depth = Math.max(0, 1 - dist / gravityRadius);
-            // Radial pull: slow at edge, fast near center (quadratic)
-            const radialPull = (25 + 400 * depth * depth) * dt;
+            // Radial pull: violent inward suction
+            const radialPull = (200 + 1400 * depth * depth) * dt;
             // Orbital spin: strong at mid-range, fades near center
-            const orbitSpin = (80 + 180 * depth) * (dist > 50 ? 1 : dist / 50) * dt;
-            // Blend: projectiles at edge keep most velocity, deep ones fully controlled
-            const blend = Math.min(depth * 1.5, 1);
+            const orbitSpin = (180 + 400 * depth) * (dist > 50 ? 1 : dist / 50) * dt;
+            // Blend: edge projectiles quickly captured, deep ones fully controlled
+            const blend = Math.min(depth * 2.0, 1);
             const targetVx = nx * radialPull + tx * orbitSpin;
             const targetVy = ny * radialPull + ty * orbitSpin;
             p.vx = p.vx * (1 - blend) + targetVx * blend;
@@ -3858,6 +4219,7 @@ class Game {
 
       if (p.isOffscreen(this.w, this.h) && (p.type !== 'bouncer' || p.bounces >= p.maxBounces)) {
         this.dodgedCount++;
+        this.dodgePopTimer = 0.15; // trigger HUD pop
         if (p.isCounter) this.recentCounterMisses++;
         this.projectiles.splice(i, 1);
       }
@@ -3956,9 +4318,11 @@ class Game {
 
       if (boss.isExpired()) {
         this.bossDeathEffect(boss);
+        this.scorePopups.push(new ScorePopup(boss.x, boss.y, 5, boss.color));
         this.bosses.splice(i, 1);
         this.bossesDefeated++;
         this.dodgedCount += 5;
+        this.dodgePopTimer = 0.2;
         this.streak.heat = Math.min(100, this.streak.heat + 20);
       }
     }
@@ -3972,6 +4336,17 @@ class Game {
           eff.active = false;
           eff.remaining = 0;
         }
+      }
+    }
+    // Smooth bullet time easing (ramp blend toward target over ~0.4s)
+    {
+      const eff = this.effects.slowmo;
+      const target = eff.active ? 1 : 0;
+      const easeSpeed = 2.5; // 1/0.4s
+      if (eff.blend < target) {
+        eff.blend = Math.min(target, (eff.blend || 0) + easeSpeed * dt);
+      } else if (eff.blend > target) {
+        eff.blend = Math.max(target, (eff.blend || 0) - easeSpeed * dt);
       }
     }
 
@@ -4014,6 +4389,13 @@ class Game {
       this.particles[i].update(dt);
       if (this.particles[i].life <= 0) this.particles.splice(i, 1);
     }
+    // --- Score popups ---
+    for (let i = this.scorePopups.length - 1; i >= 0; i--) {
+      this.scorePopups[i].update(dt);
+      if (this.scorePopups[i].life <= 0) this.scorePopups.splice(i, 1);
+    }
+    // --- Dodge counter pop timer ---
+    if (this.dodgePopTimer > 0) this.dodgePopTimer -= dt;
 
     // Smart particle cap - trim oldest if over limit
     if (this.particles.length > 800) {
@@ -4202,10 +4584,17 @@ class Game {
         soundEngine.playBossKill();
         this.bossesDefeated++;
         this.dodgedCount += 10;
+        this.scorePopups.push(new ScorePopup(boss.x, boss.y, 10, '#facc15'));
       }
       this.bosses = [];
 
-      this.dodgedCount += this.projectiles.length;
+      // Score popup for wiped projectiles
+      const wipedCount = this.projectiles.length;
+      if (wipedCount > 0) {
+        this.scorePopups.push(new ScorePopup(this.player.x, this.player.y - 30, wipedCount, '#ff8800'));
+      }
+      this.dodgedCount += wipedCount;
+      this.dodgePopTimer = 0.3;
       this.projectiles = [];
       this.warnings = [];
 
@@ -4688,6 +5077,26 @@ class Game {
     document.getElementById('go-games').textContent = this.totalGames;
     document.getElementById('go-new-best').style.display = isNewBest ? 'block' : 'none';
 
+    // Leaderboard: store pending score, pre-fill name, reset submit UI
+    this._pendingScore = {
+      time: this.gameTime,
+      phase: Math.min(this.phase + 1, 6),
+      dodges: this.dodgedCount,
+      bosses: this.bossesDefeated
+    };
+    const nameInput = document.getElementById('go-lb-name');
+    nameInput.value = getPlayerName();
+    document.getElementById('go-lb-submit').style.display = 'flex';
+    document.getElementById('go-lb-btn').disabled = false;
+    document.getElementById('go-lb-status').textContent = '';
+    document.getElementById('go-lb-status').className = 'lb-status';
+
+    // Load leaderboard asynchronously
+    document.getElementById('go-lb-body').innerHTML = '<div class="lb-loading">Loading...</div>';
+    fetchLeaderboard().then(rows => {
+      renderLeaderboard('go-lb-body', rows, getPlayerName());
+    });
+
     document.getElementById('gameover-screen').classList.add('show');
     document.getElementById('ad-zone').style.display = 'flex';
     this.updateStartScreen();
@@ -4841,10 +5250,12 @@ class Game {
       ctx.translate(this.screenShake.x, this.screenShake.y);
     }
 
-    // Slowmo tint
-    if (this.effects.slowmo.active) {
-      ctx.fillStyle = 'rgba(59, 130, 246, 0.04)';
+    // Slowmo tint (eased with blend)
+    if (this.effects.slowmo.blend > 0.01) {
+      ctx.globalAlpha = 0.04 * this.effects.slowmo.blend;
+      ctx.fillStyle = 'rgb(59, 130, 246)';
       ctx.fillRect(0, 0, w, h);
+      ctx.globalAlpha = 1;
     }
 
     // Grid
@@ -4875,6 +5286,8 @@ class Game {
 
     // Particles
     for (const p of this.particles) p.draw(ctx);
+    // Score popups (above particles, below player)
+    for (const sp of this.scorePopups) sp.draw(ctx);
 
     // Projectiles
     for (const p of this.projectiles) p.draw(ctx);
@@ -5018,96 +5431,137 @@ class Game {
           }
 
         } else {
-          // --- ACTIVE BLACK HOLE ---
+          // --- ACTIVE BLACK HOLE (Gargantua-style) ---
           const activeDur = totalDur - 1.5;
           const activeRem = rem;
-          const life = Math.min(1, activeRem / (activeDur * 0.8)); // fade in last 20%
-          const baseR = 40;
-          const pulse = 1 + Math.sin(gt * 3) * 0.05;
+          const life = Math.min(1, activeRem / (activeDur * 0.8));
+          const baseR = 55;
+          const pulse = 1 + Math.sin(gt * 3) * 0.04;
           const coreR = baseR * pulse;
+          const diskRotation = gt * 0.6;
+          const diskTilt = 0.3; // how squashed the horizontal disk is
 
-          // Gravitational lensing glow (outermost halo)
-          const lensR = coreR * 7.5;
-          const lensGrad = ctx.createRadialGradient(vx, vy, coreR * 2, vx, vy, lensR);
-          lensGrad.addColorStop(0, 'rgba(168, 85, 247, 0.15)');
-          lensGrad.addColorStop(0.3, 'rgba(251, 146, 60, 0.08)');
-          lensGrad.addColorStop(1, 'rgba(168, 85, 247, 0)');
+          // Outer gravitational lensing glow
+          const lensR = coreR * 6;
+          const lensGrad = ctx.createRadialGradient(vx, vy, coreR * 1.8, vx, vy, lensR);
+          lensGrad.addColorStop(0, 'rgba(180, 100, 30, 0.12)');
+          lensGrad.addColorStop(0.4, 'rgba(120, 60, 20, 0.05)');
+          lensGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
           ctx.globalAlpha = life;
           ctx.fillStyle = lensGrad;
           ctx.beginPath();
           ctx.arc(vx, vy, lensR, 0, Math.PI * 2);
           ctx.fill();
 
-          // Accretion disk — tilted ellipse with rotation
-          const diskR = coreR * 4.5;
-          const diskRotation = gt * 0.8;
-          const diskTilt = 0.28;
+          // === HORIZONTAL ACCRETION DISK (thick, filled bands) ===
+          // Back half of disk (behind the black hole)
+          const diskR = coreR * 4;
 
-          // Outer accretion glow rings
-          for (let ring = 4; ring >= 0; ring--) {
-            const rr = diskR + ring * 8;
-            const alpha = (0.3 - ring * 0.05) * life;
-            const hue = 20 + ring * 12;
-            ctx.globalAlpha = alpha;
-            ctx.strokeStyle = `hsl(${hue}, 95%, ${58 + ring * 7}%)`;
-            ctx.lineWidth = 5 - ring * 0.6;
-            ctx.beginPath();
-            ctx.ellipse(vx, vy, rr, rr * diskTilt, diskRotation, 0, Math.PI * 2);
-            ctx.stroke();
-          }
-
-          // Hot inner accretion disk
-          ctx.globalAlpha = 0.8 * life;
-          ctx.strokeStyle = '#fff';
-          ctx.lineWidth = 2.5;
+          // Outer warm glow band
+          ctx.globalAlpha = 0.35 * life;
+          ctx.fillStyle = '#92400e';
           ctx.beginPath();
-          ctx.ellipse(vx, vy, diskR * 0.7, diskR * 0.7 * diskTilt, diskRotation, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.strokeStyle = '#fb923c';
-          ctx.lineWidth = 4;
-          ctx.beginPath();
-          ctx.ellipse(vx, vy, diskR * 0.85, diskR * 0.85 * diskTilt, diskRotation, 0, Math.PI * 2);
-          ctx.stroke();
-
-          // Perpendicular cross-disk (vertical ring from Interstellar)
-          ctx.globalAlpha = 0.18 * life;
-          ctx.strokeStyle = '#c084fc';
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.ellipse(vx, vy, diskR * 0.6, diskR, diskRotation, 0, Math.PI * 2);
-          ctx.stroke();
-
-          // Event horizon (pitch black center)
-          ctx.globalAlpha = 1;
-          const bhGrad = ctx.createRadialGradient(vx, vy, 0, vx, vy, coreR * 1.3);
-          bhGrad.addColorStop(0, '#000');
-          bhGrad.addColorStop(0.7, '#000');
-          bhGrad.addColorStop(1, 'rgba(88, 28, 135, 0.8)');
-          ctx.fillStyle = bhGrad;
-          ctx.beginPath();
-          ctx.arc(vx, vy, coreR * 1.3, 0, Math.PI * 2);
+          ctx.ellipse(vx, vy, diskR * 1.1, diskR * 1.1 * diskTilt, diskRotation, 0, Math.PI * 2);
           ctx.fill();
 
-          // Photon ring
-          ctx.globalAlpha = (0.7 + Math.sin(gt * 12) * 0.2) * life;
+          // Main accretion disk — gradient fill
+          const diskGrad = ctx.createRadialGradient(vx, vy, coreR * 1.4, vx, vy, diskR);
+          diskGrad.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+          diskGrad.addColorStop(0.15, 'rgba(251, 191, 36, 0.8)');
+          diskGrad.addColorStop(0.4, 'rgba(234, 138, 40, 0.6)');
+          diskGrad.addColorStop(0.7, 'rgba(146, 64, 14, 0.35)');
+          diskGrad.addColorStop(1, 'rgba(80, 30, 5, 0)');
+
+          // Draw filled accretion disk ellipse
+          ctx.save();
+          ctx.translate(vx, vy);
+          ctx.rotate(diskRotation);
+          ctx.scale(1, diskTilt);
+          ctx.globalAlpha = 0.85 * life;
+          ctx.fillStyle = diskGrad;
+          ctx.beginPath();
+          ctx.arc(0, 0, diskR, 0, Math.PI * 2);
+          ctx.fill();
+          // Bright inner edge
+          ctx.globalAlpha = 0.6 * life;
+          ctx.strokeStyle = 'rgba(255, 230, 180, 0.7)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(0, 0, coreR * 1.6, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+
+          // === GRAVITATIONAL LENSING RING (light bent over the top) ===
+          // This is the vertical ring of light arcing over/under the black hole
+          ctx.save();
+          ctx.translate(vx, vy);
+          ctx.rotate(diskRotation);
+
+          // Outer lensing arc (wider, dimmer)
+          ctx.globalAlpha = 0.25 * life;
+          ctx.strokeStyle = '#d4a050';
+          ctx.lineWidth = 8;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, coreR * 1.55, diskR * 0.75, 0, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Inner lensing arc (bright, sharp)
+          ctx.globalAlpha = 0.5 * life;
+          ctx.strokeStyle = '#ffe4b5';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, coreR * 1.45, diskR * 0.65, 0, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.restore();
+
+          // === EVENT HORIZON (pitch black sphere) ===
+          // Dark gradient — black center fading to dark purple edge
+          ctx.globalAlpha = 1;
+          const bhGrad = ctx.createRadialGradient(vx, vy, 0, vx, vy, coreR * 1.4);
+          bhGrad.addColorStop(0, '#000');
+          bhGrad.addColorStop(0.65, '#000');
+          bhGrad.addColorStop(0.85, 'rgba(20, 5, 30, 0.95)');
+          bhGrad.addColorStop(1, 'rgba(60, 20, 80, 0.7)');
+          ctx.fillStyle = bhGrad;
+          ctx.beginPath();
+          ctx.arc(vx, vy, coreR * 1.4, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Front half of accretion disk (in front of the black sphere)
+          ctx.save();
+          ctx.translate(vx, vy);
+          ctx.rotate(diskRotation);
+          ctx.scale(1, diskTilt);
+          // Clip to only draw below center (front of disk)
+          ctx.beginPath();
+          ctx.rect(-diskR * 1.2, 0, diskR * 2.4, diskR * 1.2);
+          ctx.clip();
+          ctx.globalAlpha = 0.75 * life;
+          ctx.fillStyle = diskGrad;
+          ctx.beginPath();
+          ctx.arc(0, 0, diskR, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+
+          // === PHOTON RING (thin bright ring at event horizon edge) ===
+          ctx.globalAlpha = (0.7 + Math.sin(gt * 10) * 0.15) * life;
           ctx.strokeStyle = '#fbbf24';
           ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.arc(vx, vy, coreR * 1.35, 0, Math.PI * 2);
+          ctx.arc(vx, vy, coreR * 1.42, 0, Math.PI * 2);
           ctx.stroke();
 
-          // Orbiting debris particles
-          for (let i = 0; i < 24; i++) {
-            const angle = (i / 24) * Math.PI * 2 + gt * (1.2 + i * 0.12);
-            const orbitR = coreR * 2 + Math.sin(gt * 2 + i) * 12;
-            const squash = 0.25 + Math.abs(Math.sin(angle + diskRotation)) * 0.75;
+          // Subtle shimmer particles along the disk
+          for (let i = 0; i < 16; i++) {
+            const angle = (i / 16) * Math.PI * 2 + gt * 0.8;
+            const orbitR = coreR * 2 + (i % 3) * 18;
             const px = vx + Math.cos(angle) * orbitR;
-            const py = vy + Math.sin(angle) * orbitR * squash;
-            const brightness = 0.3 + Math.abs(Math.sin(angle * 2 + gt)) * 0.7;
-            ctx.globalAlpha = brightness * 0.7 * life;
-            ctx.fillStyle = brightness > 0.6 ? '#fbbf24' : '#fb923c';
+            const py = vy + Math.sin(angle) * orbitR * diskTilt;
+            ctx.globalAlpha = (0.3 + Math.sin(gt * 4 + i) * 0.3) * life;
+            ctx.fillStyle = i % 3 === 0 ? '#fff' : '#fbbf24';
             ctx.beginPath();
-            ctx.arc(px, py, 2, 0, Math.PI * 2);
+            ctx.arc(px, py, 1.5, 0, Math.PI * 2);
             ctx.fill();
           }
         }
@@ -5124,13 +5578,22 @@ class Game {
       // Phase Shift transparency
       let ghostAlpha = this.abilities.phaseShift.active ? 0.35 : 1;
 
-      // Outer glow
+      // Pulsing ring — makes player easy to locate
+      const ringPulse = Math.sin(this.gameTime * 5) * 0.15 + 0.85;
+      ctx.globalAlpha = 0.35 * ghostAlpha * ringPulse;
+      ctx.strokeStyle = playerColor;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(this.player.x, this.player.y, pr + 10 + Math.sin(this.gameTime * 3) * 2, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Outer glow (stronger)
       ctx.shadowColor = playerColor;
-      ctx.shadowBlur = 25;
-      ctx.globalAlpha = 0.15 * ghostAlpha;
+      ctx.shadowBlur = 35;
+      ctx.globalAlpha = 0.25 * ghostAlpha;
       ctx.fillStyle = playerColor;
       ctx.beginPath();
-      ctx.arc(this.player.x, this.player.y, pr + 6, 0, Math.PI * 2);
+      ctx.arc(this.player.x, this.player.y, pr + 8, 0, Math.PI * 2);
       ctx.fill();
 
       // Core
@@ -5140,11 +5603,11 @@ class Game {
       ctx.arc(this.player.x, this.player.y, pr, 0, Math.PI * 2);
       ctx.fill();
 
-      // Inner
+      // Bright inner dot
       ctx.globalAlpha = ghostAlpha;
       ctx.fillStyle = '#fff';
       ctx.beginPath();
-      ctx.arc(this.player.x, this.player.y, pr * 0.4, 0, Math.PI * 2);
+      ctx.arc(this.player.x, this.player.y, pr * 0.45, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
@@ -5251,7 +5714,13 @@ class Game {
     const phaseEl = document.getElementById('hud-phase');
     phaseEl.textContent = `PHASE ${this.phase + 1} — ${def.name}`;
     phaseEl.style.color = def.color;
-    document.getElementById('hud-dodged').textContent = `Dodged: ${this.dodgedCount}`;
+    const dodgedEl = document.getElementById('hud-dodged');
+    dodgedEl.textContent = `Dodged: ${this.dodgedCount}`;
+    if (this.dodgePopTimer > 0) {
+      dodgedEl.classList.add('pop');
+    } else {
+      dodgedEl.classList.remove('pop');
+    }
 
     document.getElementById('brain-confidence').textContent = `${this.brain.getConfidence()}%`;
     document.getElementById('brain-threat').textContent = `${Math.round((this.threatLevel || 0) * 100)}%`;
