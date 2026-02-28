@@ -3692,18 +3692,30 @@ class Game {
       }
     }
 
-    // --- Magnet repel force ---
+    // --- Personal Space repel force ---
     if (this.effects.magnet.active) {
-      const repelRadius = 150;
-      const repelForce = 400;
+      const repelRadius = 180;
+      const repelForce = 600;
+      const hardPushRadius = 60;  // anything this close gets shoved hard
       for (const p of this.projectiles) {
         const rdx = p.x - this.player.x;
         const rdy = p.y - this.player.y;
         const rdist = Math.sqrt(rdx * rdx + rdy * rdy);
         if (rdist < repelRadius && rdist > 1) {
-          const strength = (1 - rdist / repelRadius) * repelForce * dt;
-          p.vx += (rdx / rdist) * strength;
-          p.vy += (rdy / rdist) * strength;
+          const nx = rdx / rdist;
+          const ny = rdy / rdist;
+          const closeness = 1 - rdist / repelRadius;
+          // Quadratic ramp — much stronger near player
+          let strength = closeness * closeness * repelForce * dt;
+          // Hard push: override velocity for anything too close
+          if (rdist < hardPushRadius) {
+            const pushSpeed = 350;
+            p.vx = nx * pushSpeed * dt + p.vx * 0.3;
+            p.vy = ny * pushSpeed * dt + p.vy * 0.3;
+          } else {
+            p.vx += nx * strength;
+            p.vy += ny * strength;
+          }
         }
       }
     }
@@ -3725,7 +3737,7 @@ class Game {
         // Black hole is live — only captures projectiles that pass near it
         const vx = this.effects.vortex.x;
         const vy = this.effects.vortex.y;
-        const gravityRadius = 180;    // projectiles must enter this zone to get caught
+        const gravityRadius = 250;    // larger orbit zone
         const destroyRadius = 25;     // consumed at center
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
           const p = this.projectiles[i];
@@ -3737,21 +3749,26 @@ class Game {
             this.particles.push(new Particle(p.x, p.y, 0, 0, 0.3, '#a855f7', 1.5));
             this.projectiles.splice(i, 1);
           } else if (dist < gravityRadius || p._bhCaptured) {
-            // Tag as captured — once caught, stays caught even if orbiting wide
-            p._bhCaptured = true;
+            // On first capture, determine spin direction from projectile's angular momentum
+            if (!p._bhCaptured) {
+              p._bhCaptured = true;
+              // Cross product of (position relative to BH) × velocity = spin direction
+              const cross = (p.x - vx) * p.vy - (p.y - vy) * p.vx;
+              p._bhSpin = cross >= 0 ? 1 : -1; // 1 = counter-clockwise, -1 = clockwise
+            }
             const nx = dx / dist;
             const ny = dy / dist;
-            // Tangent for orbital spin
-            const tx = -ny;
-            const ty = nx;
+            // Tangent matches projectile's natural spin direction
+            const tx = -ny * p._bhSpin;
+            const ty = nx * p._bhSpin;
             // How deep into the gravity well (0=edge, 1=center)
             const depth = Math.max(0, 1 - dist / gravityRadius);
             // Radial pull: slow at edge, fast near center (quadratic)
-            const radialPull = (30 + 500 * depth * depth) * dt;
+            const radialPull = (25 + 400 * depth * depth) * dt;
             // Orbital spin: strong at mid-range, fades near center
-            const orbitSpin = (100 + 200 * depth) * (dist > 50 ? 1 : dist / 50) * dt;
-            // Blend: projectiles at edge keep some velocity, deep ones fully controlled
-            const blend = Math.min(depth * 2, 1);
+            const orbitSpin = (80 + 180 * depth) * (dist > 50 ? 1 : dist / 50) * dt;
+            // Blend: projectiles at edge keep most velocity, deep ones fully controlled
+            const blend = Math.min(depth * 1.5, 1);
             const targetVx = nx * radialPull + tx * orbitSpin;
             const targetVy = ny * radialPull + ty * orbitSpin;
             p.vx = p.vx * (1 - blend) + targetVx * blend;
@@ -4942,21 +4959,65 @@ class Game {
       const pr = this.getPlayerRadius();
       const playerColor = this.effects.shrink.active ? '#ec4899' : '#00f0ff';
 
-      // Magnet repel ring
+      // Personal Space force field
       if (this.effects.magnet.active) {
-        const repelAlpha = 0.12 + Math.sin(this.gameTime * 10) * 0.06;
-        ctx.globalAlpha = repelAlpha;
-        ctx.strokeStyle = '#f97316';
-        ctx.lineWidth = 2;
+        const px = this.player.x, py = this.player.y;
+        const gt = this.gameTime;
+        const fieldR = 180;
+        const rem = this.effects.magnet.remaining;
+        const dur = this.effects.magnet.duration;
+        const life = Math.min(1, rem / (dur * 0.2)); // fade in last 20%
+
+        // Outer energy field gradient
+        const fieldGrad = ctx.createRadialGradient(px, py, 40, px, py, fieldR);
+        fieldGrad.addColorStop(0, 'rgba(249, 115, 22, 0)');
+        fieldGrad.addColorStop(0.6, 'rgba(249, 115, 22, 0.06)');
+        fieldGrad.addColorStop(0.85, 'rgba(249, 115, 22, 0.12)');
+        fieldGrad.addColorStop(1, 'rgba(249, 115, 22, 0)');
+        ctx.globalAlpha = life;
+        ctx.fillStyle = fieldGrad;
         ctx.beginPath();
-        ctx.arc(this.player.x, this.player.y, 150, 0, Math.PI * 2);
-        ctx.stroke();
-        // Inner pulsing ring
-        const innerR = 150 - Math.sin(this.gameTime * 8) * 30;
-        ctx.globalAlpha = repelAlpha * 0.5;
-        ctx.beginPath();
-        ctx.arc(this.player.x, this.player.y, innerR, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.arc(px, py, fieldR, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Rotating hex shield segments
+        for (let i = 0; i < 6; i++) {
+          const segAngle = (i / 6) * Math.PI * 2 + gt * 0.5;
+          const segArc = Math.PI / 4;
+          const pulse = 0.8 + Math.sin(gt * 6 + i * 1.2) * 0.2;
+          ctx.globalAlpha = (0.25 * pulse) * life;
+          ctx.strokeStyle = '#fb923c';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(px, py, fieldR * 0.95, segAngle, segAngle + segArc);
+          ctx.stroke();
+        }
+
+        // Inner rotating rings
+        for (let r = 0; r < 3; r++) {
+          const ringR = 60 + r * 40;
+          const ringSpeed = (r % 2 === 0 ? 1 : -1) * (1.5 - r * 0.3);
+          const ringAlpha = (0.15 - r * 0.03) * life;
+          ctx.globalAlpha = ringAlpha;
+          ctx.strokeStyle = r === 0 ? '#fff' : '#f97316';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([8, 12]);
+          ctx.beginPath();
+          ctx.arc(px, py, ringR, gt * ringSpeed, gt * ringSpeed + Math.PI * 1.5);
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+
+        // Energy sparks at the boundary
+        for (let i = 0; i < 12; i++) {
+          const a = (i / 12) * Math.PI * 2 + gt * 2;
+          const sparkR = fieldR + Math.sin(gt * 8 + i * 3) * 8;
+          ctx.globalAlpha = (0.4 + Math.sin(gt * 12 + i) * 0.3) * life;
+          ctx.fillStyle = '#fbbf24';
+          ctx.beginPath();
+          ctx.arc(px + Math.cos(a) * sparkR, py + Math.sin(a) * sparkR, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
         ctx.globalAlpha = 1;
       }
 
@@ -5020,7 +5081,7 @@ class Game {
           const coreR = baseR * pulse;
 
           // Gravitational lensing glow (outermost halo)
-          const lensR = coreR * 6;
+          const lensR = coreR * 7.5;
           const lensGrad = ctx.createRadialGradient(vx, vy, coreR * 2, vx, vy, lensR);
           lensGrad.addColorStop(0, 'rgba(168, 85, 247, 0.15)');
           lensGrad.addColorStop(0.3, 'rgba(251, 146, 60, 0.08)');
@@ -5032,7 +5093,7 @@ class Game {
           ctx.fill();
 
           // Accretion disk — tilted ellipse with rotation
-          const diskR = coreR * 3.5;
+          const diskR = coreR * 4.5;
           const diskRotation = gt * 0.8;
           const diskTilt = 0.28;
 
