@@ -191,6 +191,10 @@
       z-index: 10;
       pointer-events: none;
       backdrop-filter: blur(8px);
+      display: none;
+    }
+    #brain-panel.visible {
+      display: block;
     }
 
     #brain-panel h3 {
@@ -664,7 +668,6 @@
     }
 
     #gameover-screen .go-time span { font-size: 20px; color: #888; }
-    #gameover-screen .go-phase { font-size: 13px; color: #8b5cf6; margin-top: 4px; }
 
     .go-stats { display: flex; gap: 32px; margin-top: 24px; }
     .go-stat { text-align: center; }
@@ -690,22 +693,6 @@
     .go-btn.primary { border-color: rgba(0, 240, 255, 0.4); color: #00f0ff; }
     .go-btn.primary:hover { background: rgba(0, 240, 255, 0.1); border-color: #00f0ff; }
 
-    .go-ai-learned {
-      color: #444;
-      font-size: 11px;
-      margin-top: 20px;
-      max-width: 320px;
-      text-align: center;
-      line-height: 1.4;
-    }
-
-    #go-killed-by {
-      font-size: 12px;
-      letter-spacing: 1px;
-      margin-top: 10px;
-      font-family: 'Courier New', monospace;
-      text-transform: uppercase;
-    }
 
     /* --- Ad Zone Placeholder --- */
     .ad-zone {
@@ -888,6 +875,7 @@
     <button class="menu-btn" id="btn-howto">HOW TO PLAY</button>
     <button class="menu-btn" id="btn-stats">STATS</button>
     <button class="menu-btn" id="btn-contact">CONTACT</button>
+    <button class="menu-btn" id="btn-toggle-brain">AI BRAIN: OFF</button>
   </div>
   <div class="start-hint">Mouse or touch. Try not to cry.</div>
 </div>
@@ -918,31 +906,28 @@
 
 <!-- Game Over Screen -->
 <div id="gameover-screen">
-  <div class="go-title">Wow. That happened.</div>
+  <div class="go-title" id="go-title">Wow. That happened.</div>
   <div class="go-time" id="go-time">12.4<span>s</span></div>
-  <div class="go-phase" id="go-phase">Reached Phase 3 — PREDICTING</div>
   <div class="go-stats">
     <div class="go-stat">
       <div class="go-stat-val" id="go-dodged">47</div>
-      <div class="go-stat-label">Near-Death Experiences</div>
+      <div class="go-stat-label">Dodges</div>
     </div>
     <div class="go-stat">
       <div class="go-stat-val" id="go-closest">—</div>
-      <div class="go-stat-label">Closest Call</div>
+      <div class="go-stat-label">Closest</div>
     </div>
     <div class="go-stat">
       <div class="go-stat-val" id="go-games">1</div>
-      <div class="go-stat-label">Lives Wasted</div>
+      <div class="go-stat-label">Games</div>
     </div>
   </div>
-  <div class="go-new-best" id="go-new-best" style="display:none">NEW PERSONAL BEST. I'M GENUINELY IMPRESSED.</div>
+  <div class="go-new-best" id="go-new-best" style="display:none">NEW BEST</div>
   <div class="go-buttons">
     <button class="go-btn" id="btn-share">SHARE</button>
     <button class="go-btn primary" id="btn-retry">RETRY</button>
     <button class="go-btn" id="btn-menu">MENU</button>
   </div>
-  <div class="go-ai-learned" id="go-ai-learned"></div>
-  <div id="go-killed-by"></div>
 </div>
 
 <!-- Ad Zone Placeholder -->
@@ -3443,6 +3428,17 @@ class Game {
     document.getElementById('btn-contact').onclick = () => {
       window.location.href = 'mailto:znjeim@gmail.com';
     };
+    // AI Brain toggle
+    const brainVisible = localStorage.getItem('dodge-ai-brain-visible') === 'true';
+    const brainPanel = document.getElementById('brain-panel');
+    const brainBtn = document.getElementById('btn-toggle-brain');
+    if (brainVisible) brainPanel.classList.add('visible');
+    brainBtn.textContent = brainVisible ? 'AI BRAIN: ON' : 'AI BRAIN: OFF';
+    brainBtn.onclick = () => {
+      const on = brainPanel.classList.toggle('visible');
+      brainBtn.textContent = on ? 'AI BRAIN: ON' : 'AI BRAIN: OFF';
+      localStorage.setItem('dodge-ai-brain-visible', on);
+    };
 
     // Modal close buttons
     document.querySelectorAll('.modal-close').forEach(btn => {
@@ -4677,51 +4673,20 @@ class Game {
   }
 
   showGameOver(isNewBest) {
-    // Clean up previous streak display
-    const prevStreak = document.getElementById('go-streak');
-    if (prevStreak) prevStreak.remove();
-
     document.getElementById('go-time').innerHTML = `${this.gameTime.toFixed(1)}<span>s</span>`;
-    const phaseQuips = [
-      'Died in Phase 1. The tutorial phase. I can\'t even.',
-      'Phase 2. It was just getting warmed up.',
-      'Phase 3. The AI predicted that, by the way.',
-      'Phase 4. Your timing was... almost adequate.',
-      'Phase 5. Respect. You earned that death.',
-      'Phase 6. You absolute legend. Still dead though.',
+    const titles = [
+      'The AI barely noticed you.',
+      'Getting warmer. Still dead.',
+      'Not bad. Not alive, but not bad.',
+      'The AI had to actually try.',
+      'Impressive run. Do it again.',
+      'Legend. Still dead though.',
     ];
-    document.getElementById('go-phase').textContent = phaseQuips[Math.min(this.phase, 5)];
-    document.getElementById('go-phase').style.color = '';
+    document.getElementById('go-title').textContent = titles[Math.min(this.phase, 5)];
     document.getElementById('go-dodged').textContent = this.dodgedCount;
-    // Streak tier in game over
-    const killedByEl2 = document.getElementById('go-killed-by');
-    if (this.streak.peakTierName) {
-      killedByEl2.insertAdjacentHTML('afterend', `<div id="go-streak" style="color:${this.streak.peakTier >= 3 ? '#ff4400' : this.streak.peakTier >= 2 ? '#ff8800' : '#facc15'}; font-size:12px; letter-spacing:2px; margin-top:6px;">PEAK HEAT: ${this.streak.peakTierName}</div>`);
-    }
     document.getElementById('go-closest').textContent = this.closestCall === Infinity ? '0px' : `${Math.round(this.closestCall)}px`;
     document.getElementById('go-games').textContent = this.totalGames;
     document.getElementById('go-new-best').style.display = isNewBest ? 'block' : 'none';
-
-    const dom = this.brain.getDominantDodge();
-    const reaction = this.brain.getAvgReaction();
-    let learned = `I catalogued ${this.brain.totalSamples} of your panic moves.`;
-    if (dom) learned += ` You dodge ${dom.direction} ${dom.pct}% of the time — real original.`;
-    if (reaction) learned += ` ${reaction}ms reaction time. I've seen faster. I've seen slower. Both died.`;
-    learned += ' Oh, and I remember everything for next round. Sweet dreams.';
-    document.getElementById('go-ai-learned').textContent = learned;
-
-    const killedByEl = document.getElementById('go-killed-by');
-    if (this.deathContext) {
-      const d = this.deathContext;
-      const directionName = getDirectionName(d.angle);
-      const killerName = d.bossName || d.subtype.toUpperCase();
-      killedByEl.textContent = `Killed by: ${killerName} from the ${directionName}`;
-      killedByEl.style.color = d.color;
-      killedByEl.style.display = 'block';
-    } else {
-      killedByEl.style.display = 'none';
-    }
-
 
     document.getElementById('gameover-screen').classList.add('show');
     document.getElementById('ad-zone').style.display = 'flex';
@@ -4789,29 +4754,10 @@ class Game {
     ctx.fillText(`Closest Call: ${closestStr}`, 360, 300);
     ctx.fillText(`Games Played: ${this.totalGames}`, 700, 300);
 
-    // AI commentary (the viral hook)
-    const aiText = document.getElementById('go-ai-learned').textContent;
-    ctx.font = 'italic 20px "Courier New", monospace';
+    // One-liner hook
+    ctx.font = 'italic 22px "Courier New", monospace';
     ctx.fillStyle = '#ff3355';
-
-    // Word-wrap AI commentary to fit card width
-    const maxWidth = 1080;
-    const words = aiText.split(' ');
-    let line = '';
-    let y = 360;
-    const lineHeight = 28;
-    for (const word of words) {
-      const testLine = line + (line ? ' ' : '') + word;
-      if (ctx.measureText(testLine).width > maxWidth) {
-        ctx.fillText(line, 60, y);
-        line = word;
-        y += lineHeight;
-        if (y > 480) break; // Don't overflow
-      } else {
-        line = testLine;
-      }
-    }
-    if (line && y <= 480) ctx.fillText(line, 60, y);
+    ctx.fillText('The AI remembers how you dodge.', 60, 380);
 
     // CTA at bottom
     ctx.font = '18px "Courier New", monospace';
