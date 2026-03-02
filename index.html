@@ -1043,7 +1043,7 @@
   <div class="modal-content">
     <button class="modal-close" data-close="modal-leaderboard">&times;</button>
     <h2>Leaderboard</h2>
-    <div class="lb-title" style="margin-top:8px">GLOBAL TOP 10</div>
+    <div class="lb-title" style="margin-top:8px">GLOBAL TOP 100</div>
     <div id="modal-lb-body"><div class="lb-loading">Loading...</div></div>
   </div>
 </div>
@@ -1073,7 +1073,7 @@
       <button id="go-lb-btn">SUBMIT</button>
     </div>
     <div class="lb-status" id="go-lb-status"></div>
-    <div class="lb-title">GLOBAL TOP 10</div>
+    <div class="lb-title">GLOBAL TOP 100</div>
     <div id="go-lb-body"><div class="lb-loading">Loading...</div></div>
   </div>
   <div class="go-buttons">
@@ -1174,7 +1174,7 @@ async function fetchLeaderboard(forceRefresh = false) {
     const { data, error } = await sb.from('leaderboard')
       .select('name, time_s, phase, dodges, bosses')
       .order('time_s', { ascending: false })
-      .limit(10);
+      .limit(100);
     if (error) throw error;
     _lbCache = data || [];
     _lbCacheTime = Date.now();
