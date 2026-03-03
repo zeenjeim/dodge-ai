@@ -3965,11 +3965,12 @@ class Game {
   }
 
   setupInput() {
-    const onMove = (x, y) => {
+    const onMove = (x, y, isTouch = false) => {
       // Return-to-dot: check if mouse is close enough to player's saved position
       if (this.returnToDot && this.returnDotPos) {
         const rdx = x - this.returnDotPos.x, rdy = y - this.returnDotPos.y;
-        if (Math.sqrt(rdx * rdx + rdy * rdy) < 35) {
+        const returnRadius = isTouch ? 60 : 35;
+        if (Math.sqrt(rdx * rdx + rdy * rdy) < returnRadius) {
           this.returnToDot = false;
           this.returnDotPos = null;
           this.inputFrozenTimer = 0;
@@ -3987,11 +3988,11 @@ class Game {
     this.canvas.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
     this.canvas.addEventListener('touchmove', e => {
       e.preventDefault();
-      onMove(e.touches[0].clientX, e.touches[0].clientY - this.touchOffsetY);
+      onMove(e.touches[0].clientX, e.touches[0].clientY - this.touchOffsetY, true);
     }, { passive: false });
     this.canvas.addEventListener('touchstart', e => {
       e.preventDefault();
-      onMove(e.touches[0].clientX, e.touches[0].clientY - this.touchOffsetY);
+      onMove(e.touches[0].clientX, e.touches[0].clientY - this.touchOffsetY, true);
     }, { passive: false });
 
     // Disable right-click context menu (game-breaking)
