@@ -1482,12 +1482,24 @@ const PHASE_DEFS = [
     spawnRate: 0.85, count: 3, speed: 4.0,  aimPct: 0.7,  burstChance: 0.25, homingChance: 0.1,  splitterChance: 0.12, bouncerChance: 0.1,  waveChance: 0.06, accelChance: 0.12, spiralChance: 0.08, clusterChance: 0.06, mineChance: 0 },
   { name: 'HUNTING',     dur: 50, color: '#14b8a6', desc: 'Homing missiles. Because regular death was too boring.',
     spawnRate: 0.65, count: 3, speed: 4.5,  aimPct: 0.8,  burstChance: 0.35, homingChance: 0.2,  splitterChance: 0.2,  bouncerChance: 0.15, waveChance: 0.12, accelChance: 0.18, spiralChance: 0.12, clusterChance: 0.1,  mineChance: 0.08 },
-  { name: 'EVOLVED',     dur: Infinity, color: '#e879f9', desc: 'Full Skynet mode. You had a good run. Emphasis on had.',
+  { name: 'EVOLVED',     dur: 60, color: '#e879f9', desc: 'Full Skynet mode. You had a good run. Emphasis on had.',
     spawnRate: 0.5,  count: 4, speed: 5.0,  aimPct: 0.9,  burstChance: 0.4,  homingChance: 0.25, splitterChance: 0.25, bouncerChance: 0.18, waveChance: 0.18, accelChance: 0.2,  spiralChance: 0.18, clusterChance: 0.15, mineChance: 0.12 },
+  { name: 'CORRUPTION',  dur: 45, color: '#dc2626', desc: 'The arena is glitching. Those red spots? Yeah, don\'t touch those.',
+    spawnRate: 0.48, count: 4, speed: 5.1,  aimPct: 0.9,  burstChance: 0.4,  homingChance: 0.27, splitterChance: 0.25, bouncerChance: 0.18, waveChance: 0.18, accelChance: 0.2,  spiralChance: 0.18, clusterChance: 0.15, mineChance: 0.12 },
+  { name: 'SINGULARITY', dur: 45, color: '#f43f5e', desc: 'The arena is collapsing. The walls are closing in. Literally.',
+    spawnRate: 0.45, count: 4, speed: 5.3,  aimPct: 0.92, burstChance: 0.4,  homingChance: 0.3,  splitterChance: 0.25, bouncerChance: 0.2,  waveChance: 0.2,  accelChance: 0.22, spiralChance: 0.2,  clusterChance: 0.18, mineChance: 0.15 },
+  { name: 'SWARM',       dur: 45, color: '#f97316', desc: 'Two bosses at once. Coordinated attacks. This is fine. Everything is fine.',
+    spawnRate: 0.42, count: 5, speed: 5.4,  aimPct: 0.93, burstChance: 0.42, homingChance: 0.32, splitterChance: 0.28, bouncerChance: 0.2,  waveChance: 0.2,  accelChance: 0.23, spiralChance: 0.2,  clusterChance: 0.18, mineChance: 0.15 },
+  { name: 'HIVEMIND',    dur: Infinity, color: '#06b6d4', desc: 'They think as one. They move as one. You die as one.',
+    spawnRate: 0.4,  count: 5, speed: 5.5,  aimPct: 0.95, burstChance: 0.45, homingChance: 0.35, splitterChance: 0.3,  bouncerChance: 0.22, waveChance: 0.22, accelChance: 0.25, spiralChance: 0.22, clusterChance: 0.2,  mineChance: 0.18 },
 ];
 
 // Deep-copy for evolved ramp so we don't mutate the originals
-const EVOLVED_BASE = { ...PHASE_DEFS[5] };
+const EVOLVED_BASE = { ...PHASE_DEFS[PHASE_DEFS.length - 1] };
+const CORRUPTION_PHASE_IDX = PHASE_DEFS.findIndex(p => p.name === 'CORRUPTION');
+const SINGULARITY_PHASE_IDX = PHASE_DEFS.findIndex(p => p.name === 'SINGULARITY');
+const SWARM_PHASE_IDX = PHASE_DEFS.findIndex(p => p.name === 'SWARM');
+const HIVEMIND_PHASE_IDX = PHASE_DEFS.findIndex(p => p.name === 'HIVEMIND');
 
 const PLAYER_RADIUS = 10;
 const PROJECTILE_RADIUS = 5;
@@ -3110,7 +3122,7 @@ class SoundEngine {
   updateMusicIntensity(phase, threatLevel) {
     if (!this.ctx) return;
     // Set targets — actual values lerp smoothly in _scheduleMeasure
-    this._targetIntensity = Math.min(1, (phase / 5) * 0.6 + threatLevel * 0.4);
+    this._targetIntensity = Math.min(1, (phase / (PHASE_DEFS.length - 1)) * 0.6 + threatLevel * 0.4);
     this._targetBPM = 88 + this._targetIntensity * 72;
   }
 
@@ -3736,6 +3748,10 @@ class Game {
     this.returnToDot = false;
     this.returnDotPos = null;
 
+    // Singularity phase: shrinking arena + dead zones
+    this.arenaInset = 0;
+    this.deadZones = []; // { x, y, radius, life }
+
     this.brain = new AIBrain();
     this.rng = Math.random;
     this._lastShotWasCounter = false;
@@ -4115,6 +4131,19 @@ class Game {
     this.running = true;
     this.gameTime = 0;
     this.phase = 0;
+
+    // Debug: ?phase=N skips to that phase (1-indexed)
+    const urlPhase = parseInt(new URLSearchParams(window.location.search).get('phase'));
+    if (urlPhase > 1 && urlPhase <= PHASE_DEFS.length) {
+      const targetIdx = urlPhase - 1;
+      let skipTime = 0;
+      for (let i = 0; i < targetIdx && i < PHASE_DEFS.length; i++) {
+        if (PHASE_DEFS[i].dur === Infinity) break;
+        skipTime += PHASE_DEFS[i].dur;
+      }
+      this.gameTime = skipTime + 1;
+      this.phase = targetIdx;
+    }
     this.projectiles = [];
     this.warnings = [];
     this.particles = [];
@@ -4182,6 +4211,8 @@ class Game {
     this._omegaBeams = [];
     this.returnToDot = false;
     this.returnDotPos = null;
+    this.arenaInset = 0;
+    this.deadZones = [];
     const upgradeOverlay = document.getElementById('upgrade-overlay');
     if (upgradeOverlay) upgradeOverlay.classList.remove('show');
     this.threatLevel = 0;
@@ -4497,23 +4528,23 @@ class Game {
     if (this.phase < PHASE_DEFS.length - 1) {
       base = { ...PHASE_DEFS[this.phase] };
     } else {
-      // EVOLVED: ramp values dynamically without mutating originals
-      const phaseDurations = PHASE_DEFS.slice(0, 5).reduce((s, p) => s + p.dur, 0);
+      // Final phase: ramp values dynamically without mutating originals
+      const phaseDurations = PHASE_DEFS.slice(0, PHASE_DEFS.length - 1).reduce((s, p) => s + p.dur, 0);
       const t = Math.max(0, this.gameTime - phaseDurations);
       const ramp = Math.floor(t / 25);
       base = {
         ...EVOLVED_BASE,
-        speed: 5.0 + ramp * 0.2,
-        spawnRate: Math.max(0.3, 0.5 - ramp * 0.025),
-        count: Math.min(5, 4 + Math.floor(t / 50)),
-        homingChance: Math.min(0.5, 0.3 + Math.floor(t / 30) * 0.05),
-        splitterChance: Math.min(0.4, 0.3 + ramp * 0.02),
-        bouncerChance: Math.min(0.3, 0.2 + ramp * 0.02),
-        waveChance: Math.min(0.3, 0.2 + ramp * 0.02),
-        accelChance: Math.min(0.35, 0.25 + ramp * 0.02),
-        spiralChance: Math.min(0.3, 0.2 + ramp * 0.02),
-        clusterChance: Math.min(0.3, 0.2 + ramp * 0.02),
-        mineChance: Math.min(0.25, 0.15 + ramp * 0.02),
+        speed: EVOLVED_BASE.speed + ramp * 0.2,
+        spawnRate: Math.max(0.3, EVOLVED_BASE.spawnRate - ramp * 0.02),
+        count: Math.min(7, EVOLVED_BASE.count + Math.floor(t / 50)),
+        homingChance: Math.min(0.5, EVOLVED_BASE.homingChance + Math.floor(t / 30) * 0.03),
+        splitterChance: Math.min(0.45, EVOLVED_BASE.splitterChance + ramp * 0.02),
+        bouncerChance: Math.min(0.35, EVOLVED_BASE.bouncerChance + ramp * 0.02),
+        waveChance: Math.min(0.35, EVOLVED_BASE.waveChance + ramp * 0.02),
+        accelChance: Math.min(0.4, EVOLVED_BASE.accelChance + ramp * 0.02),
+        spiralChance: Math.min(0.35, EVOLVED_BASE.spiralChance + ramp * 0.02),
+        clusterChance: Math.min(0.35, EVOLVED_BASE.clusterChance + ramp * 0.02),
+        mineChance: Math.min(0.3, EVOLVED_BASE.mineChance + ramp * 0.02),
       };
     }
 
@@ -4803,6 +4834,17 @@ class Game {
       const p = this.projectiles[i];
       p.update(dt, this.player.x, this.player.y, slowMod);
 
+      // HIVEMIND: non-homing projectiles subtly curve toward player
+      if (this.phase >= HIVEMIND_PHASE_IDX && !p.homing && !p._friendly && p.age > 0.3) {
+        const hdx = this.player.x - p.x, hdy = this.player.y - p.y;
+        const hdist = Math.sqrt(hdx * hdx + hdy * hdy);
+        if (hdist > 50) {
+          const curveStrength = 15 * dt; // gentle correction
+          p.vx += (hdx / hdist) * curveStrength;
+          p.vy += (hdy / hdist) * curveStrength;
+        }
+      }
+
       // Friendly projectiles (ricochet): destroy enemies on contact, limited life
       if (p._friendly) {
         p._friendlyLife -= dt;
@@ -4969,6 +5011,51 @@ class Game {
     }
     // Add split/cluster/mine children
     for (const c of newProjectiles) this.projectiles.push(c);
+
+    // --- CORRUPTION (Phase 7+): dead zones appear ---
+    if (this.phase >= CORRUPTION_PHASE_IDX) {
+      const px = this.player.x, py = this.player.y;
+      this._deadZoneTimer = (this._deadZoneTimer || 0) - dt;
+      if (this._deadZoneTimer <= 0 && this.deadZones.length < 8) {
+        const margin = this.arenaInset + 40;
+        const dzx = margin + this.rng() * (this.w - margin * 2);
+        const dzy = margin + this.rng() * (this.h - margin * 2);
+        this.deadZones.push({ x: dzx, y: dzy, radius: 25 + this.rng() * 20, life: 4 + this.rng() * 3, maxLife: 7 });
+        this._deadZoneTimer = 2.5 + this.rng() * 2;
+      }
+      for (let i = this.deadZones.length - 1; i >= 0; i--) {
+        this.deadZones[i].life -= dt;
+        if (this.deadZones[i].life <= 0) { this.deadZones.splice(i, 1); continue; }
+        const dz = this.deadZones[i];
+        const ddx = px - dz.x, ddy = py - dz.y;
+        if (Math.sqrt(ddx * ddx + ddy * ddy) < dz.radius + pr) {
+          this.deathContext = { type: 'projectile', subtype: 'deadzone', homing: false,
+            color: '#f43f5e', x: dz.x, y: dz.y, vx: 0, vy: 0,
+            angle: 0, playerX: px, playerY: py, bossName: null };
+          this.die();
+          return;
+        }
+      }
+    }
+
+    // --- SINGULARITY (Phase 8+): shrinking arena ---
+    if (this.phase >= SINGULARITY_PHASE_IDX) {
+      const singStart = PHASE_DEFS.slice(0, SINGULARITY_PHASE_IDX).reduce((s, p) => s + p.dur, 0);
+      const singTime = Math.max(0, this.gameTime - singStart);
+      this.arenaInset = Math.min(this.w * 0.2, singTime * 0.8);
+
+      const px = this.player.x, py = this.player.y;
+      if (px < this.arenaInset || px > this.w - this.arenaInset ||
+          py < this.arenaInset || py > this.h - this.arenaInset) {
+        this.deathContext = { type: 'projectile', subtype: 'arena', homing: false,
+          color: '#f43f5e', x: px, y: py, vx: 0, vy: 0,
+          angle: 0, playerX: px, playerY: py, bossName: null };
+        this.die();
+        return;
+      }
+    } else {
+      this.arenaInset = 0;
+    }
 
     // --- Power-ups spawn ---
     this.powerupTimer -= dt;
@@ -5824,6 +5911,62 @@ class Game {
     const count = def.count;
     const isBurst = this.rng() < def.burstChance;
 
+    // SWARM (Phase 9+): wall formations
+    // HIVEMIND (Phase 10): + pincer & encircle formations
+    if (this.phase >= SWARM_PHASE_IDX && this.rng() < 0.4) {
+      const now = this.gameTime * 1000;
+      // SWARM only gets walls; HIVEMIND gets all three
+      const maxFormation = this.phase >= HIVEMIND_PHASE_IDX ? 3 : 1;
+      const formation = Math.floor(this.rng() * maxFormation);
+      if (formation === 0) {
+        // WALL: line of projectiles from one edge
+        const edge = Math.floor(this.rng() * 4);
+        const wallCount = 6 + Math.floor(this.rng() * 4);
+        for (let i = 0; i < wallCount; i++) {
+          let wx, wy;
+          const t = (i + 0.5) / wallCount;
+          switch (edge) {
+            case 0: wx = t * this.w; wy = 0; break;
+            case 1: wx = this.w; wy = t * this.h; break;
+            case 2: wx = t * this.w; wy = this.h; break;
+            case 3: wx = 0; wy = t * this.h; break;
+          }
+          this.warnings.push(new Warning(wx, wy, now + i * 30));
+        }
+      } else if (formation === 1) {
+        // PINCER: projectiles from two opposite edges aimed at player
+        const edges = this.rng() < 0.5 ? [0, 2] : [1, 3];
+        for (const edge of edges) {
+          const pincerCount = 4 + Math.floor(this.rng() * 3);
+          for (let i = 0; i < pincerCount; i++) {
+            let wx, wy;
+            const t = 0.2 + (i / (pincerCount - 1)) * 0.6;
+            switch (edge) {
+              case 0: wx = t * this.w; wy = 0; break;
+              case 1: wx = this.w; wy = t * this.h; break;
+              case 2: wx = t * this.w; wy = this.h; break;
+              case 3: wx = 0; wy = t * this.h; break;
+            }
+            this.warnings.push(new Warning(wx, wy, now + i * 40));
+          }
+        }
+      } else {
+        // ENCIRCLE: ring of projectiles from all edges converging
+        const ringCount = 12 + Math.floor(this.rng() * 6);
+        for (let i = 0; i < ringCount; i++) {
+          const angle = (i / ringCount) * Math.PI * 2;
+          const dist = Math.max(this.w, this.h) * 0.55;
+          const cx = this.w / 2, cy = this.h / 2;
+          let wx = cx + Math.cos(angle) * dist;
+          let wy = cy + Math.sin(angle) * dist;
+          wx = Math.max(0, Math.min(this.w, wx));
+          wy = Math.max(0, Math.min(this.h, wy));
+          this.warnings.push(new Warning(wx, wy, now + i * 25));
+        }
+      }
+      return;
+    }
+
     if (isBurst) {
       const edge = Math.floor(this.rng() * 4);
       let wx, wy;
@@ -6057,6 +6200,18 @@ class Game {
         case 3: bx = -30; by = this.rng() * this.h; break;
       }
       this.bosses.push(new Boss(bx, by, this.w, this.h, this.bossLevel));
+      // SINGULARITY+: spawn a second boss from a different edge
+      if (this.phase >= SWARM_PHASE_IDX) {
+        const edge2 = (edge + 2) % 4; // opposite edge
+        let bx2, by2;
+        switch (edge2) {
+          case 0: bx2 = this.rng() * this.w; by2 = -30; break;
+          case 1: bx2 = this.w + 30; by2 = this.rng() * this.h; break;
+          case 2: bx2 = this.rng() * this.w; by2 = this.h + 30; break;
+          case 3: bx2 = -30; by2 = this.rng() * this.h; break;
+        }
+        this.bosses.push(new Boss(bx2, by2, this.w, this.h, this.bossLevel));
+      }
     }, BOSS_ANNOUNCE_DURATION);
   }
 
@@ -6283,7 +6438,7 @@ class Game {
     // Leaderboard: store pending score, pre-fill name, reset submit UI
     this._pendingScore = {
       time: this.gameTime,
-      phase: Math.min(this.phase + 1, 6),
+      phase: Math.min(this.phase + 1, PHASE_DEFS.length),
       dodges: this.dodgedCount,
       bosses: this.bossesDefeated
     };
@@ -6466,6 +6621,90 @@ class Game {
     ctx.lineWidth = 1;
     for (let x = 0; x < w; x += 50) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
     for (let y = 0; y < h; y += 50) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+
+    // Singularity: shrinking arena boundary + dead zones
+    if (this.arenaInset > 0) {
+      const ai = this.arenaInset;
+      // Danger zone fill (outside safe area)
+      ctx.fillStyle = 'rgba(244, 63, 94, 0.08)';
+      ctx.fillRect(0, 0, w, ai);           // top
+      ctx.fillRect(0, h - ai, w, ai);      // bottom
+      ctx.fillRect(0, ai, ai, h - ai * 2); // left
+      ctx.fillRect(w - ai, ai, ai, h - ai * 2); // right
+      // Pulsing border
+      const borderPulse = 0.4 + Math.sin(this.gameTime * 4) * 0.2;
+      ctx.strokeStyle = `rgba(244, 63, 94, ${borderPulse})`;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(ai, ai, w - ai * 2, h - ai * 2);
+      // Corner warning markers
+      ctx.lineWidth = 1;
+      const cornerSize = 12;
+      const corners = [[ai, ai], [w - ai, ai], [w - ai, h - ai], [ai, h - ai]];
+      for (const [cx, cy] of corners) {
+        ctx.beginPath();
+        ctx.moveTo(cx - cornerSize, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy - cornerSize);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx + cornerSize, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + cornerSize);
+        ctx.stroke();
+      }
+    }
+    // Dead zones
+    for (const dz of this.deadZones) {
+      const fadeIn = Math.min(1, (dz.maxLife - dz.life) / 0.5);
+      const fadeOut = Math.min(1, dz.life / 1.0);
+      const alpha = Math.min(fadeIn, fadeOut);
+      const wobble = Math.sin(this.gameTime * 3 + dz.x) * 3;
+      const r = dz.radius + wobble;
+      const pulse = 0.7 + Math.sin(this.gameTime * 5 + dz.y) * 0.3;
+      // Outer danger glow
+      ctx.globalAlpha = alpha * 0.2 * pulse;
+      ctx.fillStyle = '#f43f5e';
+      ctx.beginPath();
+      ctx.arc(dz.x, dz.y, r + 15, 0, Math.PI * 2);
+      ctx.fill();
+      // Core fill — darker, more solid
+      ctx.globalAlpha = alpha * 0.45;
+      ctx.fillStyle = '#7f1d1d';
+      ctx.beginPath();
+      ctx.arc(dz.x, dz.y, r, 0, Math.PI * 2);
+      ctx.fill();
+      // Hazard ring — thick pulsing border
+      ctx.globalAlpha = alpha * 0.7 * pulse;
+      ctx.strokeStyle = '#f43f5e';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(dz.x, dz.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+      // Skull symbol in center
+      ctx.globalAlpha = alpha * 0.8;
+      ctx.fillStyle = '#f43f5e';
+      ctx.font = `bold ${Math.max(14, r * 0.7)}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = '#f43f5e';
+      ctx.shadowBlur = 8;
+      ctx.fillText('\u2620', dz.x, dz.y);
+      ctx.shadowBlur = 0;
+      // Rotating warning dashes around the ring
+      ctx.globalAlpha = alpha * 0.5;
+      ctx.lineWidth = 2;
+      const dashCount = 8;
+      const rotSpeed = this.gameTime * 2 + dz.x * 0.01;
+      for (let d = 0; d < dashCount; d++) {
+        const a = rotSpeed + (d / dashCount) * Math.PI * 2;
+        const x1 = dz.x + Math.cos(a) * (r + 4);
+        const y1 = dz.y + Math.sin(a) * (r + 4);
+        const x2 = dz.x + Math.cos(a) * (r + 10);
+        const y2 = dz.y + Math.sin(a) * (r + 10);
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      ctx.textBaseline = 'alphabetic';
+    }
 
     // Stars
     for (const star of this.bgStars) {
