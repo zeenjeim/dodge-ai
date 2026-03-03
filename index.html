@@ -7394,10 +7394,11 @@ class Game {
 
       // Return-to-dot indicator during card dismiss
       if (this.returnToDot && this.returnDotPos) {
-        const pulse = 0.5 + Math.sin(this.gameTime * 6) * 0.3;
-        const bobY = Math.sin(this.gameTime * 3) * 4;
+        const rt = Date.now() / 1000; // wall-clock time so animations run during freeze
+        const pulse = 0.5 + Math.sin(rt * 6) * 0.3;
+        const bobY = Math.sin(rt * 3) * 4;
         // Outer ring radar ping
-        const pingT = (this.gameTime * 0.8) % 1;
+        const pingT = (rt * 0.8) % 1;
         ctx.globalAlpha = (1 - pingT) * 0.3;
         ctx.strokeStyle = '#facc15';
         ctx.lineWidth = 1.5;
