@@ -1348,6 +1348,35 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// --- Profanity filter ---
+const _profanityList = [
+  'fuck','shit','ass','bitch','dick','cock','cunt','pussy','fag',
+  'nigger','nigga','retard','whore','slut','bastard','damn','piss',
+  'twat','wanker','bollock','bugger','arse','arsehole','asshole',
+  'motherfucker','bullshit','horseshit','dumbass','jackass','dipshit',
+  'shithead','dickhead','fuckhead','cocksucker','penis','vagina',
+  'tits','boob','porn','anal','cum','jizz','dildo','nazi','hitler',
+  'rape','molest','pedo','pedophile','kike','spic','chink','gook',
+  'wetback','beaner','cracker','honky','tranny','dyke','homo'
+];
+const _profanityRegex = new RegExp(
+  _profanityList.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'),
+  'i'
+);
+
+function containsProfanity(text) {
+  return _profanityRegex.test(text.replace(/[\s_\-\.]/g, ''));
+}
+
+function censorName(text) {
+  const collapsed = text.replace(/[\s_\-\.]/g, '');
+  if (!_profanityRegex.test(collapsed)) return text;
+  return collapsed.replace(new RegExp(
+    _profanityList.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'),
+    'gi'
+  ), m => m[0] + '*'.repeat(m.length - 1));
+}
+
 let _lbCache = null;
 let _lbCacheTime = 0;
 const LB_CACHE_MS = 30000;
@@ -1406,7 +1435,7 @@ function renderLeaderboard(containerId, rows, highlightName) {
       rank <= 3 ? `rank-${rank}` : '',
       hn && r.name.trim().toLowerCase() === hn ? 'lb-highlight' : ''
     ].filter(Boolean).join(' ');
-    html += `<tr class="${cls}"><td class="lb-rank">${rank}</td><td class="lb-name">${escapeHtml(r.name)}</td><td class="lb-time-col">${parseFloat(r.time_s).toFixed(1)}s</td><td class="lb-phase-col">${r.phase}</td></tr>`;
+    html += `<tr class="${cls}"><td class="lb-rank">${rank}</td><td class="lb-name">${escapeHtml(censorName(r.name))}</td><td class="lb-time-col">${parseFloat(r.time_s).toFixed(1)}s</td><td class="lb-phase-col">${r.phase}</td></tr>`;
   });
   html += '</tbody></table>';
   el.innerHTML = html;
@@ -4060,6 +4089,11 @@ class Game {
       }
       if (name.length > 20) {
         lbStatus.textContent = 'Name too long (max 20 chars)';
+        lbStatus.className = 'lb-status error';
+        return;
+      }
+      if (containsProfanity(name)) {
+        lbStatus.textContent = 'Please choose an appropriate name';
         lbStatus.className = 'lb-status error';
         return;
       }
