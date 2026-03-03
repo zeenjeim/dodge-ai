@@ -336,6 +336,61 @@
       to { transform: scale(1.05); }
     }
 
+    /* --- Evolution Announcement --- */
+    #evolution-announce {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 45;
+      text-align: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      padding: 32px 48px;
+      border-radius: 16px;
+      background: radial-gradient(ellipse at center, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.6) 60%, transparent 100%);
+    }
+    #evolution-announce.show {
+      opacity: 1;
+      animation: evo-entrance 0.6s ease-out;
+    }
+    .evo-icon {
+      font-size: 64px;
+      filter: drop-shadow(0 0 30px currentColor);
+    }
+    .evo-label {
+      font-size: 14px;
+      color: #fff;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      margin-top: 4px;
+      text-shadow: 0 0 10px rgba(255,255,255,0.9), 0 0 30px rgba(255,255,255,0.5);
+    }
+    .evo-name {
+      font-size: 42px;
+      font-weight: bold;
+      letter-spacing: 4px;
+      margin-top: 4px;
+      text-shadow: 0 0 20px currentColor, 0 0 50px currentColor;
+    }
+    .evo-desc {
+      font-size: 14px;
+      color: #e5e5e5;
+      margin-top: 10px;
+      letter-spacing: 1px;
+      text-shadow: 0 0 8px rgba(0,0,0,0.8);
+    }
+    @keyframes evo-entrance {
+      0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+      50% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    }
+    @keyframes evo-flash {
+      0% { opacity: 0.6; }
+      100% { opacity: 0; }
+    }
+
     #pickup-announce {
       position: fixed;
       top: 40%;
@@ -457,6 +512,18 @@
       font-size: 13px;
       line-height: 1.4;
       color: #ccc;
+    }
+    .upgrade-card .card-evo-hint {
+      margin-top: 10px;
+      font-size: 11px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      text-shadow: 0 0 10px currentColor;
+      animation: evo-hint-pulse 1.2s ease-in-out infinite alternate;
+    }
+    @keyframes evo-hint-pulse {
+      from { opacity: 0.7; }
+      to { opacity: 1; }
     }
     /* Legendary shimmer */
     .upgrade-card.legendary::before {
@@ -1174,6 +1241,14 @@
   <div class="boss-sub">Survive or EMP it</div>
 </div>
 
+<!-- Evolution Announcement -->
+<div id="evolution-announce">
+  <div class="evo-icon"></div>
+  <div class="evo-label">EVOLVED</div>
+  <div class="evo-name"></div>
+  <div class="evo-desc"></div>
+</div>
+
 <!-- Powerup Pickup -->
 <div id="pickup-announce"></div>
 
@@ -1562,18 +1637,16 @@ const RARITY_COLORS = { common: '#9ca3af', rare: '#3b82f6', legendary: '#facc15'
 
 const UPGRADE_DEFS = [
   // --- COMMON (passive, simple stat boosts) ---
-  { id: 'swift',          name: 'GOTTA GO FAST',     rarity: 'common',    icon: '\u00BB', desc: "20% faster movement. Die with style." },
+  { id: 'swift',          name: 'GOTTA GO FAST',     rarity: 'common',    icon: '\u00BB', desc: "30% faster. Builds to 50% at full momentum." },
   { id: 'smolSupreme',    name: 'SMOL SUPREME',      rarity: 'common',    icon: '\u25CE', desc: "40% smaller hitbox. Hard to hit, harder to see." },
   { id: 'lootGoblin',     name: 'LOOT GOBLIN',       rarity: 'common',    icon: '\u25C8', desc: "Power-ups spawn 40% faster." },
-  { id: 'magnetize',      name: 'FORCE PULL',        rarity: 'common',    icon: '\u27D0', desc: "Pull power-ups within 300px toward you." },
+  { id: 'magnetize',      name: 'FORCE PULL',        rarity: 'common',    icon: '\u27D0', desc: "Pull power-ups toward you. Nearby ones glow." },
   { id: 'fortress',       name: 'FORTRESS',          rarity: 'common',    icon: '\u25B3', desc: "50% bigger shield, twice as strong." },
   { id: 'radiance',       name: 'RADIANCE',          rarity: 'common',    icon: '\u2600', desc: "Random projectiles spontaneously combust." },
-  { id: 'rubberSoul',     name: 'RUBBER SOUL',       rarity: 'common',    icon: '\u2941', desc: "Bouncing projectiles lose 20% speed per bounce." },
   { id: 'cometTrail',     name: 'COMET TRAIL',       rarity: 'common',    icon: '\u2604', desc: "Leave a trail that burns projectiles." },
   { id: 'dodgeInstinct',  name: 'DODGE INSTINCT',    rarity: 'common',    icon: '\u25C6', desc: "20% chance to phase through a hit." },
-  { id: 'denseCore',      name: 'DENSE CORE',        rarity: 'common',    icon: '\u2299', desc: "Black holes pull 40% harder." },
-  { id: 'staticCharge',   name: 'STATIC CHARGE',     rarity: 'common',    icon: '\u26A1', desc: "Stand still 1s to zap nearby projectiles." },
-  { id: 'momentum',       name: 'MOMENTUM',          rarity: 'common',    icon: '\u2192', desc: "Build up to 40% bonus speed. Sharp turns reset it." },
+  { id: 'denseCore',      name: 'DENSE CORE',        rarity: 'common',    icon: '\u2299', desc: "Black holes pull 40% harder and last 1s longer." },
+  { id: 'burnout',         name: 'BURNOUT',            rarity: 'common',    icon: '\u2BC0', desc: "Stop moving to blast a shockwave in your last direction." },
   { id: 'decoy',           name: 'DECOY',             rarity: 'common',    icon: '\u2662', desc: "Spawn a hologram every 8s that attracts projectiles for 3s." },
   { id: 'gravityWell',     name: 'GRAVITY WELL',      rarity: 'common',    icon: '\u2316', desc: "Nearby projectiles curve away from you." },
 
@@ -1596,6 +1669,16 @@ const UPGRADE_DEFS = [
   { id: 'deathRay',       name: 'NOVA STAR',         rarity: 'legendary', icon: '\u2738', desc: "Rotating beams sweep the field, vaporizing everything." },
   { id: 'luckyStar',      name: 'LUCKY STAR',        rarity: 'legendary', icon: '\u2606', desc: "All power-up effects last 30% longer." },
   { id: 'omegaBeam',      name: 'OMEGA BEAM',        rarity: 'legendary', icon: '\u03A9', desc: "Homing laser tracks and vaporizes projectiles every 0.5s." },
+];
+
+// Evolution system — disabled until playtested. Re-enable by uncommenting the array entries.
+const EVOLUTION_DEFS = [
+  // { id: 'thunderpath', name: 'THUNDERPATH', ingredients: ['cometTrail', 'stormRunner'],
+  //   icon: '\u26A1', color: '#38bdf8', desc: 'Trail electrifies — zaps projectiles on contact' },
+  // { id: 'lightspeed', name: 'LIGHTSPEED', ingredients: ['swift', 'burnout'],
+  //   icon: '\u2727', color: '#fbbf24', desc: 'Max speed grants brief invincibility' },
+  // { id: 'singularityEngine', name: 'SINGULARITY ENGINE', ingredients: ['denseCore', 'eventHorizon'],
+  //   icon: '\u229B', color: '#c084fc', desc: 'Black holes chain together on expiry' },
 ];
 
 // ============================================================
@@ -3742,8 +3825,6 @@ class Game {
     this.upgradeTimer = UPGRADE_INTERVAL;
     this.inputFrozenTimer = 0;
     this.cometTrail = [];
-    this.staticChargeTimer = 0;
-    this.staticChargeCooldown = 0;
     this.upgradeFrozen = false;     // true while upgrade screen is showing
     this.upgradeFreezeBlend = 0;    // 0=normal, 1=fully frozen (easing)
     this.upgradeFreezePhase = 'none'; // 'none' | 'easing-in' | 'frozen' | 'easing-out'
@@ -3761,6 +3842,9 @@ class Game {
     // Momentum
     this.momentumDir = { x: 0, y: 0 };
     this.momentumBuildup = 0;
+    // Burnout
+    this.burnoutCooldown = 0;
+    this.burnoutWasMoving = false;
     // Decoy
     this.decoyTimer = 8;
     this.decoys = [];
@@ -3776,6 +3860,12 @@ class Game {
     // Card dismiss: return-to-dot
     this.returnToDot = false;
     this.returnDotPos = null;
+    // Evolution combo system
+    this.evolutions = {};
+    this.evolutionAnnounceTimer = 0;
+    this.miniVortices = [];
+    this.lightspeedCooldown = 0;
+    this.lightspeedActive = false;
 
     // Singularity phase: shrinking arena + dead zones
     this.arenaInset = 0;
@@ -4218,8 +4308,6 @@ class Game {
     this.upgradeTimer = UPGRADE_INTERVAL;
     this.inputFrozenTimer = 0;
     this.cometTrail = [];
-    this.staticChargeTimer = 0;
-    this.staticChargeCooldown = 0;
     this.upgradeFrozen = false;
     this.upgradeFreezeBlend = 0;
     this.upgradeFreezePhase = 'none';
@@ -4235,6 +4323,8 @@ class Game {
     this.chainReactionTimer = 0;
     this.momentumDir = { x: 0, y: 0 };
     this.momentumBuildup = 0;
+    this.burnoutCooldown = 0;
+    this.burnoutWasMoving = false;
     this.decoyTimer = 8;
     this.decoys = [];
     this.stormCharge = 0;
@@ -4246,10 +4336,17 @@ class Game {
     this._omegaBeams = [];
     this.returnToDot = false;
     this.returnDotPos = null;
+    this.evolutions = {};
+    this.evolutionAnnounceTimer = 0;
+    this.miniVortices = [];
+    this.lightspeedCooldown = 0;
+    this.lightspeedActive = false;
     this.arenaInset = 0;
     this.deadZones = [];
     const upgradeOverlay = document.getElementById('upgrade-overlay');
     if (upgradeOverlay) upgradeOverlay.classList.remove('show');
+    const evoAnnounce = document.getElementById('evolution-announce');
+    if (evoAnnounce) evoAnnounce.classList.remove('show');
     this.threatLevel = 0;
     this.endgameMode = null;
     this.endgameCycleTimer = 0;
@@ -4434,12 +4531,25 @@ class Game {
       const nextLvl = currentLvl + 1;
       el.className = 'upgrade-card' + (card.rarity === 'legendary' ? ' legendary' : '');
       el.style.setProperty('--rarity-color', RARITY_COLORS[card.rarity]);
+      // Check if this card is one pick away from an evolution
+      let evoHint = '';
+      for (const evo of EVOLUTION_DEFS) {
+        if (this.evolutions[evo.id]) continue;
+        const idx = evo.ingredients.indexOf(card.id);
+        if (idx === -1) continue;
+        const partner = evo.ingredients[1 - idx];
+        if (this.upgrades[partner]) {
+          evoHint = `<div class="card-evo-hint" style="color:${evo.color}">${evo.icon} \u2192 ${evo.name}</div>`;
+          break;
+        }
+      }
       el.innerHTML = `
         <div class="card-level">Lv.${nextLvl}</div>
         <div class="card-icon">${card.icon}</div>
         <div class="card-name">${card.name}</div>
         <div class="card-rarity">${card.rarity}</div>
         <div class="card-desc">${card.desc}</div>
+        ${evoHint}
       `;
       const handler = (e) => {
         e.preventDefault();
@@ -4492,6 +4602,8 @@ class Game {
     allCards.forEach(c => { if (c !== selectedEl) c.classList.add('dismissed'); });
     // Apply upgrade
     this.applyUpgrade(id);
+    // Check for evolution combos
+    this.checkEvolutions();
     // Sound + announce
     soundEngine.playCollect();
     const def = UPGRADE_DEFS.find(u => u.id === id);
@@ -4554,6 +4666,33 @@ class Game {
       case 'deathRay':     this.deathRayTimer = 15; this.deathRayActive = false; break;
       case 'secondWind':   this.secondWindUses = 0; break;
       case 'omegaBeam':    this.omegaBeamTimer = 0.5; break;
+    }
+  }
+
+  checkEvolutions() {
+    for (const evo of EVOLUTION_DEFS) {
+      if (this.evolutions[evo.id]) continue;
+      const hasAll = evo.ingredients.every(ing => this.upgrades[ing]);
+      if (!hasAll) continue;
+      // Evolve!
+      this.evolutions[evo.id] = true;
+      // Screen flash + shake
+      this.flashAlpha = 0.8;
+      this.flashColor = evo.color;
+      this.screenShake.intensity = 15;
+      this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 250, evo.color, 0.8));
+      // Show evolution announcement (delayed slightly so card dismiss finishes)
+      setTimeout(() => {
+        const el = document.getElementById('evolution-announce');
+        el.querySelector('.evo-icon').textContent = evo.icon;
+        el.querySelector('.evo-icon').style.color = evo.color;
+        el.querySelector('.evo-name').textContent = evo.name;
+        el.querySelector('.evo-name').style.color = evo.color;
+        el.querySelector('.evo-desc').textContent = evo.desc;
+        el.classList.add('show');
+        this.evolutionAnnounceTimer = 3;
+        setTimeout(() => el.classList.remove('show'), 3000);
+      }, 600);
     }
   }
 
@@ -4715,28 +4854,39 @@ class Game {
     const prevX = this.player.x;
     const prevY = this.player.y;
     let lerp = PLAYER_LERP;
-    if (this.upgrades.swift) lerp *= 1 + 0.15 * this.upgrades.swift;
-    // Momentum upgrade: sustained direction builds speed
-    if (this.upgrades.momentum) {
+    if (this.upgrades.swift) {
+      // Base speed boost: 30% per level
+      lerp *= 1 + 0.25 * this.upgrades.swift;
+      // Momentum buildup: sustained movement builds extra speed (no sharp turn penalty)
       const dx = this.targetX - this.player.x;
       const dy = this.targetY - this.player.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist > 2) {
         const dirX = dx / dist, dirY = dy / dist;
-        const dot = this.momentumDir.x * dirX + this.momentumDir.y * dirY;
-        if (dot > 0.85) {
-          // Same direction — build up
-          this.momentumBuildup = Math.min(1, this.momentumBuildup + dt * (0.4 + 0.2 * this.upgrades.momentum));
-        } else {
-          // Sharp turn — reset
-          this.momentumBuildup *= 0.3;
-        }
+        this.momentumBuildup = Math.min(1, this.momentumBuildup + dt * (0.3 + 0.15 * this.upgrades.swift));
         this.momentumDir.x = dirX;
         this.momentumDir.y = dirY;
       } else {
-        this.momentumBuildup *= 0.9; // slow decay when stationary
+        this.momentumBuildup *= 0.92; // slow decay when still
       }
-      lerp *= 1 + 0.4 * this.momentumBuildup;
+      lerp *= 1 + 0.2 * this.momentumBuildup;
+      // LIGHTSPEED: at max momentum, trigger brief invincibility
+      if (this.evolutions.lightspeed) {
+        if (this.lightspeedCooldown > 0) this.lightspeedCooldown -= dt;
+        if (this.momentumBuildup >= 0.95 && this.lightspeedCooldown <= 0 && !this.lightspeedActive) {
+          this.lightspeedActive = true;
+          this._lightspeedRemaining = 0.3;
+          this.lightspeedCooldown = 5;
+          this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 80, '#fbbf24', 0.3));
+          this.scorePopups.push(new ScorePopup(this.player.x, this.player.y - 25, 'LIGHTSPEED!', '#fbbf24'));
+        }
+        if (this.lightspeedActive) {
+          this._lightspeedRemaining -= dt;
+          if (this._lightspeedRemaining <= 0) {
+            this.lightspeedActive = false;
+          }
+        }
+      }
     }
     if (this.abilities.timeWarp.active) lerp *= 0.7;
     this.player.x += (this.targetX - this.player.x) * lerp;
@@ -4761,23 +4911,49 @@ class Game {
         this.cometTrail.push({ x: this.player.x, y: this.player.y, life: trailLife, maxLife: trailLife });
       }
       const trailRadius = 10 + 4 * this.upgrades.cometTrail;
+      const isThunderpath = !!this.evolutions.thunderpath;
+      const zapRadius = isThunderpath ? trailRadius + 35 : trailRadius;
       for (let t = this.cometTrail.length - 1; t >= 0; t--) {
         const tp = this.cometTrail[t];
         tp.life -= dt;
         if (tp.life <= 0) { this.cometTrail.splice(t, 1); continue; }
-        // Burn projectiles
-        for (let i = this.projectiles.length - 1; i >= 0; i--) {
-          const p = this.projectiles[i];
-          if (p._friendly) continue;
-          const tdx = p.x - tp.x, tdy = p.y - tp.y;
-          if (Math.sqrt(tdx * tdx + tdy * tdy) < trailRadius) {
-            for (let j = 0; j < 3; j++) {
-              const a = Math.random() * Math.PI * 2;
-              this.particles.push(new Particle(p.x, p.y, Math.cos(a) * 40, Math.sin(a) * 40, 0.2, '#ff6600', 1.5));
+        // THUNDERPATH: periodic zap from each trail point
+        if (isThunderpath) {
+          tp._zapTimer = (tp._zapTimer || 0) - dt;
+          if (tp._zapTimer <= 0) {
+            tp._zapTimer = 0.3;
+            for (let i = this.projectiles.length - 1; i >= 0; i--) {
+              const p = this.projectiles[i];
+              if (p._friendly) continue;
+              const zdx = p.x - tp.x, zdy = p.y - tp.y;
+              if (Math.sqrt(zdx * zdx + zdy * zdy) < zapRadius) {
+                // Blue lightning particles
+                for (let j = 0; j < 4; j++) {
+                  const a = Math.random() * Math.PI * 2;
+                  this.particles.push(new Particle(p.x, p.y, Math.cos(a) * 60, Math.sin(a) * 60, 0.25, '#38bdf8', 2));
+                }
+                this.tryRicochet(p.x, p.y);
+                this.projectiles.splice(i, 1);
+                this.dodgedCount++;
+              }
             }
-            this.tryRicochet(p.x, p.y);
-            this.projectiles.splice(i, 1);
-            this.dodgedCount++;
+          }
+        }
+        // Normal burn projectiles
+        if (!isThunderpath) {
+          for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            const p = this.projectiles[i];
+            if (p._friendly) continue;
+            const tdx = p.x - tp.x, tdy = p.y - tp.y;
+            if (Math.sqrt(tdx * tdx + tdy * tdy) < trailRadius) {
+              for (let j = 0; j < 3; j++) {
+                const a = Math.random() * Math.PI * 2;
+                this.particles.push(new Particle(p.x, p.y, Math.cos(a) * 40, Math.sin(a) * 40, 0.2, '#ff6600', 1.5));
+              }
+              this.tryRicochet(p.x, p.y);
+              this.projectiles.splice(i, 1);
+              this.dodgedCount++;
+            }
           }
         }
       }
@@ -4963,10 +5139,7 @@ class Game {
       }
 
       // Bouncer check
-      if (p.checkBounce(this.w, this.h) && this.upgrades.rubberSoul) {
-        const slow = 1 - 0.15 * this.upgrades.rubberSoul;
-        p.vx *= slow; p.vy *= slow;
-      }
+      p.checkBounce(this.w, this.h);
 
       // Splitter check
       const children = p.checkSplit(this.w, this.h);
@@ -5026,6 +5199,13 @@ class Game {
         if (this.ghostActive) {
           if (Math.random() < 0.3) {
             this.particles.push(new Particle(p.x, p.y, 0, 0, 0.15, 'rgba(34,197,94,0.5)', 1.5));
+          }
+          continue;
+        }
+        // LIGHTSPEED: invincible during burst
+        if (this.lightspeedActive) {
+          if (Math.random() < 0.5) {
+            this.particles.push(new Particle(p.x, p.y, 0, 0, 0.15, 'rgba(251,191,36,0.6)', 1.5));
           }
           continue;
         }
@@ -5132,7 +5312,7 @@ class Game {
       pu.update(dt);
       // Magnetize upgrade: pull powerups toward player
       if (this.upgrades.magnetize) {
-        const magRange = 200 + 150 * this.upgrades.magnetize;
+        const magRange = 250 + 200 * this.upgrades.magnetize;
         const mdx = this.player.x - pu.x;
         const mdy = this.player.y - pu.y;
         const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
@@ -5181,7 +5361,7 @@ class Game {
         }
       }
 
-      if (bossCollided && !this.ghostActive && !this.abilities.phaseShift.active) {
+      if (bossCollided && !this.ghostActive && !this.abilities.phaseShift.active && !this.lightspeedActive) {
         this.deathContext = {
           type: 'boss',
           subtype: boss.bossType?.shape || 'boss',
@@ -5201,7 +5381,7 @@ class Game {
       }
 
       // Toxic trail collision
-      if (boss.trailSegments && !this.abilities.phaseShift.active && !this.ghostActive) {
+      if (boss.trailSegments && !this.abilities.phaseShift.active && !this.ghostActive && !this.lightspeedActive) {
         for (const ts of boss.trailSegments) {
           const tdx = ts.x - this.player.x;
           const tdy = ts.y - this.player.y;
@@ -5250,9 +5430,46 @@ class Game {
             el.classList.add('show');
             this.pickupAnnounceTimer = 1;
           } else {
+            // SINGULARITY ENGINE: vortex expiry spawns mini-vortex
+            if (key === 'vortex' && this.evolutions.singularityEngine) {
+              this.miniVortices.push({
+                x: eff.x, y: eff.y,
+                life: 3, maxLife: 3,
+                radius: 80
+              });
+              this.shockwaves.push(new Shockwave(eff.x, eff.y, 80, '#c084fc', 0.4));
+            }
             eff.active = false;
             eff.remaining = 0;
             eff._dejaVuUsed = false;
+          }
+        }
+      }
+    }
+    // SINGULARITY ENGINE: update mini-vortices (pull + destroy projectiles)
+    for (let v = this.miniVortices.length - 1; v >= 0; v--) {
+      const mv = this.miniVortices[v];
+      mv.life -= dt;
+      if (mv.life <= 0) { this.miniVortices.splice(v, 1); continue; }
+      const pullStr = 300 * (mv.life / mv.maxLife);
+      const denseBoost = 1 + 0.4 * (this.upgrades.denseCore || 0);
+      for (let i = this.projectiles.length - 1; i >= 0; i--) {
+        const p = this.projectiles[i];
+        if (p._friendly) continue;
+        const dx = mv.x - p.x, dy = mv.y - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < mv.radius * denseBoost && dist > 5) {
+          const force = (pullStr * denseBoost / dist) * dt;
+          p.vx += (dx / dist) * force;
+          p.vy += (dy / dist) * force;
+          // Destroy if very close to core
+          if (dist < 18) {
+            for (let j = 0; j < 3; j++) {
+              const a = Math.random() * Math.PI * 2;
+              this.particles.push(new Particle(p.x, p.y, Math.cos(a) * 30, Math.sin(a) * 30, 0.2, '#c084fc', 1.5));
+            }
+            this.projectiles.splice(i, 1);
+            this.dodgedCount++;
           }
         }
       }
@@ -5525,35 +5742,7 @@ class Game {
       }
     }
 
-    // Static Charge: stand still for 1s to zap nearby projectiles
-    if (this.upgrades.staticCharge) {
-      if (this.staticChargeCooldown > 0) this.staticChargeCooldown -= dt;
-      const speed = Math.sqrt(this.player.vx * this.player.vx + this.player.vy * this.player.vy);
-      if (speed < 0.5) {
-        this.staticChargeTimer += dt;
-        if (this.staticChargeTimer >= 1 && this.staticChargeCooldown <= 0) {
-          this.staticChargeTimer = 0;
-          this.staticChargeCooldown = Math.max(3, 6 - this.upgrades.staticCharge);
-          const zapRadius = 80 + 30 * this.upgrades.staticCharge;
-          this.shockwaves.push(new Shockwave(this.player.x, this.player.y, zapRadius, '#26a1ff', 0.3));
-          soundEngine.playNearMiss();
-          for (let i = this.projectiles.length - 1; i >= 0; i--) {
-            const p = this.projectiles[i];
-            const zdx = p.x - this.player.x, zdy = p.y - this.player.y;
-            if (Math.sqrt(zdx * zdx + zdy * zdy) < zapRadius) {
-              for (let j = 0; j < 4; j++) {
-                const a = Math.random() * Math.PI * 2;
-                this.particles.push(new Particle(p.x, p.y, Math.cos(a) * 50, Math.sin(a) * 50, 0.2, '#26a1ff', 1.5));
-              }
-              this.projectiles.splice(i, 1);
-              this.dodgedCount++;
-            }
-          }
-        }
-      } else {
-        this.staticChargeTimer = 0;
-      }
-    }
+
 
     // Gravity Well: deflect nearby projectiles away from player
     if (this.upgrades.gravityWell) {
@@ -5569,6 +5758,61 @@ class Game {
           p.vx += (gdx / gdist) * strength;
           p.vy += (gdy / gdist) * strength;
         }
+      }
+    }
+
+    // Burnout: stop moving to blast a directional shockwave
+    if (this.upgrades.burnout) {
+      if (this.burnoutCooldown > 0) this.burnoutCooldown -= dt;
+      const speed = Math.sqrt(this.player.vx * this.player.vx + this.player.vy * this.player.vy);
+      const isMoving = speed > 1.5;
+      if (isMoving) {
+        this.burnoutWasMoving = true;
+      } else if (this.burnoutWasMoving && this.burnoutCooldown <= 0) {
+        // Just stopped! Fire directional shockwave
+        this.burnoutWasMoving = false;
+        this.burnoutCooldown = Math.max(2.5, 5 - this.upgrades.burnout);
+        const dirX = this.momentumDir.x || 0;
+        const dirY = this.momentumDir.y || 1;
+        const blastRange = 120 + 40 * this.upgrades.burnout;
+        const coneAngle = 0.6 + 0.15 * this.upgrades.burnout; // ~35-45 degree half-angle
+        const blastAngle = Math.atan2(dirY, dirX);
+        // Cone shockwave particles
+        for (let i = 0; i < 12; i++) {
+          const spread = (Math.random() - 0.5) * coneAngle * 2;
+          const a = blastAngle + spread;
+          const sp = 100 + Math.random() * 150;
+          this.particles.push(new Particle(
+            this.player.x, this.player.y,
+            Math.cos(a) * sp, Math.sin(a) * sp,
+            0.3, '#ff6b35', 2.5
+          ));
+        }
+        this.shockwaves.push(new Shockwave(this.player.x, this.player.y, blastRange * 0.6, '#ff6b35', 0.3));
+        soundEngine.playNearMiss();
+        // Destroy projectiles in cone
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+          const p = this.projectiles[i];
+          if (p._friendly) continue;
+          const pdx = p.x - this.player.x, pdy = p.y - this.player.y;
+          const pDist = Math.sqrt(pdx * pdx + pdy * pdy);
+          if (pDist > blastRange) continue;
+          const pAngle = Math.atan2(pdy, pdx);
+          let angleDiff = pAngle - blastAngle;
+          while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+          while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+          if (Math.abs(angleDiff) < coneAngle) {
+            for (let j = 0; j < 3; j++) {
+              const a = Math.random() * Math.PI * 2;
+              this.particles.push(new Particle(p.x, p.y, Math.cos(a) * 40, Math.sin(a) * 40, 0.2, '#ff6b35', 1.5));
+            }
+            this.tryRicochet(p.x, p.y);
+            this.projectiles.splice(i, 1);
+            this.dodgedCount++;
+          }
+        }
+      } else if (!isMoving) {
+        this.burnoutWasMoving = false;
       }
     }
 
@@ -5941,7 +6185,7 @@ class Game {
       }
       this.effects.vortex.active = true;
       this.effects.vortex.delay = 1.5;
-      const vortexBonus = (this.upgrades.eventHorizon || 0) * 2;
+      const vortexBonus = (this.upgrades.eventHorizon || 0) * 2 + (this.upgrades.denseCore || 0) * 1;
       const vDur = (POWERUP_TYPES.vortex.duration + 1.5 + vortexBonus) * lsBonus;
       this.effects.vortex.remaining = vDur;
       this.effects.vortex.duration = vDur;
@@ -6780,7 +7024,27 @@ class Game {
     const now = this.gameTime * 1000;
     for (const wr of this.warnings) wr.draw(ctx, now);
 
-    // Power-ups
+    // Power-ups (with Force Pull glow indicator)
+    if (this.upgrades.magnetize) {
+      const magRange = 250 + 200 * this.upgrades.magnetize;
+      for (const pu of this.powerups) {
+        const mdx = pu.x - this.player.x, mdy = pu.y - this.player.y;
+        const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+        if (mdist < magRange) {
+          const intensity = 1 - mdist / magRange;
+          ctx.globalAlpha = 0.2 + 0.3 * intensity;
+          ctx.strokeStyle = '#f97316';
+          ctx.lineWidth = 2;
+          ctx.shadowColor = '#f97316';
+          ctx.shadowBlur = 8 + 8 * intensity;
+          ctx.beginPath();
+          ctx.arc(pu.x, pu.y, POWERUP_RADIUS + 6, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
     for (const pu of this.powerups) pu.draw(ctx);
 
     // Shockwaves
@@ -7071,6 +7335,45 @@ class Game {
         ctx.restore();
       }
 
+      // SINGULARITY ENGINE: render mini-vortices
+      for (const mv of this.miniVortices) {
+        const life = mv.life / mv.maxLife;
+        const gt = this.gameTime;
+        const pulse = 1 + Math.sin(gt * 5) * 0.08;
+        const coreR = 18 * pulse * life;
+        ctx.save();
+        // Outer pull glow
+        const pullGrad = ctx.createRadialGradient(mv.x, mv.y, coreR, mv.x, mv.y, mv.radius * life);
+        pullGrad.addColorStop(0, 'rgba(192, 132, 252, 0.15)');
+        pullGrad.addColorStop(1, 'rgba(192, 132, 252, 0)');
+        ctx.globalAlpha = life;
+        ctx.fillStyle = pullGrad;
+        ctx.beginPath();
+        ctx.arc(mv.x, mv.y, mv.radius * life, 0, Math.PI * 2);
+        ctx.fill();
+        // Dark core
+        const coreGrad = ctx.createRadialGradient(mv.x, mv.y, 0, mv.x, mv.y, coreR);
+        coreGrad.addColorStop(0, '#000');
+        coreGrad.addColorStop(0.6, 'rgba(88, 28, 135, 0.8)');
+        coreGrad.addColorStop(1, 'rgba(168, 85, 247, 0)');
+        ctx.globalAlpha = life * 0.9;
+        ctx.fillStyle = coreGrad;
+        ctx.beginPath();
+        ctx.arc(mv.x, mv.y, coreR, 0, Math.PI * 2);
+        ctx.fill();
+        // Spinning sparks
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2 + gt * 3;
+          const sparkR = coreR * 1.8;
+          ctx.globalAlpha = life * 0.6;
+          ctx.fillStyle = '#c084fc';
+          ctx.beginPath();
+          ctx.arc(mv.x + Math.cos(a) * sparkR, mv.y + Math.sin(a) * sparkR, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
       // Time Warp screen tint
       if (this.abilities.timeWarp.active) {
         ctx.fillStyle = 'rgba(0, 255, 170, 0.03)';
@@ -7151,35 +7454,42 @@ class Game {
 
       // --- Upgrade visual effects ---
 
-      // Comet Trail: glowing orange trail behind player
+      // Comet Trail: glowing trail behind player (blue+electric when THUNDERPATH)
       if (this.upgrades.cometTrail && this.cometTrail.length > 1) {
+        const isTP = !!this.evolutions.thunderpath;
+        const trailColor = isTP ? '#38bdf8' : '#ff6600';
         ctx.lineCap = 'round';
         for (let t = 0; t < this.cometTrail.length; t++) {
           const tp = this.cometTrail[t];
           const alpha = (tp.life / tp.maxLife) * 0.4;
           ctx.globalAlpha = alpha;
-          ctx.fillStyle = '#ff6600';
-          ctx.shadowColor = '#ff6600';
-          ctx.shadowBlur = 8;
+          ctx.fillStyle = trailColor;
+          ctx.shadowColor = trailColor;
+          ctx.shadowBlur = isTP ? 14 : 8;
           ctx.beginPath();
           ctx.arc(tp.x, tp.y, 6 + 3 * this.upgrades.cometTrail, 0, Math.PI * 2);
           ctx.fill();
+          // THUNDERPATH: electric arcs between adjacent trail points
+          if (isTP && t > 0) {
+            const prev = this.cometTrail[t - 1];
+            ctx.globalAlpha = alpha * 0.6;
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(prev.x, prev.y);
+            // Jagged lightning segment
+            const mx = (prev.x + tp.x) / 2 + (Math.random() - 0.5) * 12;
+            const my = (prev.y + tp.y) / 2 + (Math.random() - 0.5) * 12;
+            ctx.lineTo(mx, my);
+            ctx.lineTo(tp.x, tp.y);
+            ctx.stroke();
+          }
         }
         ctx.shadowBlur = 0;
         ctx.globalAlpha = 1;
       }
 
-      // Static Charge: visual indicator when charging
-      if (this.upgrades.staticCharge && this.staticChargeTimer > 0.3 && this.staticChargeCooldown <= 0) {
-        const chargePct = Math.min(1, this.staticChargeTimer);
-        ctx.globalAlpha = 0.2 * chargePct;
-        ctx.strokeStyle = '#26a1ff';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(this.player.x, this.player.y, 30 + 50 * chargePct, 0, Math.PI * 2 * chargePct);
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-      }
+
 
       // Orbital Guard: spinning cyan orb(s)
       if (this.upgrades.orbitalGuard) {
@@ -7217,6 +7527,20 @@ class Game {
         ctx.beginPath();
         ctx.arc(this.player.x, this.player.y, pr + 15, 0, Math.PI * 2);
         ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+
+      // LIGHTSPEED: golden invincibility glow
+      if (this.lightspeedActive) {
+        const pulse = 0.3 + Math.sin(this.gameTime * 30) * 0.15;
+        ctx.globalAlpha = pulse;
+        ctx.fillStyle = '#fbbf24';
+        ctx.shadowColor = '#fbbf24';
+        ctx.shadowBlur = 25;
+        ctx.beginPath();
+        ctx.arc(this.player.x, this.player.y, pr + 18, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
         ctx.globalAlpha = 1;
       }
 
@@ -7281,6 +7605,29 @@ class Game {
         ctx.globalAlpha = 1;
       }
 
+      // Burnout: directional arrow when ready
+      if (this.upgrades.burnout && this.burnoutCooldown <= 0 && this.burnoutWasMoving) {
+        const dirX = this.momentumDir.x || 0;
+        const dirY = this.momentumDir.y || 1;
+        const arrowDist = pr + 18;
+        const ax = this.player.x + dirX * arrowDist;
+        const ay = this.player.y + dirY * arrowDist;
+        const pulse = 0.4 + Math.sin(this.gameTime * 10) * 0.2;
+        ctx.globalAlpha = pulse;
+        ctx.fillStyle = '#ff6b35';
+        ctx.shadowColor = '#ff6b35';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        const angle = Math.atan2(dirY, dirX);
+        ctx.moveTo(ax + Math.cos(angle) * 8, ay + Math.sin(angle) * 8);
+        ctx.lineTo(ax + Math.cos(angle + 2.4) * 6, ay + Math.sin(angle + 2.4) * 6);
+        ctx.lineTo(ax + Math.cos(angle - 2.4) * 6, ay + Math.sin(angle - 2.4) * 6);
+        ctx.closePath();
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+      }
+
       // Decoy: holographic ghost dots
       for (const decoy of this.decoys) {
         const alpha = (decoy.life / decoy.maxLife) * 0.5;
@@ -7298,12 +7645,18 @@ class Game {
         ctx.beginPath();
         ctx.arc(decoy.x, decoy.y, 20 + 10 * Math.sin(this.gameTime * 4), 0, Math.PI * 2);
         ctx.stroke();
+        // "DECOY" label
+        ctx.globalAlpha = alpha * 0.7;
+        ctx.fillStyle = '#c084fc';
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('DECOY', decoy.x, decoy.y - pr - 8);
         ctx.shadowBlur = 0;
         ctx.globalAlpha = 1;
       }
 
-      // Momentum: speed trail indicator
-      if (this.upgrades.momentum && this.momentumBuildup > 0.2) {
+      // Gotta Go Fast: speed trail indicator
+      if (this.upgrades.swift && this.momentumBuildup > 0.2) {
         const trailAlpha = (this.momentumBuildup - 0.2) * 0.4;
         ctx.globalAlpha = trailAlpha;
         ctx.strokeStyle = '#38bdf8';
