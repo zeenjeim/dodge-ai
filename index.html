@@ -7097,6 +7097,15 @@ class Game {
       // Return-to-dot indicator during card dismiss
       if (this.returnToDot && this.returnDotPos) {
         const pulse = 0.5 + Math.sin(this.gameTime * 6) * 0.3;
+        const bobY = Math.sin(this.gameTime * 3) * 4;
+        // Outer ring radar ping
+        const pingT = (this.gameTime * 0.8) % 1;
+        ctx.globalAlpha = (1 - pingT) * 0.3;
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(this.returnDotPos.x, this.returnDotPos.y, pr + 8 + pingT * 30, 0, Math.PI * 2);
+        ctx.stroke();
         // Pulsing ghost circle at player's saved position
         ctx.globalAlpha = pulse;
         ctx.strokeStyle = '#facc15';
@@ -7111,12 +7120,20 @@ class Game {
         ctx.arc(this.returnDotPos.x, this.returnDotPos.y, pr, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1;
-        // "Return to resume" text
-        ctx.font = '12px monospace';
-        ctx.fillStyle = '#facc15';
+        // "RETURN HERE" text — larger, glowing, bobbing
+        const textY = this.returnDotPos.y - pr - 22 + bobY;
+        ctx.font = 'bold 16px monospace';
         ctx.textAlign = 'center';
-        ctx.globalAlpha = 0.7;
-        ctx.fillText('RETURN HERE', this.returnDotPos.x, this.returnDotPos.y - pr - 15);
+        ctx.shadowColor = '#facc15';
+        ctx.shadowBlur = 12;
+        ctx.fillStyle = '#facc15';
+        ctx.globalAlpha = 0.85 + pulse * 0.15;
+        ctx.fillText('RETURN HERE', this.returnDotPos.x, textY);
+        ctx.fillText('RETURN HERE', this.returnDotPos.x, textY); // double-draw for stronger glow
+        ctx.shadowBlur = 0;
+        // Arrow pointing down at dot
+        ctx.font = 'bold 14px monospace';
+        ctx.fillText('\u25BC', this.returnDotPos.x, textY + 16);
         ctx.globalAlpha = 1;
       }
 
