@@ -4522,6 +4522,12 @@ class Game {
     }
   }
 
+  getDisplayPhase() {
+    return (this.phase === PHASE_DEFS.length - 1 && this._hivemindRamp > 0)
+      ? PHASE_DEFS.length + this._hivemindRamp
+      : this.phase + 1;
+  }
+
   // Get current phase params (computed, not mutating PHASE_DEFS)
   getPhaseDef() {
     let base;
@@ -4532,6 +4538,7 @@ class Game {
       const phaseDurations = PHASE_DEFS.slice(0, PHASE_DEFS.length - 1).reduce((s, p) => s + p.dur, 0);
       const t = Math.max(0, this.gameTime - phaseDurations);
       const ramp = Math.floor(t / 25);
+      this._hivemindRamp = ramp; // track for sub-phase announcements
       base = {
         ...EVOLVED_BASE,
         speed: EVOLVED_BASE.speed + ramp * 0.2,
@@ -4646,9 +4653,27 @@ class Game {
     }
     if (this.phase !== this._lastAnnouncedPhase) {
       this._lastAnnouncedPhase = this.phase;
+      this._lastHivemindRamp = -1;
       this.announcePhase();
       // Analytics: phase milestone
       trackEvent(`milestone-phase-${this.phase + 1}`, `Reached Phase ${this.phase + 1}: ${PHASE_DEFS[this.phase].name}`);
+    }
+
+    // HIVEMIND sub-phase announcements (every 25s ramp = new "phase")
+    if (this.phase === PHASE_DEFS.length - 1 && this._hivemindRamp !== undefined) {
+      if (this._lastHivemindRamp === undefined) this._lastHivemindRamp = -1;
+      if (this._hivemindRamp > 0 && this._hivemindRamp !== this._lastHivemindRamp) {
+        this._lastHivemindRamp = this._hivemindRamp;
+        const subPhaseNum = PHASE_DEFS.length + this._hivemindRamp;
+        const el = document.getElementById('phase-announce');
+        el.querySelector('.phase-num').textContent = `Phase ${subPhaseNum}`;
+        el.querySelector('.phase-name').textContent = 'HIVEMIND';
+        el.querySelector('.phase-name').style.color = PHASE_DEFS[PHASE_DEFS.length - 1].color;
+        el.querySelector('.phase-desc').textContent = `Ramp ${this._hivemindRamp}. Still here? Impressive. Still doomed, but impressive.`;
+        el.classList.add('show');
+        this.phaseAnnounceTimer = PHASE_ANNOUNCE_DURATION / 1000;
+        setTimeout(() => el.classList.remove('show'), PHASE_ANNOUNCE_DURATION);
+      }
     }
 
     // --- Move player ---
@@ -6230,7 +6255,7 @@ class Game {
   announcePhase() {
     const def = PHASE_DEFS[this.phase];
     const el = document.getElementById('phase-announce');
-    el.querySelector('.phase-num').textContent = `Phase ${this.phase + 1}`;
+    el.querySelector('.phase-num').textContent = `Phase ${this.getDisplayPhase()}`;
     el.querySelector('.phase-name').textContent = def.name;
     el.querySelector('.phase-name').style.color = def.color;
     el.querySelector('.phase-desc').textContent = def.desc;
@@ -6438,7 +6463,7 @@ class Game {
     // Leaderboard: store pending score, pre-fill name, reset submit UI
     this._pendingScore = {
       time: this.gameTime,
-      phase: Math.min(this.phase + 1, PHASE_DEFS.length),
+      phase: this.getDisplayPhase(),
       dodges: this.dodgedCount,
       bosses: this.bossesDefeated
     };
@@ -6503,7 +6528,7 @@ class Game {
     const phaseName = PHASE_DEFS[Math.min(this.phase, PHASE_DEFS.length - 1)].name;
     ctx.font = 'bold 26px "Courier New", monospace';
     ctx.fillStyle = '#8b5cf6';
-    ctx.fillText(`Phase ${this.phase + 1}: ${phaseName}`, 60, 230);
+    ctx.fillText(`Phase ${this.getDisplayPhase()}: ${phaseName}`, 60, 230);
 
     // Divider line
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
@@ -6545,7 +6570,7 @@ class Game {
     const emoji = this.phase >= 4 ? String.fromCodePoint(0x1F525) : this.phase >= 2 ? String.fromCodePoint(0x26A1) : String.fromCodePoint(0x1F3AF);
     const text = [
       `${emoji} DODGE AI \u2014 ${this.gameTime.toFixed(1)}s`,
-      `Phase ${this.phase + 1}: ${phase}`,
+      `Phase ${this.getDisplayPhase()}: ${phase}`,
       `Dodged: ${this.dodgedCount}`,
       this.bossesDefeated > 0 ? `Bosses demolished: ${this.bossesDefeated}` : '',
       `The AI thinks it knows me (${this.brain.getConfidence()}% confident)`,
@@ -7448,7 +7473,7 @@ class Game {
     document.getElementById('hud-time').textContent = `${this.gameTime.toFixed(1)}s`;
     const def = PHASE_DEFS[this.phase];
     const phaseEl = document.getElementById('hud-phase');
-    phaseEl.textContent = `PHASE ${this.phase + 1} — ${def.name}`;
+    phaseEl.textContent = `PHASE ${this.getDisplayPhase()} — ${def.name}`;
     phaseEl.style.color = def.color;
     const dodgedEl = document.getElementById('hud-dodged');
     dodgedEl.textContent = `Dodged: ${this.dodgedCount}`;
