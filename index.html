@@ -336,55 +336,192 @@
       to { transform: scale(1.05); }
     }
 
-    /* --- Evolution Announcement --- */
-    #evolution-announce {
+    /* --- Evolution Merge Animation --- */
+    #evolution-merge {
       position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 45;
-      text-align: center;
+      inset: 0;
+      z-index: 60;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       pointer-events: none;
       opacity: 0;
-      transition: opacity 0.4s ease;
-      padding: 32px 48px;
-      border-radius: 16px;
-      background: radial-gradient(ellipse at center, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.6) 60%, transparent 100%);
+      transition: opacity 0.3s ease;
+      background: radial-gradient(ellipse at center, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 70%, rgba(0,0,0,0.3) 100%);
     }
-    #evolution-announce.show {
+    #evolution-merge.show { opacity: 1; }
+    .evo-merge-container {
+      position: relative;
+      width: 500px;
+      height: 340px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    /* Ingredient cards sliding in from sides */
+    .evo-ingredient {
+      position: absolute;
+      width: 140px;
+      background: rgba(15, 15, 35, 0.95);
+      border: 2px solid var(--ing-color, #9ca3af);
+      border-radius: 12px;
+      padding: 16px 12px;
+      text-align: center;
+      opacity: 0;
+      transition: none;
+    }
+    .evo-ingredient.left { left: 0; transform: translateX(-80px); }
+    .evo-ingredient.right { right: 0; transform: translateX(80px); }
+    .evo-ingredient.slide-in {
+      transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
       opacity: 1;
-      animation: evo-entrance 0.6s ease-out;
     }
-    .evo-icon {
-      font-size: 64px;
-      filter: drop-shadow(0 0 30px currentColor);
+    .evo-ingredient.left.slide-in { transform: translateX(0); }
+    .evo-ingredient.right.slide-in { transform: translateX(0); }
+    .evo-ingredient.merge {
+      transition: transform 0.5s cubic-bezier(0.55, 0, 1, 0.45), opacity 0.3s ease 0.2s;
     }
-    .evo-label {
-      font-size: 14px;
-      color: #fff;
-      letter-spacing: 6px;
-      text-transform: uppercase;
-      margin-top: 4px;
-      text-shadow: 0 0 10px rgba(255,255,255,0.9), 0 0 30px rgba(255,255,255,0.5);
+    .evo-ingredient.left.merge { transform: translateX(110px) scale(0.6); opacity: 0; }
+    .evo-ingredient.right.merge { transform: translateX(-110px) scale(0.6); opacity: 0; }
+    .evo-ingredient .ing-icon {
+      font-size: 36px;
+      color: var(--ing-color, #9ca3af);
+      text-shadow: 0 0 12px var(--ing-color, #9ca3af);
+      line-height: 1;
+      margin-bottom: 6px;
     }
-    .evo-name {
-      font-size: 42px;
+    .evo-ingredient .ing-name {
+      font-size: 11px;
       font-weight: bold;
-      letter-spacing: 4px;
-      margin-top: 4px;
-      text-shadow: 0 0 20px currentColor, 0 0 50px currentColor;
+      letter-spacing: 1.5px;
+      color: var(--ing-color, #9ca3af);
     }
-    .evo-desc {
-      font-size: 14px;
-      color: #e5e5e5;
-      margin-top: 10px;
-      letter-spacing: 1px;
-      text-shadow: 0 0 8px rgba(0,0,0,0.8);
+    /* Plus sign between cards */
+    .evo-plus {
+      position: absolute;
+      font-size: 28px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 0 0 15px rgba(255,255,255,0.8);
+      opacity: 0;
+      z-index: 2;
     }
-    @keyframes evo-entrance {
-      0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
-      50% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
-      100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    .evo-plus.show {
+      opacity: 1;
+      transition: opacity 0.3s ease;
+    }
+    .evo-plus.hide {
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    /* Flash burst on collision */
+    .evo-flash {
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 3;
+    }
+    .evo-flash.burst {
+      opacity: 1;
+      animation: evo-burst 0.6s ease-out forwards;
+    }
+    @keyframes evo-burst {
+      0% { transform: scale(0.2); opacity: 1; }
+      50% { transform: scale(1.5); opacity: 0.6; }
+      100% { transform: scale(2); opacity: 0; }
+    }
+    /* Result evolution card */
+    .evo-result {
+      position: absolute;
+      width: 220px;
+      background: rgba(10, 5, 30, 0.97);
+      border: 2px solid var(--evo-color, #e879f9);
+      border-radius: 14px;
+      padding: 24px 18px;
+      text-align: center;
+      opacity: 0;
+      transform: scale(0.3);
+      z-index: 4;
+      overflow: hidden;
+    }
+    .evo-result.reveal {
+      opacity: 1;
+      transform: scale(1);
+      transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+      box-shadow: 0 0 40px var(--evo-color, #e879f9), 0 0 80px var(--evo-color, #e879f9), inset 0 0 30px rgba(255,255,255,0.05);
+    }
+    .evo-result.dismiss {
+      opacity: 0;
+      transform: scale(1.1);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    /* Holographic shimmer on evolution card */
+    .evo-result::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, transparent 20%, rgba(255,255,255,0.1) 40%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.1) 60%, transparent 80%);
+      background-size: 300% 300%;
+      animation: evo-shimmer 2s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes evo-shimmer {
+      0%, 100% { background-position: 200% 200%; }
+      50% { background-position: -100% -100%; }
+    }
+    .evo-result .evo-r-label {
+      font-size: 11px;
+      color: #fff;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      text-shadow: 0 0 10px rgba(255,255,255,0.9);
+      margin-bottom: 4px;
+    }
+    .evo-result .evo-r-icon {
+      font-size: 56px;
+      line-height: 1;
+      margin-bottom: 6px;
+      color: var(--evo-color, #e879f9);
+      filter: drop-shadow(0 0 20px var(--evo-color, #e879f9));
+    }
+    .evo-result .evo-r-name {
+      font-size: 28px;
+      font-weight: bold;
+      letter-spacing: 3px;
+      color: var(--evo-color, #e879f9);
+      text-shadow: 0 0 20px var(--evo-color, #e879f9);
+      margin-bottom: 8px;
+    }
+    .evo-result .evo-r-desc {
+      font-size: 12px;
+      line-height: 1.4;
+      color: #ddd;
+      letter-spacing: 0.5px;
+    }
+    /* Particle container for merge sparks */
+    .evo-particles {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .evo-spark {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      opacity: 0;
+    }
+    .evo-spark.burst {
+      animation: spark-fly 0.8s ease-out forwards;
+    }
+    @keyframes spark-fly {
+      0% { transform: translate(0, 0) scale(1); opacity: 1; }
+      100% { transform: translate(var(--tx, 50px), var(--ty, 50px)) scale(0); opacity: 0; }
     }
     @keyframes evo-flash {
       0% { opacity: 0.6; }
@@ -1241,12 +1378,27 @@
   <div class="boss-sub">Survive or EMP it</div>
 </div>
 
-<!-- Evolution Announcement -->
-<div id="evolution-announce">
-  <div class="evo-icon"></div>
-  <div class="evo-label">EVOLVED</div>
-  <div class="evo-name"></div>
-  <div class="evo-desc"></div>
+<!-- Evolution Merge Animation -->
+<div id="evolution-merge">
+  <div class="evo-merge-container">
+    <div class="evo-ingredient left" id="evo-ing-left">
+      <div class="ing-icon"></div>
+      <div class="ing-name"></div>
+    </div>
+    <div class="evo-plus">+</div>
+    <div class="evo-ingredient right" id="evo-ing-right">
+      <div class="ing-icon"></div>
+      <div class="ing-name"></div>
+    </div>
+    <div class="evo-flash"></div>
+    <div class="evo-result">
+      <div class="evo-r-label">EVOLVED</div>
+      <div class="evo-r-icon"></div>
+      <div class="evo-r-name"></div>
+      <div class="evo-r-desc"></div>
+    </div>
+    <div class="evo-particles"></div>
+  </div>
 </div>
 
 <!-- Powerup Pickup -->
@@ -1476,13 +1628,14 @@ async function fetchLeaderboard(forceRefresh = false) {
 
 async function submitScore(name, time_s, phase, dodges, bosses) {
   if (!sb) throw new Error('Leaderboard unavailable');
-  const { error } = await sb.from('leaderboard').insert({
+  const row = {
     name: name.trim().slice(0, 20),
     time_s: parseFloat(time_s.toFixed(1)),
-    phase,
-    dodges,
-    bosses
-  });
+    phase: phase || 1,
+    dodges: dodges || 0,
+    bosses: bosses || 0
+  };
+  const { error } = await sb.from('leaderboard').insert(row);
   if (error) throw error;
   _lbCache = null; // bust cache
 }
@@ -1671,14 +1824,28 @@ const UPGRADE_DEFS = [
   { id: 'omegaBeam',      name: 'OMEGA BEAM',        rarity: 'legendary', icon: '\u03A9', desc: "Homing laser tracks and vaporizes projectiles every 0.5s." },
 ];
 
-// Evolution system — disabled until playtested. Re-enable by uncommenting the array entries.
+// Evolution system — combine two upgrades into a powerful new ability
 const EVOLUTION_DEFS = [
-  // { id: 'thunderpath', name: 'THUNDERPATH', ingredients: ['cometTrail', 'stormRunner'],
-  //   icon: '\u26A1', color: '#38bdf8', desc: 'Trail electrifies — zaps projectiles on contact' },
-  // { id: 'lightspeed', name: 'LIGHTSPEED', ingredients: ['swift', 'burnout'],
-  //   icon: '\u2727', color: '#fbbf24', desc: 'Max speed grants brief invincibility' },
-  // { id: 'singularityEngine', name: 'SINGULARITY ENGINE', ingredients: ['denseCore', 'eventHorizon'],
-  //   icon: '\u229B', color: '#c084fc', desc: 'Black holes chain together on expiry' },
+  { id: 'thunderpath', name: 'THUNDERPATH', ingredients: ['cometTrail', 'stormRunner'],
+    icon: '\u26A1', color: '#38bdf8', desc: 'Trail electrifies — zaps projectiles on contact' },
+  { id: 'lightspeed', name: 'LIGHTSPEED', ingredients: ['swift', 'burnout'],
+    icon: '\u2727', color: '#fbbf24', desc: 'Max speed grants brief invincibility' },
+  { id: 'singularityEngine', name: 'SINGULARITY ENGINE', ingredients: ['denseCore', 'eventHorizon'],
+    icon: '\u229B', color: '#c084fc', desc: 'Black holes chain together on expiry' },
+  { id: 'deathBlossom', name: 'DEATH BLOSSOM', ingredients: ['radiance', 'chainReaction'],
+    icon: '\u2740', color: '#ff4400', desc: 'Combustion cascades — burned projectiles ignite their neighbors' },
+  { id: 'wraith', name: 'WRAITH', ingredients: ['ghostMode', 'dodgeInstinct'],
+    icon: '\u2620', color: '#22c55e', desc: 'Permanently semi-phased. 15% passive dodge, ghost lasts twice as long.' },
+  { id: 'ironCurtain', name: 'IRON CURTAIN', ingredients: ['fortress', 'shockwave'],
+    icon: '\u2756', color: '#facc15', desc: 'Shield hits release shockwaves that push threats away' },
+  { id: 'magnetar', name: 'MAGNETAR', ingredients: ['magnetize', 'gravityWell'],
+    icon: '\u2B24', color: '#818cf8', desc: 'Gravitational god. Double pull range, triple repulsion.' },
+  { id: 'timeLord', name: 'TIME LORD', ingredients: ['timeWarpUpgrade', 'btMastery'],
+    icon: '\u231A', color: '#a78bfa', desc: 'Time obeys you. 30% permanent slow, bullet time recharges 2x faster.' },
+  { id: 'deathStar', name: 'DEATH STAR', ingredients: ['omegaBeam', 'deathRay'],
+    icon: '\u2600', color: '#e879f9', desc: 'Both beam systems active simultaneously. Nothing survives.' },
+  { id: 'luckyBreak', name: 'LUCKY BREAK', ingredients: ['luckyStar', 'dejaVu'],
+    icon: '\u2618', color: '#34d399', desc: 'Power-ups last 60% longer and 70% chance to auto-renew.' },
 ];
 
 // ============================================================
@@ -3863,6 +4030,9 @@ class Game {
     // Evolution combo system
     this.evolutions = {};
     this.evolutionAnnounceTimer = 0;
+    // Clean up any active evolution merge overlay
+    const evoMerge = document.getElementById('evolution-merge');
+    if (evoMerge) evoMerge.classList.remove('show');
     this.miniVortices = [];
     this.lightspeedCooldown = 0;
     this.lightspeedActive = false;
@@ -4206,7 +4376,8 @@ class Game {
         const rows = await fetchLeaderboard(true);
         renderLeaderboard('go-lb-body', rows, name);
       } catch (e) {
-        lbStatus.textContent = 'Failed to submit. Try again.';
+        console.error('Leaderboard submit error:', e);
+        lbStatus.textContent = `Failed to submit: ${e.message || 'Unknown error'}. Try again.`;
         lbStatus.className = 'lb-status error';
         lbBtn.disabled = false;
       }
@@ -4338,6 +4509,9 @@ class Game {
     this.returnDotPos = null;
     this.evolutions = {};
     this.evolutionAnnounceTimer = 0;
+    // Clean up any active evolution merge overlay
+    const evoMerge = document.getElementById('evolution-merge');
+    if (evoMerge) evoMerge.classList.remove('show');
     this.miniVortices = [];
     this.lightspeedCooldown = 0;
     this.lightspeedActive = false;
@@ -4422,8 +4596,12 @@ class Game {
     const t = this.effects.slowmo.blend || 0;
     let mod = 1 - t * 0.7; // lerp from 1.0 to 0.3
     if (this.abilities.timeWarp.active) mod *= 0.3;
-    // Upgrade: Time Distortion — permanent 25% slow
-    if (this.upgrades.timeWarpUpgrade) mod *= Math.max(0.55, 0.8 - 0.1 * this.upgrades.timeWarpUpgrade);
+    // Upgrade: Time Distortion — permanent 25% slow (TIME LORD: 30%)
+    if (this.upgrades.timeWarpUpgrade) {
+      const baseSlow = this.evolutions.timeLord ? 0.75 : 0.8;
+      const perLvl = this.evolutions.timeLord ? 0.12 : 0.1;
+      mod *= Math.max(0.5, baseSlow - perLvl * this.upgrades.timeWarpUpgrade);
+    }
     // Upgrade freeze — ease projectiles to stop
     mod *= (1 - this.upgradeFreezeBlend);
     return mod;
@@ -4681,19 +4859,115 @@ class Game {
       this.flashColor = evo.color;
       this.screenShake.intensity = 15;
       this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 250, evo.color, 0.8));
-      // Show evolution announcement (delayed slightly so card dismiss finishes)
-      setTimeout(() => {
-        const el = document.getElementById('evolution-announce');
-        el.querySelector('.evo-icon').textContent = evo.icon;
-        el.querySelector('.evo-icon').style.color = evo.color;
-        el.querySelector('.evo-name').textContent = evo.name;
-        el.querySelector('.evo-name').style.color = evo.color;
-        el.querySelector('.evo-desc').textContent = evo.desc;
-        el.classList.add('show');
-        this.evolutionAnnounceTimer = 3;
-        setTimeout(() => el.classList.remove('show'), 3000);
-      }, 600);
+      // Show card merge animation (delayed so card dismiss finishes)
+      setTimeout(() => this.showEvolutionMerge(evo), 600);
     }
+  }
+
+  showEvolutionMerge(evo) {
+    const el = document.getElementById('evolution-merge');
+    const ingL = el.querySelector('#evo-ing-left');
+    const ingR = el.querySelector('#evo-ing-right');
+    const plus = el.querySelector('.evo-plus');
+    const flash = el.querySelector('.evo-flash');
+    const result = el.querySelector('.evo-result');
+    const particles = el.querySelector('.evo-particles');
+
+    // Look up ingredient upgrade defs
+    const defA = UPGRADE_DEFS.find(u => u.id === evo.ingredients[0]);
+    const defB = UPGRADE_DEFS.find(u => u.id === evo.ingredients[1]);
+    const colorA = defA ? RARITY_COLORS[defA.rarity] : '#9ca3af';
+    const colorB = defB ? RARITY_COLORS[defB.rarity] : '#9ca3af';
+
+    // Reset all states
+    ingL.classList.remove('slide-in', 'merge');
+    ingR.classList.remove('slide-in', 'merge');
+    plus.classList.remove('show', 'hide');
+    flash.classList.remove('burst');
+    result.classList.remove('reveal', 'dismiss');
+    particles.innerHTML = '';
+
+    // Set ingredient content
+    ingL.style.setProperty('--ing-color', colorA);
+    ingL.querySelector('.ing-icon').textContent = defA ? defA.icon : '?';
+    ingL.querySelector('.ing-name').textContent = defA ? defA.name : '???';
+    ingR.style.setProperty('--ing-color', colorB);
+    ingR.querySelector('.ing-icon').textContent = defB ? defB.icon : '?';
+    ingR.querySelector('.ing-name').textContent = defB ? defB.name : '???';
+
+    // Set evolution result
+    result.style.setProperty('--evo-color', evo.color);
+    result.querySelector('.evo-r-icon').textContent = evo.icon;
+    result.querySelector('.evo-r-icon').style.color = evo.color;
+    result.querySelector('.evo-r-name').textContent = evo.name;
+    result.querySelector('.evo-r-name').style.color = evo.color;
+    result.querySelector('.evo-r-desc').textContent = evo.desc;
+
+    // Set flash color
+    flash.style.background = `radial-gradient(circle, ${evo.color} 0%, transparent 70%)`;
+
+    // Show overlay
+    el.classList.add('show');
+    soundEngine.playCollect();
+
+    // Step 1: Cards slide in (0ms)
+    requestAnimationFrame(() => {
+      ingL.classList.add('slide-in');
+      ingR.classList.add('slide-in');
+    });
+
+    // Step 2: Plus sign appears (500ms)
+    setTimeout(() => plus.classList.add('show'), 500);
+
+    // Step 3: Cards merge toward center (1000ms)
+    setTimeout(() => {
+      plus.classList.remove('show');
+      plus.classList.add('hide');
+      ingL.classList.add('merge');
+      ingR.classList.add('merge');
+    }, 1000);
+
+    // Step 4: Flash burst + sparks (1400ms)
+    setTimeout(() => {
+      flash.classList.add('burst');
+      soundEngine.playEMP();
+      // Spawn CSS particle sparks
+      for (let i = 0; i < 16; i++) {
+        const spark = document.createElement('div');
+        spark.className = 'evo-spark';
+        const angle = (i / 16) * Math.PI * 2;
+        const dist = 60 + Math.random() * 80;
+        const tx = Math.cos(angle) * dist;
+        const ty = Math.sin(angle) * dist;
+        spark.style.left = '50%';
+        spark.style.top = '50%';
+        spark.style.background = i % 2 === 0 ? evo.color : '#fff';
+        spark.style.boxShadow = `0 0 6px ${evo.color}`;
+        spark.style.setProperty('--tx', tx + 'px');
+        spark.style.setProperty('--ty', ty + 'px');
+        spark.style.animation = `spark-fly 0.8s ease-out ${Math.random() * 0.15}s forwards`;
+        particles.appendChild(spark);
+      }
+    }, 1400);
+
+    // Step 5: Evolution card reveals (1700ms)
+    setTimeout(() => result.classList.add('reveal'), 1700);
+
+    // Step 6: Dismiss everything (4200ms)
+    setTimeout(() => {
+      result.classList.add('dismiss');
+      setTimeout(() => {
+        el.classList.remove('show');
+        ingL.classList.remove('slide-in', 'merge');
+        ingR.classList.remove('slide-in', 'merge');
+        plus.classList.remove('show', 'hide');
+        flash.classList.remove('burst');
+        result.classList.remove('reveal', 'dismiss');
+        particles.innerHTML = '';
+      }, 600);
+    }, 4200);
+
+    this.evolutionAnnounceTimer = 5;
   }
 
   getDisplayPhase() {
@@ -4995,6 +5269,21 @@ class Game {
             const pushSpeed = 350;
             p.vx = nx * pushSpeed * dt + p.vx * 0.3;
             p.vy = ny * pushSpeed * dt + p.vy * 0.3;
+            // IRON CURTAIN: shield contact triggers mini-shockwaves
+            if (this.evolutions.ironCurtain && !p._ironCurtainHit) {
+              p._ironCurtainHit = true;
+              this.shockwaves.push(new Shockwave(p.x, p.y, 60, '#facc15', 0.3));
+              // Push nearby projectiles too
+              for (const op of this.projectiles) {
+                if (op === p || op._friendly) continue;
+                const sdx = op.x - p.x, sdy = op.y - p.y;
+                const sd = Math.sqrt(sdx * sdx + sdy * sdy);
+                if (sd < 60 && sd > 1) {
+                  op.vx += (sdx / sd) * 200;
+                  op.vy += (sdy / sd) * 200;
+                }
+              }
+            }
           } else {
             p.vx += nx * strength;
             p.vy += ny * strength;
@@ -5125,6 +5414,24 @@ class Game {
               const a = Math.random() * Math.PI * 2;
               this.particles.push(new Particle(p.x, p.y, Math.cos(a) * 40, Math.sin(a) * 40, 0.25, '#ff4400', 1.5));
             }
+            // DEATH BLOSSOM: cascade combustion to nearby projectiles
+            if (this.evolutions.deathBlossom) {
+              const cascadeR = 80;
+              for (const op of this.projectiles) {
+                if (op === p || op._friendly || op._burning) continue;
+                const cdx = op.x - p.x, cdy = op.y - p.y;
+                if (Math.sqrt(cdx * cdx + cdy * cdy) < cascadeR) {
+                  op._burning = true;
+                  op._burnTimer = 0.5;
+                  // Fire link particle between source and target
+                  this.particles.push(new Particle(
+                    (p.x + op.x) / 2, (p.y + op.y) / 2,
+                    (Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20,
+                    0.3, '#ff4400', 2
+                  ));
+                }
+              }
+            }
             this.tryRicochet(p.x, p.y);
             this.projectiles.splice(i, 1);
             this.dodgedCount++;
@@ -5210,7 +5517,9 @@ class Game {
           continue;
         }
         // Dodge Instinct: chance to dodge a lethal hit
-        if (this.upgrades.dodgeInstinct && Math.random() < (0.1 + 0.1 * this.upgrades.dodgeInstinct)) {
+        // WRAITH: +15% passive dodge chance on top of base
+        const wraithBonus = this.evolutions.wraith ? 0.15 : 0;
+        if (this.upgrades.dodgeInstinct && Math.random() < (0.1 + 0.1 * this.upgrades.dodgeInstinct + wraithBonus)) {
           // Dodge! Remove the projectile and show popup
           this.projectiles.splice(i, 1);
           this.dodgedCount++;
@@ -5303,6 +5612,7 @@ class Game {
       this.spawnPowerup();
       let puDelay = POWERUP_SPAWN_MIN + this.rng() * (POWERUP_SPAWN_MAX - POWERUP_SPAWN_MIN);
       if (this.upgrades.lootGoblin) puDelay *= Math.max(0.35, 0.65 - 0.1 * this.upgrades.lootGoblin);
+      if (this.evolutions.timeLord) puDelay *= 0.7; // TIME LORD: power-ups spawn 30% faster
       this.powerupTimer = puDelay;
     }
 
@@ -5312,12 +5622,13 @@ class Game {
       pu.update(dt);
       // Magnetize upgrade: pull powerups toward player
       if (this.upgrades.magnetize) {
-        const magRange = 250 + 200 * this.upgrades.magnetize;
+        const magMul = this.evolutions.magnetar ? 2 : 1; // MAGNETAR: double pull range
+        const magRange = (250 + 200 * this.upgrades.magnetize) * magMul;
         const mdx = this.player.x - pu.x;
         const mdy = this.player.y - pu.y;
         const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
         if (mdist < magRange && mdist > 1) {
-          const pullStrength = 200 * (1 - mdist / magRange);
+          const pullStrength = (200 * magMul) * (1 - mdist / magRange);
           pu.x += (mdx / mdist) * pullStrength * dt;
           pu.y += (mdy / mdist) * pullStrength * dt;
         }
@@ -5418,7 +5729,9 @@ class Game {
         eff.remaining -= dt;
         if (eff.remaining <= 0) {
           // Déjà Vu: 40% chance to re-trigger (once, no chain)
-          if (this.upgrades.dejaVu && !eff._dejaVuUsed && Math.random() < (0.25 + 0.15 * this.upgrades.dejaVu) && key !== 'vortex') {
+          // LUCKY BREAK: 70% renew chance (overrides base deja vu)
+          const renewChance = this.evolutions.luckyBreak ? 0.7 : (0.25 + 0.15 * this.upgrades.dejaVu);
+          if (this.upgrades.dejaVu && !eff._dejaVuUsed && Math.random() < renewChance && key !== 'vortex') {
             eff.remaining = eff.duration;
             eff._dejaVuUsed = true;
             // Visual feedback
@@ -5611,25 +5924,38 @@ class Game {
       }
     }
 
-    // Shockwave upgrade: auto-blast every 10s
+    // Shockwave upgrade: auto-blast every 10s (IRON CURTAIN: faster + destroys close projectiles)
     if (this.upgrades.shockwave) {
       this.shockwaveTimer -= dt;
       if (this.shockwaveTimer <= 0) {
-        this.shockwaveTimer = Math.max(5, 12 - 2 * this.upgrades.shockwave);
-        const swRadius = 150 + 50 * this.upgrades.shockwave;
+        const icMul = this.evolutions.ironCurtain ? 0.7 : 1; // IRON CURTAIN: 30% faster cooldown
+        this.shockwaveTimer = Math.max(4, (12 - 2 * this.upgrades.shockwave) * icMul);
+        const swRadius = (150 + 50 * this.upgrades.shockwave) * (this.evolutions.ironCurtain ? 1.3 : 1);
         this.shockwaves.push(new Shockwave(this.player.x, this.player.y, swRadius, '#facc15', 0.5));
         soundEngine.playCollect();
         // Push nearby projectiles away
-        for (const p of this.projectiles) {
+        for (let si = this.projectiles.length - 1; si >= 0; si--) {
+          const p = this.projectiles[si];
           const sdx = p.x - this.player.x;
           const sdy = p.y - this.player.y;
           const sdist = Math.sqrt(sdx * sdx + sdy * sdy);
           if (sdist < swRadius && sdist > 1) {
-            const nx = sdx / sdist;
-            const ny = sdy / sdist;
-            const pushForce = 400 * (1 - sdist / swRadius);
-            p.vx += nx * pushForce;
-            p.vy += ny * pushForce;
+            // IRON CURTAIN: destroy projectiles in inner 40% of blast
+            if (this.evolutions.ironCurtain && sdist < swRadius * 0.4) {
+              for (let j = 0; j < 4; j++) {
+                const a = Math.random() * Math.PI * 2;
+                this.particles.push(new Particle(p.x, p.y, Math.cos(a) * 50, Math.sin(a) * 50, 0.25, '#facc15', 2));
+              }
+              this.tryRicochet(p.x, p.y);
+              this.projectiles.splice(si, 1);
+              this.dodgedCount++;
+            } else {
+              const nx = sdx / sdist;
+              const ny = sdy / sdist;
+              const pushForce = 400 * (1 - sdist / swRadius);
+              p.vx += nx * pushForce;
+              p.vy += ny * pushForce;
+            }
           }
         }
       }
@@ -5668,7 +5994,8 @@ class Game {
         if (!this.ghostActive) {
           // Activate ghost mode
           this.ghostActive = true;
-          this.ghostTimer = 1 + 0.5 * this.upgrades.ghostMode; // duration of ghost
+          const ghostDurMul = this.evolutions.wraith ? 2 : 1; // WRAITH: double duration
+          this.ghostTimer = (1 + 0.5 * this.upgrades.ghostMode) * ghostDurMul;
           for (let i = 0; i < 10; i++) {
             const a = Math.random() * Math.PI * 2;
             this.particles.push(new Particle(
@@ -5697,7 +6024,8 @@ class Game {
       if (this.deathRayActive) {
         if (this.deathRayTimer <= 0) {
           this.deathRayActive = false;
-          this.deathRayTimer = 20 - 2 * lvl; // Lv1: 18s, Lv2: 16s, Lv3: 14s cooldown
+          const dsCooldown = this.evolutions.deathStar ? 0.5 : 1; // DEATH STAR: halved cooldown
+          this.deathRayTimer = (20 - 2 * lvl) * dsCooldown;
         } else {
           // Rotate beams
           this.deathRayAngle += 2.5 * dt; // rotation speed
@@ -5746,8 +6074,9 @@ class Game {
 
     // Gravity Well: deflect nearby projectiles away from player
     if (this.upgrades.gravityWell) {
-      const wellRadius = 100 + 30 * this.upgrades.gravityWell;
-      const wellForce = 40 + 20 * this.upgrades.gravityWell;
+      const magBoost = this.evolutions.magnetar ? 3 : 1; // MAGNETAR: triple repulsion
+      const wellRadius = (100 + 30 * this.upgrades.gravityWell) * (this.evolutions.magnetar ? 1.5 : 1);
+      const wellForce = (40 + 20 * this.upgrades.gravityWell) * magBoost;
       for (const p of this.projectiles) {
         if (p._friendly) continue;
         const gdx = p.x - this.player.x;
@@ -5937,8 +6266,9 @@ class Game {
     if (this.upgrades.omegaBeam) {
       this.omegaBeamZapTimer -= dt;
       if (this.omegaBeamZapTimer <= 0) {
-        this.omegaBeamZapTimer = Math.max(0.2, 0.6 - 0.15 * this.upgrades.omegaBeam); // Lv1:0.45s, Lv2:0.3s, Lv3:0.2s (triple beam)
-        const beamRange = 250 + 50 * this.upgrades.omegaBeam;
+        const dsRate = this.evolutions.deathStar ? 0.6 : 1; // DEATH STAR: 40% faster fire rate
+        this.omegaBeamZapTimer = Math.max(0.1, (0.6 - 0.15 * this.upgrades.omegaBeam) * dsRate);
+        const beamRange = (250 + 50 * this.upgrades.omegaBeam) * (this.evolutions.deathStar ? 1.3 : 1);
         // Find nearest non-friendly projectile
         let nearest = null, nearDist = Infinity;
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
@@ -6041,7 +6371,8 @@ class Game {
     el.classList.add('show');
     this.pickupAnnounceTimer = 1;
 
-    const lsBonus = 1 + 0.2 * (this.upgrades.luckyStar || 0);
+    const lbExtra = this.evolutions.luckyBreak ? 0.6 : 0; // LUCKY BREAK: +60% duration
+    const lsBonus = 1 + 0.2 * (this.upgrades.luckyStar || 0) + lbExtra;
 
     if (pu.type === 'emp') {
       // === EMP ANIMATION ===
@@ -6152,7 +6483,8 @@ class Game {
         ));
       }
       this.effects.slowmo.active = true;
-      const btDur = POWERUP_TYPES.slowmo.duration * (1 + 0.4 * (this.upgrades.btMastery || 0)) * lsBonus;
+      const tlBonus = this.evolutions.timeLord ? 1.5 : 1; // TIME LORD: 50% longer BT on top
+      const btDur = POWERUP_TYPES.slowmo.duration * (1 + 0.4 * (this.upgrades.btMastery || 0)) * lsBonus * tlBonus;
       this.effects.slowmo.remaining = btDur;
       this.effects.slowmo.duration = btDur;
 
@@ -7026,7 +7358,7 @@ class Game {
 
     // Power-ups (with Force Pull glow indicator)
     if (this.upgrades.magnetize) {
-      const magRange = 250 + 200 * this.upgrades.magnetize;
+      const magRange = (250 + 200 * this.upgrades.magnetize) * (this.evolutions.magnetar ? 2 : 1);
       for (const pu of this.powerups) {
         const mdx = pu.x - this.player.x, mdy = pu.y - this.player.y;
         const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
@@ -7591,9 +7923,9 @@ class Game {
         ctx.globalAlpha = 1;
       }
 
-      // Gravity Well: subtle distortion ring
+      // Gravity Well: subtle distortion ring (MAGNETAR: 1.5x bigger)
       if (this.upgrades.gravityWell) {
-        const wellR = 100 + 30 * this.upgrades.gravityWell;
+        const wellR = (100 + 30 * this.upgrades.gravityWell) * (this.evolutions.magnetar ? 1.5 : 1);
         ctx.globalAlpha = 0.08 + 0.03 * this.upgrades.gravityWell;
         ctx.strokeStyle = '#818cf8';
         ctx.lineWidth = 1.5;
