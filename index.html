@@ -6342,8 +6342,8 @@ class Game {
         } else {
           // Rotate beams
           this.deathRayAngle += 2.5 * dt; // rotation speed
-          const beamCount = 2 + 2 * lvl; // Lv1: 4, Lv2: 6, Lv3: 8
-          const beamLen = 500 + 100 * lvl;
+          const beamCount = 4;
+          const beamLen = 350 + 150 * lvl; // Lv1: 500, Lv2: 650, Lv3: 800
           const beamW = 12 + 4 * lvl;
           for (let b = 0; b < beamCount; b++) {
             const angle = this.deathRayAngle + (b * Math.PI * 2 / beamCount);
@@ -6365,17 +6365,6 @@ class Game {
                 }
                 this.projectiles.splice(i, 1);
                 this.dodgedCount++;
-              }
-            }
-            // Damage bosses in beam path
-            for (const boss of this.bosses) {
-              const bpx = boss.x - this.player.x;
-              const bpy = boss.y - this.player.y;
-              const along = bpx * dx + bpy * dy;
-              if (along < 0 || along > beamLen) continue;
-              const perp = Math.abs(bpx * (-dy) + bpy * dx);
-              if (perp < beamW + boss.radius) {
-                boss.lifetime -= dt * 2;
               }
             }
           }
