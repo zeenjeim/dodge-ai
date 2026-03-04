@@ -5109,6 +5109,17 @@ class Game {
       if (!hasAll) continue;
       // Evolve!
       this.evolutions[evo.id] = true;
+      // Analytics: log evolution unlock
+      if (sb) {
+        sb.from('upgrade_picks').insert({
+          session_id: this.sessionId,
+          upgrade_id: 'evo:' + evo.id,
+          upgrade_level: 0,
+          alternatives: evo.ingredients,
+          time_s: parseFloat(this.gameTime.toFixed(1)),
+          phase: this.phase
+        }).then(() => {}).catch(() => {});
+      }
       // Screen flash + shake
       this.flashAlpha = 0.8;
       this.flashColor = evo.color;
