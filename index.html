@@ -1891,7 +1891,7 @@ const RARITY_COLORS = { common: '#9ca3af', rare: '#3b82f6', legendary: '#facc15'
 
 const UPGRADE_DEFS = [
   // --- COMMON (passive, simple stat boosts) ---
-  { id: 'swift',          name: 'GOTTA GO FAST',     rarity: 'common',    icon: '\u00BB', desc: "30% faster. Builds to 50% at full momentum." },
+  { id: 'echo',           name: 'ECHO',              rarity: 'common',    icon: '\u25CC', desc: "Every 10s, a ghost replays your last 2s of movement, destroying projectiles." },
   { id: 'smolSupreme',    name: 'SMOL SUPREME',      rarity: 'common',    icon: '\u25CE', desc: "40% smaller hitbox. Hard to hit, harder to see." },
   { id: 'lootGoblin',     name: 'LOOT GOBLIN',       rarity: 'common',    icon: '\u25C8', desc: "Power-ups spawn 40% faster." },
   { id: 'magnetize',      name: 'FORCE PULL',        rarity: 'common',    icon: '\u27D0', desc: "Pull power-ups toward you. Nearby ones glow." },
@@ -1900,7 +1900,7 @@ const UPGRADE_DEFS = [
   { id: 'cometTrail',     name: 'COMET TRAIL',       rarity: 'common',    icon: '\u2604', desc: "Leave a trail that burns projectiles." },
   { id: 'dodgeInstinct',  name: 'DODGE INSTINCT',    rarity: 'common',    icon: '\u25C6', desc: "20% chance to phase through a hit." },
   { id: 'denseCore',      name: 'DENSE CORE',        rarity: 'common',    icon: '\u2299', desc: "Black holes pull 40% harder and last 1s longer." },
-  { id: 'burnout',         name: 'BURNOUT',            rarity: 'common',    icon: '\u2BC0', desc: "Stop moving to blast a shockwave in your last direction." },
+  { id: 'burnout',         name: 'OVERDRIVE',          rarity: 'common',    icon: '\u2BC0', desc: "Move fast to build heat. Sharp turns release a blast around you." },
   { id: 'decoy',           name: 'DECOY',             rarity: 'common',    icon: '\u2662', desc: "Spawn a hologram every 8s that attracts projectiles for 3s." },
   { id: 'gravityWell',     name: 'GRAVITY WELL',      rarity: 'common',    icon: '\u2316', desc: "Nearby projectiles curve away from you." },
 
@@ -1929,8 +1929,8 @@ const UPGRADE_DEFS = [
 const EVOLUTION_DEFS = [
   { id: 'thunderpath', name: 'THUNDERPATH', ingredients: ['cometTrail', 'stormRunner'],
     icon: '\u26A1', color: '#38bdf8', desc: 'Trail electrifies — zaps projectiles on contact' },
-  { id: 'lightspeed', name: 'LIGHTSPEED', ingredients: ['swift', 'burnout'],
-    icon: '\u2727', color: '#fbbf24', desc: 'Max speed grants brief invincibility' },
+  { id: 'lightspeed', name: 'LIGHTSPEED', ingredients: ['echo', 'burnout'],
+    icon: '\u2727', color: '#fbbf24', desc: 'A ghost permanently trails 2s behind you, destroying everything in its path.' },
   { id: 'singularityEngine', name: 'SINGULARITY ENGINE', ingredients: ['denseCore', 'eventHorizon'],
     icon: '\u229B', color: '#c084fc', desc: 'Black holes chain together on expiry' },
   { id: 'deathBlossom', name: 'DEATH BLOSSOM', ingredients: ['radiance', 'chainReaction'],
@@ -4115,12 +4115,14 @@ class Game {
     this.secondWindUses = 0;
     this.chainReactionPending = false;
     this.chainReactionTimer = 0;
-    // Momentum
-    this.momentumDir = { x: 0, y: 0 };
-    this.momentumBuildup = 0;
-    // Burnout
+    // Echo
+    this.echoBuffer = [];
+    this.echoTimer = 10;
+    this.echoGhost = null;
+    // Burnout (OVERDRIVE)
     this.burnoutCooldown = 0;
-    this.burnoutWasMoving = false;
+    this.burnoutHeat = 0;
+    this._burnoutPrevDir = null;
     // Decoy
     this.decoyTimer = 8;
     this.decoys = [];
@@ -4145,8 +4147,6 @@ class Game {
     const evoMerge = document.getElementById('evolution-merge');
     if (evoMerge) evoMerge.classList.remove('show');
     this.miniVortices = [];
-    this.lightspeedCooldown = 0;
-    this.lightspeedActive = false;
 
     // Singularity phase: shrinking arena + dead zones
     this.arenaInset = 0;
@@ -4606,10 +4606,12 @@ class Game {
     this.secondWindUses = 0;
     this.chainReactionPending = false;
     this.chainReactionTimer = 0;
-    this.momentumDir = { x: 0, y: 0 };
-    this.momentumBuildup = 0;
+    this.echoBuffer = [];
+    this.echoTimer = 10;
+    this.echoGhost = null;
     this.burnoutCooldown = 0;
-    this.burnoutWasMoving = false;
+    this.burnoutHeat = 0;
+    this._burnoutPrevDir = null;
     this.decoyTimer = 8;
     this.decoys = [];
     this.stormCharge = 0;
@@ -4629,8 +4631,6 @@ class Game {
     const evoMerge = document.getElementById('evolution-merge');
     if (evoMerge) evoMerge.classList.remove('show');
     this.miniVortices = [];
-    this.lightspeedCooldown = 0;
-    this.lightspeedActive = false;
     this.arenaInset = 0;
     this.deadZones = [];
     const upgradeOverlay = document.getElementById('upgrade-overlay');
@@ -5001,8 +5001,15 @@ class Game {
         const maxCd = Math.max(5, 9 - this.upgrades.decoy);
         return { timer: this.decoyTimer, max: maxCd, active: false };
       }
+      case 'echo': {
+        if (this.echoGhost) {
+          return { timer: this.echoGhost.life, max: 2, active: true };
+        }
+        const maxCd = 12 - 2 * this.upgrades.echo;
+        return { timer: this.echoTimer, max: maxCd, active: false };
+      }
       case 'burnout': {
-        const maxCd = Math.max(2.5, 5 - this.upgrades.burnout);
+        const maxCd = Math.max(2, 4 - this.upgrades.burnout);
         return { timer: this.burnoutCooldown, max: maxCd, active: false };
       }
       case 'stormRunner': {
@@ -5324,7 +5331,6 @@ class Game {
       const prevX = this.player.x;
       const prevY = this.player.y;
       let lerp = PLAYER_LERP;
-      if (this.upgrades.swift) lerp *= 1 + 0.15 * this.upgrades.swift;
 
       this.player.x += (this.targetX - this.player.x) * lerp;
       this.player.y += (this.targetY - this.player.y) * lerp;
@@ -5401,39 +5407,67 @@ class Game {
     const prevX = this.player.x;
     const prevY = this.player.y;
     let lerp = PLAYER_LERP;
-    if (this.upgrades.swift) {
-      // Base speed boost: 30% per level
-      lerp *= 1 + 0.25 * this.upgrades.swift;
-      // Momentum buildup: sustained movement builds extra speed (no sharp turn penalty)
-      const dx = this.targetX - this.player.x;
-      const dy = this.targetY - this.player.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist > 2) {
-        const dirX = dx / dist, dirY = dy / dist;
-        this.momentumBuildup = Math.min(1, this.momentumBuildup + dt * (0.3 + 0.15 * this.upgrades.swift));
-        this.momentumDir.x = dirX;
-        this.momentumDir.y = dirY;
-      } else {
-        this.momentumBuildup *= 0.92; // slow decay when still
+    // ECHO: record position buffer and manage ghost replay
+    if (this.upgrades.echo) {
+      this.echoBuffer.push({ x: this.player.x, y: this.player.y });
+      while (this.echoBuffer.length > 240) this.echoBuffer.shift();
+
+      this.echoTimer -= dt;
+      if (this.echoTimer <= 0 && this.echoBuffer.length > 10 && !this.echoGhost) {
+        this.echoGhost = {
+          trail: [...this.echoBuffer],
+          idx: 0,
+          speed: this.echoBuffer.length / 2,
+          life: 2
+        };
+        this.echoTimer = 12 - 2 * this.upgrades.echo; // Lv1:10s, Lv2:8s, Lv3:6s
+        this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 40, '#38bdf8', 0.3));
       }
-      lerp *= 1 + 0.2 * this.momentumBuildup;
-      // LIGHTSPEED: at max momentum, trigger brief invincibility
-      if (this.evolutions.lightspeed) {
-        if (this.lightspeedCooldown > 0) this.lightspeedCooldown -= dt;
-        if (this.momentumBuildup >= 0.95 && this.lightspeedCooldown <= 0 && !this.lightspeedActive) {
-          this.lightspeedActive = true;
-          this._lightspeedRemaining = 0.3;
-          this.lightspeedCooldown = 5;
-          this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 80, '#fbbf24', 0.3));
-          this.scorePopups.push(new ScorePopup(this.player.x, this.player.y - 25, 'LIGHTSPEED!', '#fbbf24'));
-        }
-        if (this.lightspeedActive) {
-          this._lightspeedRemaining -= dt;
-          if (this._lightspeedRemaining <= 0) {
-            this.lightspeedActive = false;
+    }
+    // ECHO ghost update
+    if (this.echoGhost) {
+      const ghost = this.echoGhost;
+      ghost.life -= dt;
+      ghost.idx += ghost.speed * dt;
+      const gi = Math.min(Math.floor(ghost.idx), ghost.trail.length - 1);
+      const gx = ghost.trail[gi].x, gy = ghost.trail[gi].y;
+      ghost.currentX = gx;
+      ghost.currentY = gy;
+
+      // Destroy projectiles near ghost
+      const hitR = 18 + 4 * (this.upgrades.echo || 1);
+      for (let i = this.projectiles.length - 1; i >= 0; i--) {
+        const p = this.projectiles[i];
+        if (p._friendly) continue;
+        const pdx = p.x - gx, pdy = p.y - gy;
+        if (Math.sqrt(pdx * pdx + pdy * pdy) < hitR) {
+          for (let j = 0; j < 4; j++) {
+            const a = Math.random() * Math.PI * 2;
+            this.particles.push(new Particle(p.x, p.y, Math.cos(a) * 50, Math.sin(a) * 50, 0.25, '#38bdf8', 1.5));
           }
+          this.tryRicochet(p.x, p.y);
+          this.projectiles.splice(i, 1);
+          this.dodgedCount++;
         }
       }
+
+      // Ghost trail particles
+      if (Math.random() < 0.4) {
+        this.particles.push(new Particle(gx, gy, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10, 0.3, '#38bdf8', 2));
+      }
+
+      if (ghost.idx >= ghost.trail.length || ghost.life <= 0) {
+        this.echoGhost = null;
+      }
+    }
+    // LIGHTSPEED: permanent ghost — immediately respawn when ghost expires
+    if (this.evolutions.lightspeed && !this.echoGhost && this.echoBuffer.length > 10) {
+      this.echoGhost = {
+        trail: [...this.echoBuffer],
+        idx: 0,
+        speed: this.echoBuffer.length / 2,
+        life: 2
+      };
     }
     if (this.abilities.timeWarp.active) lerp *= 0.7;
     this.player.x += (this.targetX - this.player.x) * lerp;
@@ -5782,13 +5816,6 @@ class Game {
           }
           continue;
         }
-        // LIGHTSPEED: invincible during burst
-        if (this.lightspeedActive) {
-          if (Math.random() < 0.5) {
-            this.particles.push(new Particle(p.x, p.y, 0, 0, 0.15, 'rgba(251,191,36,0.6)', 1.5));
-          }
-          continue;
-        }
         // Dodge Instinct: chance to dodge a lethal hit
         // WRAITH: +15% passive dodge chance on top of base
         const wraithBonus = this.evolutions.wraith ? 0.15 : 0;
@@ -5952,7 +5979,7 @@ class Game {
         }
       }
 
-      if (bossCollided && !this.ghostActive && !this.abilities.phaseShift.active && !this.lightspeedActive) {
+      if (bossCollided && !this.ghostActive && !this.abilities.phaseShift.active) {
         this.deathContext = {
           type: 'boss',
           subtype: boss.bossType?.shape || 'boss',
@@ -5972,7 +5999,7 @@ class Game {
       }
 
       // Toxic trail collision
-      if (boss.trailSegments && !this.abilities.phaseShift.active && !this.ghostActive && !this.lightspeedActive) {
+      if (boss.trailSegments && !this.abilities.phaseShift.active && !this.ghostActive) {
         for (const ts of boss.trailSegments) {
           const tdx = ts.x - this.player.x;
           const tdy = ts.y - this.player.y;
@@ -6376,58 +6403,49 @@ class Game {
       }
     }
 
-    // Burnout: stop moving to blast a directional shockwave
+    // OVERDRIVE: move fast to build heat, sharp turns release a blast
     if (this.upgrades.burnout) {
       if (this.burnoutCooldown > 0) this.burnoutCooldown -= dt;
       const speed = Math.sqrt(this.player.vx * this.player.vx + this.player.vy * this.player.vy);
-      const isMoving = speed > 1.5;
-      if (isMoving) {
-        this.burnoutWasMoving = true;
-      } else if (this.burnoutWasMoving && this.burnoutCooldown <= 0) {
-        // Just stopped! Fire directional shockwave
-        this.burnoutWasMoving = false;
-        this.burnoutCooldown = Math.max(2.5, 5 - this.upgrades.burnout);
-        const dirX = this.momentumDir.x || 0;
-        const dirY = this.momentumDir.y || 1;
-        const blastRange = 120 + 40 * this.upgrades.burnout;
-        const coneAngle = 0.6 + 0.15 * this.upgrades.burnout; // ~35-45 degree half-angle
-        const blastAngle = Math.atan2(dirY, dirX);
-        // Cone shockwave particles
-        for (let i = 0; i < 12; i++) {
-          const spread = (Math.random() - 0.5) * coneAngle * 2;
-          const a = blastAngle + spread;
-          const sp = 100 + Math.random() * 150;
-          this.particles.push(new Particle(
-            this.player.x, this.player.y,
-            Math.cos(a) * sp, Math.sin(a) * sp,
-            0.3, '#ff6b35', 2.5
-          ));
-        }
-        this.shockwaves.push(new Shockwave(this.player.x, this.player.y, blastRange * 0.6, '#ff6b35', 0.3));
-        soundEngine.playNearMiss();
-        // Destroy projectiles in cone
-        for (let i = this.projectiles.length - 1; i >= 0; i--) {
-          const p = this.projectiles[i];
-          if (p._friendly) continue;
-          const pdx = p.x - this.player.x, pdy = p.y - this.player.y;
-          const pDist = Math.sqrt(pdx * pdx + pdy * pdy);
-          if (pDist > blastRange) continue;
-          const pAngle = Math.atan2(pdy, pdx);
-          let angleDiff = pAngle - blastAngle;
-          while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-          while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-          if (Math.abs(angleDiff) < coneAngle) {
-            for (let j = 0; j < 3; j++) {
+
+      if (speed > 2) {
+        this.burnoutHeat = Math.min(1, this.burnoutHeat + dt * (0.3 + 0.15 * this.upgrades.burnout));
+        const dirX = this.player.vx / speed, dirY = this.player.vy / speed;
+
+        if (this.burnoutCooldown <= 0 && this.burnoutHeat > 0.3) {
+          const prevDirX = this._burnoutPrevDir ? this._burnoutPrevDir.x : dirX;
+          const prevDirY = this._burnoutPrevDir ? this._burnoutPrevDir.y : dirY;
+          const dot = dirX * prevDirX + dirY * prevDirY;
+          if (dot < 0) {
+            const blastRange = (80 + 40 * this.upgrades.burnout) * (0.5 + 0.5 * this.burnoutHeat);
+            for (let i = 0; i < 10 + Math.floor(this.burnoutHeat * 8); i++) {
               const a = Math.random() * Math.PI * 2;
-              this.particles.push(new Particle(p.x, p.y, Math.cos(a) * 40, Math.sin(a) * 40, 0.2, '#ff6b35', 1.5));
+              const sp = 80 + Math.random() * 120 * this.burnoutHeat;
+              this.particles.push(new Particle(this.player.x, this.player.y, Math.cos(a) * sp, Math.sin(a) * sp, 0.3, '#ff6b35', 2.5));
             }
-            this.tryRicochet(p.x, p.y);
-            this.projectiles.splice(i, 1);
-            this.dodgedCount++;
+            this.shockwaves.push(new Shockwave(this.player.x, this.player.y, blastRange, '#ff6b35', 0.35));
+            soundEngine.playNearMiss();
+            for (let i = this.projectiles.length - 1; i >= 0; i--) {
+              const p = this.projectiles[i];
+              if (p._friendly) continue;
+              const pdx = p.x - this.player.x, pdy = p.y - this.player.y;
+              if (Math.sqrt(pdx * pdx + pdy * pdy) < blastRange) {
+                for (let j = 0; j < 3; j++) {
+                  const a = Math.random() * Math.PI * 2;
+                  this.particles.push(new Particle(p.x, p.y, Math.cos(a) * 40, Math.sin(a) * 40, 0.2, '#ff6b35', 1.5));
+                }
+                this.tryRicochet(p.x, p.y);
+                this.projectiles.splice(i, 1);
+                this.dodgedCount++;
+              }
+            }
+            this.burnoutHeat = 0;
+            this.burnoutCooldown = Math.max(2, 4 - this.upgrades.burnout); // Lv1:3s, Lv2:2s, Lv3:2s
           }
         }
-      } else if (!isMoving) {
-        this.burnoutWasMoving = false;
+        this._burnoutPrevDir = { x: dirX, y: dirY };
+      } else {
+        this.burnoutHeat = Math.max(0, this.burnoutHeat - dt * 0.5);
       }
     }
 
@@ -8241,20 +8259,6 @@ class Game {
         ctx.globalAlpha = 1;
       }
 
-      // LIGHTSPEED: golden invincibility glow
-      if (this.lightspeedActive) {
-        const pulse = 0.3 + Math.sin(this.gameTime * 30) * 0.15;
-        ctx.globalAlpha = pulse;
-        ctx.fillStyle = '#fbbf24';
-        ctx.shadowColor = '#fbbf24';
-        ctx.shadowBlur = 25;
-        ctx.beginPath();
-        ctx.arc(this.player.x, this.player.y, pr + 18, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        ctx.globalAlpha = 1;
-      }
-
       // Nova Star: revolving beams
       if (this.deathRayActive) {
         const lvl = this.upgrades.deathRay || 1;
@@ -8316,24 +8320,15 @@ class Game {
         ctx.globalAlpha = 1;
       }
 
-      // Burnout: directional arrow when ready
-      if (this.upgrades.burnout && this.burnoutCooldown <= 0 && this.burnoutWasMoving) {
-        const dirX = this.momentumDir.x || 0;
-        const dirY = this.momentumDir.y || 1;
-        const arrowDist = pr + 18;
-        const ax = this.player.x + dirX * arrowDist;
-        const ay = this.player.y + dirY * arrowDist;
-        const pulse = 0.4 + Math.sin(this.gameTime * 10) * 0.2;
-        ctx.globalAlpha = pulse;
+      // OVERDRIVE: heat glow around player
+      if (this.upgrades.burnout && this.burnoutHeat > 0.1) {
+        const heat = this.burnoutHeat;
+        ctx.globalAlpha = heat * 0.25;
         ctx.fillStyle = '#ff6b35';
         ctx.shadowColor = '#ff6b35';
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 10 + heat * 15;
         ctx.beginPath();
-        const angle = Math.atan2(dirY, dirX);
-        ctx.moveTo(ax + Math.cos(angle) * 8, ay + Math.sin(angle) * 8);
-        ctx.lineTo(ax + Math.cos(angle + 2.4) * 6, ay + Math.sin(angle + 2.4) * 6);
-        ctx.lineTo(ax + Math.cos(angle - 2.4) * 6, ay + Math.sin(angle - 2.4) * 6);
-        ctx.closePath();
+        ctx.arc(this.player.x, this.player.y, pr + 6 + heat * 10, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 0;
         ctx.globalAlpha = 1;
@@ -8366,17 +8361,23 @@ class Game {
         ctx.globalAlpha = 1;
       }
 
-      // Gotta Go Fast: speed trail indicator
-      if (this.upgrades.swift && this.momentumBuildup > 0.2) {
-        const trailAlpha = (this.momentumBuildup - 0.2) * 0.4;
-        ctx.globalAlpha = trailAlpha;
-        ctx.strokeStyle = '#38bdf8';
-        ctx.lineWidth = 2;
-        const tLen = 15 + 25 * this.momentumBuildup;
+      // ECHO ghost: semi-transparent player silhouette replaying movement
+      if (this.echoGhost && this.echoGhost.currentX !== undefined) {
+        const gx = this.echoGhost.currentX, gy = this.echoGhost.currentY;
+        const alpha = 0.3 + Math.sin(this.gameTime * 8) * 0.1;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = '#38bdf8';
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 15;
         ctx.beginPath();
-        ctx.moveTo(this.player.x, this.player.y);
-        ctx.lineTo(this.player.x - this.momentumDir.x * tLen, this.player.y - this.momentumDir.y * tLen);
-        ctx.stroke();
+        ctx.arc(gx, gy, pr * 0.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = alpha * 0.6;
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(gx, gy, pr * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
         ctx.globalAlpha = 1;
       }
 
