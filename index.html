@@ -1947,6 +1947,14 @@ const EVOLUTION_DEFS = [
     icon: '\u2600', color: '#e879f9', desc: 'Both beam systems active simultaneously. Nothing survives.' },
   { id: 'luckyBreak', name: 'LUCKY BREAK', ingredients: ['luckyStar', 'dejaVu'],
     icon: '\u2618', color: '#34d399', desc: 'Power-ups last 60% longer and 70% chance to auto-renew.' },
+  { id: 'lastStand', name: 'LAST STAND', ingredients: ['secondWind', 'reroll'],
+    icon: '\u26CA', color: '#ef4444', desc: 'Death is just a suggestion. +2 extra lives on top of Second Wind.' },
+  { id: 'mirrorArmy', name: 'MIRROR ARMY', ingredients: ['decoy', 'ricochet'],
+    icon: '\u2726', color: '#a855f7', desc: 'Decoys go out with a bang — explode into ricochets on expiry.' },
+  { id: 'pocketDimension', name: 'POCKET DIMENSION', ingredients: ['smolSupreme', 'lootGoblin'],
+    icon: '\u25C8', color: '#ec4899', desc: 'Store a power-up in your pocket. Next pickup fires both at once.' },
+  { id: 'extinction', name: 'EXTINCTION', ingredients: ['orbitalGuard', 'thinTheHerd'],
+    icon: '\u2604', color: '#06b6d4', desc: '6 orbs of doom. Each kill chokes the spawn rate.' },
 ];
 
 // ============================================================
@@ -4125,6 +4133,8 @@ class Game {
     this.omegaBeamTarget = null;
     this.omegaBeamZapTimer = 0;
     this._omegaBeams = [];
+    this._storedPowerup = null; // POCKET DIMENSION
+    this._extinctionReduction = 0; // EXTINCTION
     // Card dismiss: return-to-dot
     this.returnToDot = false;
     this.returnDotPos = null;
@@ -4609,6 +4619,8 @@ class Game {
     this.omegaBeamTarget = null;
     this.omegaBeamZapTimer = 0;
     this._omegaBeams = [];
+    this._storedPowerup = null; // POCKET DIMENSION
+    this._extinctionReduction = 0; // EXTINCTION
     this.returnToDot = false;
     this.returnDotPos = null;
     this.evolutions = {};
@@ -5869,6 +5881,7 @@ class Game {
       let puDelay = POWERUP_SPAWN_MIN + this.rng() * (POWERUP_SPAWN_MAX - POWERUP_SPAWN_MIN);
       if (this.upgrades.lootGoblin) puDelay *= Math.max(0.35, 0.65 - 0.1 * this.upgrades.lootGoblin);
       if (this.evolutions.timeLord) puDelay *= 0.7; // TIME LORD: power-ups spawn 30% faster
+      if (this.evolutions.pocketDimension) puDelay *= 0.8; // POCKET DIMENSION: 20% faster spawns
       this.powerupTimer = puDelay;
     }
 
@@ -6219,7 +6232,9 @@ class Game {
 
     // Orbital Guard: rotating orb(s) that destroy projectiles
     if (this.upgrades.orbitalGuard) {
-      const orbCount = this.upgrades.orbitalGuard;
+      // EXTINCTION: decay spawn reduction over time
+      this._extinctionReduction = Math.max(0, (this._extinctionReduction || 0) - dt * 0.03);
+      const orbCount = this.evolutions.extinction ? 6 : this.upgrades.orbitalGuard;
       this.orbitalAngle += 2.5 * dt;
       for (let o = 0; o < orbCount; o++) {
         const angle = this.orbitalAngle + (o * Math.PI * 2 / orbCount);
@@ -6238,6 +6253,10 @@ class Game {
             this.projectiles.splice(i, 1);
             this.dodgedCount++;
             this.dodgePopTimer = 0.15;
+            // EXTINCTION: each orb kill reduces spawn rate
+            if (this.evolutions.extinction) {
+              this._extinctionReduction = Math.min(0.4, (this._extinctionReduction || 0) + 0.05);
+            }
           }
         }
       }
@@ -6417,7 +6436,29 @@ class Game {
       for (let d = this.decoys.length - 1; d >= 0; d--) {
         const decoy = this.decoys[d];
         decoy.life -= dt;
-        if (decoy.life <= 0) { this.decoys.splice(d, 1); continue; }
+        if (decoy.life <= 0) {
+          // MIRROR ARMY: decoys explode into ricochets on expiry
+          if (this.evolutions.mirrorArmy) {
+            this.shockwaves.push(new Shockwave(decoy.x, decoy.y, 80, '#a855f7', 0.4));
+            soundEngine.playNearMiss();
+            // Explosion particles
+            for (let ep = 0; ep < 12; ep++) {
+              const a = Math.random() * Math.PI * 2;
+              this.particles.push(new Particle(decoy.x, decoy.y, Math.cos(a) * 100, Math.sin(a) * 100, 0.4, '#a855f7', 2.5));
+            }
+            // Fire 8 ricochet projectiles outward
+            const ricoCount = 8;
+            for (let r = 0; r < ricoCount; r++) {
+              const a = (r / ricoCount) * Math.PI * 2;
+              const speed = 280;
+              const rp = new Projectile(decoy.x, decoy.y, Math.cos(a) * speed, Math.sin(a) * speed, '#a855f7', { radius: 3, type: 'normal' });
+              rp._friendly = true;
+              rp._friendlyLife = 1.2;
+              this.projectiles.push(rp);
+            }
+          }
+          this.decoys.splice(d, 1); continue;
+        }
         const pullRadius = 120 + 30 * this.upgrades.decoy;
         const pullForce = 80 + 30 * this.upgrades.decoy;
         for (const p of this.projectiles) {
@@ -6632,6 +6673,40 @@ class Game {
 
     const lbExtra = this.evolutions.luckyBreak ? 0.6 : 0; // LUCKY BREAK: +60% duration
     const lsBonus = 1 + 0.2 * (this.upgrades.luckyStar || 0) + lbExtra;
+
+    // POCKET DIMENSION: store first non-EMP power-up, double-activate on next
+    if (this.evolutions.pocketDimension && pu.type !== 'emp' && !this._pocketActivating) {
+      if (!this._storedPowerup) {
+        // Store this power-up for later
+        this._storedPowerup = pu.type;
+        el.textContent = 'STORED: ' + def.name;
+        el.style.color = '#ec4899';
+        el.style.textShadow = '0 0 20px #ec4899';
+        // Pink swirl particles
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2;
+          this.particles.push(new Particle(pu.x, pu.y, Math.cos(a) * 50, Math.sin(a) * 50, 0.5, '#ec4899', 2));
+        }
+        return;
+      } else {
+        // Double activate: fire stored + current
+        const storedType = this._storedPowerup;
+        this._storedPowerup = null;
+        el.textContent = 'DOUBLE ACTIVATE!';
+        el.style.color = '#ec4899';
+        el.style.textShadow = '0 0 20px #ec4899';
+        this.shockwaves.push(new Shockwave(pu.x, pu.y, 120, '#ec4899', 0.5));
+        // Activate stored power-up via a fake pu object
+        const storedDef = POWERUP_TYPES[storedType];
+        if (storedDef) {
+          const fakePu = { x: pu.x, y: pu.y, type: storedType, def: storedDef };
+          this._pocketActivating = true; // prevent re-entry
+          this.collectPowerup(fakePu);
+          this._pocketActivating = false;
+        }
+        // Fall through to activate current power-up normally
+      }
+    }
 
     if (pu.type === 'emp') {
       // === EMP ANIMATION ===
@@ -6898,6 +6973,8 @@ class Game {
     // Thin The Herd: chance to skip spawning entirely
     const herdLvl = this.upgrades.thinTheHerd || 0;
     if (herdLvl > 0 && this.rng() < 0.10 + 0.05 * herdLvl) return; // Lv1:15%, Lv2:20%, Lv3:25%  — capped lower for balance since it stacks with longer spawn rates
+    // EXTINCTION: orb kills temporarily reduce spawn rate (capped 40%)
+    if (this._extinctionReduction > 0 && this.rng() < this._extinctionReduction) return;
     // Cap total projectile count for performance (cluster/mine children can multiply quickly)
     if (this.projectiles.length >= 80) return;
     const def = this.getPhaseDef();
@@ -7136,7 +7213,8 @@ class Game {
 
   die() {
     // Second Wind: cheat death once
-    if (this.upgrades.secondWind && this.secondWindUses < this.upgrades.secondWind) {
+    const lastStandExtra = this.evolutions.lastStand ? 2 : 0;
+    if (this.upgrades.secondWind && this.secondWindUses < this.upgrades.secondWind + lastStandExtra) {
       this.secondWindUses++;
       // Dramatic revival VFX
       this.flashAlpha = 1;
@@ -8115,7 +8193,7 @@ class Game {
 
       // Orbital Guard: spinning cyan orb(s)
       if (this.upgrades.orbitalGuard) {
-        const orbCount = this.upgrades.orbitalGuard;
+        const orbCount = this.evolutions.extinction ? 6 : this.upgrades.orbitalGuard;
         for (let o = 0; o < orbCount; o++) {
           const angle = this.orbitalAngle + (o * Math.PI * 2 / orbCount);
           const orbX = this.player.x + Math.cos(angle) * 60;
