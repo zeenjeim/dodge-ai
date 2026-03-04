@@ -188,6 +188,78 @@
     #pu-vortex { background: rgba(168,85,247,0.2); color: #a855f7; border: 1px solid rgba(168,85,247,0.3); }
     #pu-vortex .pu-bar-fill { background: #a855f7; }
 
+    /* --- Upgrade Bar (Dota-style ability icons) --- */
+    #upgrade-bar {
+      position: fixed;
+      bottom: max(52px, calc(44px + var(--sa-bottom)));
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 6px;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .ub-slot {
+      position: relative;
+      width: 36px; height: 36px;
+      border-radius: 6px;
+      border: 2px solid var(--ub-color, #9ca3af);
+      background: rgba(0,0,0,0.6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      color: var(--ub-color, #9ca3af);
+      text-shadow: 0 0 6px var(--ub-color, #9ca3af);
+      overflow: hidden;
+      animation: ub-pop 0.3s ease-out;
+    }
+    .ub-slot.ub-active {
+      box-shadow: 0 0 8px var(--ub-color, #9ca3af), inset 0 0 8px rgba(255,255,255,0.15);
+    }
+    @keyframes ub-pop {
+      0% { transform: scale(0); opacity: 0; }
+      60% { transform: scale(1.2); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .ub-cd {
+      position: absolute;
+      inset: 0;
+      border-radius: 4px;
+      background: conic-gradient(rgba(0,0,0,0.7) var(--cd-pct, 0%), transparent var(--cd-pct, 0%) 100%);
+      pointer-events: none;
+    }
+    .ub-cd-text {
+      position: absolute;
+      inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: bold;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+      pointer-events: none;
+      opacity: 0;
+    }
+    .ub-cd-text.show { opacity: 1; }
+    .ub-lvl {
+      position: absolute;
+      bottom: -1px; right: -1px;
+      font-size: 8px; font-weight: bold;
+      color: #fff;
+      background: rgba(0,0,0,0.8);
+      border-radius: 3px 0 4px 0;
+      padding: 0 3px;
+      line-height: 12px;
+    }
+    .ub-slot.ub-evo {
+      border-style: double;
+      border-width: 3px;
+    }
+
+    @media (max-width: 600px) {
+      #upgrade-bar { bottom: max(44px, calc(36px + var(--sa-bottom))); gap: 4px; }
+      .ub-slot { width: 28px; height: 28px; font-size: 14px; border-radius: 4px; }
+      .ub-lvl { font-size: 7px; line-height: 10px; }
+      .ub-cd-text { font-size: 9px; }
+    }
+
     /* --- AI Brain Panel --- */
     #brain-panel {
       position: fixed;
@@ -501,6 +573,31 @@
       line-height: 1.4;
       color: #ddd;
       letter-spacing: 0.5px;
+    }
+    .evo-ok-btn {
+      margin-top: 14px;
+      padding: 6px 28px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      color: #fff;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid var(--evo-color, #e879f9);
+      border-radius: 6px;
+      cursor: pointer;
+      pointer-events: auto;
+      opacity: 0;
+      transition: background 0.2s, opacity 0.3s, transform 0.3s;
+      transform: translateY(6px);
+    }
+    .evo-result.reveal .evo-ok-btn {
+      opacity: 1;
+      transform: translateY(0);
+      transition-delay: 0.4s;
+    }
+    .evo-ok-btn:hover {
+      background: rgba(255,255,255,0.2);
     }
     /* Particle container for merge sparks */
     .evo-particles {
@@ -1310,6 +1407,9 @@
   <div id="hud-dodged">Dodged: 0</div>
 </div>
 
+<!-- Upgrade bar (picked upgrades with cooldowns) -->
+<div id="upgrade-bar"></div>
+
 <!-- Power-up indicators -->
 <div id="hud-powerups">
   <div class="powerup-indicator" id="pu-slowmo">BULLET TIME <div class="pu-bar"><div class="pu-bar-fill" id="pu-slowmo-bar"></div></div></div>
@@ -1396,6 +1496,7 @@
       <div class="evo-r-icon"></div>
       <div class="evo-r-name"></div>
       <div class="evo-r-desc"></div>
+      <button class="evo-ok-btn">GOT IT</button>
     </div>
     <div class="evo-particles"></div>
   </div>
@@ -4477,6 +4578,9 @@ class Game {
     // Reset upgrade system
     this.upgrades = {};
     this.upgradeTimer = UPGRADE_INTERVAL;
+    // Clear upgrade bar
+    const ubBar = document.getElementById('upgrade-bar');
+    if (ubBar) ubBar.innerHTML = '';
     this.inputFrozenTimer = 0;
     this.cometTrail = [];
     this.upgradeFrozen = false;
@@ -4808,8 +4912,147 @@ class Game {
         phase: this.phase
       }).then(() => {}).catch(() => {}); // fire-and-forget
     }
+    // Update upgrade bar icon
+    this.addUpgradeBarIcon(id);
     // Dismiss after a beat
     setTimeout(() => this.dismissUpgradeOverlay(), 500);
+  }
+
+  // Upgrade bar: add or update icon for picked upgrade
+  addUpgradeBarIcon(id) {
+    const bar = document.getElementById('upgrade-bar');
+    if (!bar) return;
+    const def = UPGRADE_DEFS.find(u => u.id === id);
+    if (!def) return;
+    const color = RARITY_COLORS[def.rarity];
+    const lvl = this.upgrades[id] || 1;
+    let slot = bar.querySelector(`[data-uid="${id}"]`);
+    if (slot) {
+      // Level up existing slot
+      const lvlEl = slot.querySelector('.ub-lvl');
+      if (lvlEl) lvlEl.textContent = lvl;
+      // Re-trigger pop
+      slot.style.animation = 'none';
+      slot.offsetHeight; // reflow
+      slot.style.animation = '';
+    } else {
+      slot = document.createElement('div');
+      slot.className = 'ub-slot';
+      slot.dataset.uid = id;
+      slot.style.setProperty('--ub-color', color);
+      slot.innerHTML = `<span class="ub-icon">${def.icon}</span><div class="ub-cd"></div><div class="ub-cd-text"></div><div class="ub-lvl">${lvl}</div>`;
+      bar.appendChild(slot);
+    }
+  }
+
+  // Upgrade bar: add icon for evolution
+  addEvolutionBarIcon(evo) {
+    const bar = document.getElementById('upgrade-bar');
+    if (!bar) return;
+    let slot = bar.querySelector(`[data-uid="${evo.id}"]`);
+    if (slot) return; // already exists
+    slot = document.createElement('div');
+    slot.className = 'ub-slot ub-evo';
+    slot.dataset.uid = evo.id;
+    slot.style.setProperty('--ub-color', evo.color);
+    slot.innerHTML = `<span class="ub-icon">${evo.icon}</span><div class="ub-cd"></div><div class="ub-cd-text"></div><div class="ub-lvl">EVO</div>`;
+    bar.appendChild(slot);
+  }
+
+  // Upgrade bar: compute cooldown state for timed upgrades
+  getUpgradeCooldownInfo(id) {
+    switch (id) {
+      case 'shockwave': {
+        const icMul = this.evolutions.ironCurtain ? 0.7 : 1;
+        const maxCd = Math.max(4, (12 - 2 * this.upgrades.shockwave) * icMul);
+        return { timer: this.shockwaveTimer, max: maxCd, active: false };
+      }
+      case 'ghostMode': {
+        if (this.ghostActive) {
+          const ghostDurMul = this.evolutions.wraith ? 2 : 1;
+          const dur = (1 + 0.5 * this.upgrades.ghostMode) * ghostDurMul;
+          return { timer: this.ghostTimer, max: dur, active: true };
+        }
+        const maxCd = 14 - 2 * this.upgrades.ghostMode;
+        return { timer: this.ghostTimer, max: maxCd, active: false };
+      }
+      case 'deathRay': {
+        if (this.deathRayActive) {
+          const dur = 1.5 + 0.5 * this.upgrades.deathRay;
+          return { timer: this.deathRayTimer, max: dur, active: true };
+        }
+        const dsCooldown = this.evolutions.deathStar ? 0.5 : 1;
+        const maxCd = (20 - 2 * this.upgrades.deathRay) * dsCooldown;
+        return { timer: this.deathRayTimer, max: maxCd, active: false };
+      }
+      case 'decoy': {
+        const maxCd = Math.max(5, 9 - this.upgrades.decoy);
+        return { timer: this.decoyTimer, max: maxCd, active: false };
+      }
+      case 'burnout': {
+        const maxCd = Math.max(2.5, 5 - this.upgrades.burnout);
+        return { timer: this.burnoutCooldown, max: maxCd, active: false };
+      }
+      case 'stormRunner': {
+        return { timer: 0, max: 1, active: false, charge: this.stormCharge };
+      }
+      default: return null;
+    }
+  }
+
+  // Upgrade bar: update cooldown sweeps each frame
+  updateUpgradeBar() {
+    const bar = document.getElementById('upgrade-bar');
+    if (!bar) return;
+    const slots = bar.querySelectorAll('.ub-slot');
+    for (const slot of slots) {
+      const id = slot.dataset.uid;
+      const cdEl = slot.querySelector('.ub-cd');
+      const cdText = slot.querySelector('.ub-cd-text');
+      if (!cdEl) continue;
+
+      const info = this.getUpgradeCooldownInfo(id);
+      if (!info) {
+        // Passive upgrade — no cooldown overlay
+        cdEl.style.setProperty('--cd-pct', '0%');
+        cdText.classList.remove('show');
+        slot.classList.remove('ub-active');
+        continue;
+      }
+
+      // Storm Runner: show charge bar instead
+      if (info.charge !== undefined) {
+        const pct = (1 - info.charge) * 100;
+        cdEl.style.setProperty('--cd-pct', pct + '%');
+        cdText.classList.remove('show');
+        slot.classList.toggle('ub-active', info.charge > 0.4);
+        continue;
+      }
+
+      if (info.active) {
+        // Ability is active — show bright, no grey sweep
+        cdEl.style.setProperty('--cd-pct', '0%');
+        cdText.classList.remove('show');
+        slot.classList.add('ub-active');
+      } else if (info.timer > 0 && info.max > 0) {
+        // On cooldown — show grey sweep
+        const pct = (info.timer / info.max) * 100;
+        cdEl.style.setProperty('--cd-pct', pct + '%');
+        // Show seconds remaining for cooldowns > 1s
+        if (info.timer > 1) {
+          cdText.textContent = Math.ceil(info.timer);
+          cdText.classList.add('show');
+        } else {
+          cdText.classList.remove('show');
+        }
+        slot.classList.remove('ub-active');
+      } else {
+        // Ready
+        cdEl.style.setProperty('--cd-pct', '0%');
+        cdText.classList.remove('show');
+        slot.classList.remove('ub-active');
+      }
+    }
   }
 
   // Ricochet: chance for destroyed projectile to fire back at nearest threat
@@ -4859,6 +5102,8 @@ class Game {
       this.flashColor = evo.color;
       this.screenShake.intensity = 15;
       this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 250, evo.color, 0.8));
+      // Add evolution icon to upgrade bar
+      this.addEvolutionBarIcon(evo);
       // Show card merge animation (delayed so card dismiss finishes)
       setTimeout(() => this.showEvolutionMerge(evo), 600);
     }
@@ -4953,8 +5198,10 @@ class Game {
     // Step 5: Evolution card reveals (1700ms)
     setTimeout(() => result.classList.add('reveal'), 1700);
 
-    // Step 6: Dismiss everything (4200ms)
-    setTimeout(() => {
+    // Step 6: Player dismisses with GOT IT button (no auto-dismiss)
+    const okBtn = result.querySelector('.evo-ok-btn');
+    const dismissEvo = () => {
+      okBtn.removeEventListener('click', dismissEvo);
       result.classList.add('dismiss');
       setTimeout(() => {
         el.classList.remove('show');
@@ -4965,7 +5212,8 @@ class Game {
         result.classList.remove('reveal', 'dismiss');
         particles.innerHTML = '';
       }, 600);
-    }, 4200);
+    };
+    okBtn.addEventListener('click', dismissEvo);
 
     this.evolutionAnnounceTimer = 5;
   }
@@ -5077,6 +5325,8 @@ class Game {
         if (this.scorePopups[i].life <= 0) this.scorePopups.splice(i, 1);
       }
       if (this.dodgePopTimer > 0) this.dodgePopTimer -= dt;
+      // Flash must decay even while frozen (evolution flash would persist otherwise)
+      if (this.flashAlpha > 0) this.flashAlpha = Math.max(0, this.flashAlpha - dt * 3);
       return; // skip all game logic while frozen
     }
 
@@ -5561,7 +5811,7 @@ class Game {
     // Add split/cluster/mine children
     for (const c of newProjectiles) this.projectiles.push(c);
 
-    // --- CORRUPTION (Phase 7+): dead zones appear ---
+    // --- CORRUPTION (Phase 7+): dead zones appear with 1.5s warning ---
     if (this.phase >= CORRUPTION_PHASE_IDX) {
       const px = this.player.x, py = this.player.y;
       this._deadZoneTimer = (this._deadZoneTimer || 0) - dt;
@@ -5569,13 +5819,19 @@ class Game {
         const margin = this.arenaInset + 40;
         const dzx = margin + this.rng() * (this.w - margin * 2);
         const dzy = margin + this.rng() * (this.h - margin * 2);
-        this.deadZones.push({ x: dzx, y: dzy, radius: 25 + this.rng() * 20, life: 4 + this.rng() * 3, maxLife: 7 });
+        const dzLife = 4 + this.rng() * 3;
+        this.deadZones.push({ x: dzx, y: dzy, radius: 25 + this.rng() * 20, life: dzLife, maxLife: dzLife, warn: 1.5 });
         this._deadZoneTimer = 2.5 + this.rng() * 2;
       }
       for (let i = this.deadZones.length - 1; i >= 0; i--) {
-        this.deadZones[i].life -= dt;
-        if (this.deadZones[i].life <= 0) { this.deadZones.splice(i, 1); continue; }
         const dz = this.deadZones[i];
+        // Tick warning phase first
+        if (dz.warn > 0) {
+          dz.warn -= dt;
+          continue; // not lethal yet
+        }
+        dz.life -= dt;
+        if (dz.life <= 0) { this.deadZones.splice(i, 1); continue; }
         const ddx = px - dz.x, ddy = py - dz.y;
         if (Math.sqrt(ddx * ddx + ddy * ddy) < dz.radius + pr) {
           this.deathContext = { type: 'projectile', subtype: 'deadzone', homing: false,
@@ -6336,11 +6592,14 @@ class Game {
   }
 
   spawnPowerup() {
-    const types = Object.keys(POWERUP_TYPES);
+    const POWERUP_WEIGHTS = { slowmo: 1, emp: 0.35, shrink: 1, magnet: 1, vortex: 1 };
+    const entries = Object.entries(POWERUP_WEIGHTS);
+    const totalWeight = entries.reduce((s, [, w]) => s + w, 0);
     let type;
     do {
-      type = types[Math.floor(this.rng() * types.length)];
-    } while (type === this.lastPowerupType && types.length > 1);
+      let roll = this.rng() * totalWeight;
+      for (const [t, w] of entries) { roll -= w; if (roll <= 0) { type = t; break; } }
+    } while (type === this.lastPowerupType);
     this.lastPowerupType = type;
     const margin = 60;
     const sa = this.safeArea;
@@ -7285,14 +7544,45 @@ class Game {
         ctx.stroke();
       }
     }
-    // Dead zones
+    // Dead zones (with warning phase)
     for (const dz of this.deadZones) {
-      const fadeIn = Math.min(1, (dz.maxLife - dz.life) / 0.5);
-      const fadeOut = Math.min(1, dz.life / 1.0);
-      const alpha = Math.min(fadeIn, fadeOut);
       const wobble = Math.sin(this.gameTime * 3 + dz.x) * 3;
       const r = dz.radius + wobble;
       const pulse = 0.7 + Math.sin(this.gameTime * 5 + dz.y) * 0.3;
+
+      if (dz.warn > 0) {
+        // === WARNING PHASE: pulsing ring expanding to final size ===
+        const warnPct = 1 - dz.warn / 1.5; // 0 → 1
+        const warnR = r * (0.3 + 0.7 * warnPct);
+        const fastPulse = 0.4 + Math.sin(this.gameTime * 12) * 0.6;
+        // Expanding dashed ring
+        ctx.globalAlpha = (0.3 + 0.5 * warnPct) * fastPulse;
+        ctx.strokeStyle = '#f43f5e';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.arc(dz.x, dz.y, warnR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // Warning exclamation
+        ctx.globalAlpha = (0.4 + 0.4 * warnPct) * fastPulse;
+        ctx.fillStyle = '#f43f5e';
+        ctx.font = `bold ${Math.max(16, r * 0.8)}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = '#f43f5e';
+        ctx.shadowBlur = 10;
+        ctx.fillText('\u26A0', dz.x, dz.y);
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+        ctx.textBaseline = 'alphabetic';
+        continue;
+      }
+
+      // === ACTIVE (lethal) PHASE ===
+      const fadeIn = Math.min(1, (dz.maxLife - dz.life) / 0.5);
+      const fadeOut = Math.min(1, dz.life / 1.0);
+      const alpha = Math.min(fadeIn, fadeOut);
       // Outer danger glow
       ctx.globalAlpha = alpha * 0.2 * pulse;
       ctx.fillStyle = '#f43f5e';
@@ -8246,6 +8536,9 @@ class Game {
         }
       }
     }
+
+    // Update upgrade bar cooldown sweeps
+    this.updateUpgradeBar();
   }
 
 }
