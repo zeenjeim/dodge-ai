@@ -1737,6 +1737,15 @@
     }
     #mp-reveal.show { display: flex; }
 
+    .mp-reveal-timer {
+      font-size: 28px;
+      color: #ff3355;
+      font-weight: bold;
+      letter-spacing: 2px;
+      margin-bottom: 4px;
+      font-family: monospace;
+    }
+
     .mp-reveal-title {
       font-size: 14px;
       color: #ff3355;
@@ -2219,6 +2228,7 @@
 
 <!-- MP Opponent Reveal -->
 <div id="mp-reveal">
+  <div class="mp-reveal-timer" id="mp-reveal-timer">5</div>
   <div class="mp-reveal-title">OPPONENT PICKED</div>
   <div class="mp-reveal-card" id="mp-reveal-card">
     <div class="reveal-icon" id="mp-reveal-icon"></div>
@@ -2740,9 +2750,9 @@ const MP_OFFENSIVE_DEFS = [
     ] },
   { id: 'mp_screenShake',    name: 'SCREEN SHAKE',      rarity: 'common',    icon: '\u2B55', offensive: true, effect: 'screenShake', maxPicks: 3,
     levels: [
-      { value: 3,  desc: "Mild tremors. Did the earth just move?" },
-      { value: 7,  desc: "Full earthquake. Hold onto your pixels." },
-      { value: 14, desc: "Seizure mode. The screen is having a tantrum." },
+      { value: 8,  desc: "Mild tremors. Did the earth just move?" },
+      { value: 16, desc: "Full earthquake. Hold onto your pixels." },
+      { value: 28, desc: "Seizure mode. The screen is having a tantrum." },
     ] },
   { id: 'mp_identityCrisis', name: 'IDENTITY CRISIS',   rarity: 'rare',      icon: '\u2753', offensive: true, effect: 'identityCrisis', maxPicks: 3,
     levels: [
@@ -2764,9 +2774,9 @@ const MP_OFFENSIVE_DEFS = [
     ] },
   { id: 'mp_spinCamera',     name: 'SPINNING CAMERA',   rarity: 'legendary', icon: '\u27F3', offensive: true, effect: 'spinCamera', maxPicks: 3,
     levels: [
-      { value: 5,  desc: "5 degree wobble. Slightly seasick." },
-      { value: 15, desc: "15 degree swings. Full vertigo mode." },
-      { value: 360, desc: "Slow 360 rotation. Welcome to the washing machine." },
+      { value: 3,  desc: "3 degree wobble. Slightly seasick." },
+      { value: 8,  desc: "8 degree swings. Full vertigo mode." },
+      { value: 15, desc: "Slow 15 degree swings. Welcome to the washing machine." },
     ] },
   { id: 'mp_backseat',       name: 'BACKSEAT GAMER',    rarity: 'common',    icon: '\u{1F4AC}', offensive: true, effect: 'backseat', maxPicks: 3,
     levels: [
@@ -2776,9 +2786,9 @@ const MP_OFFENSIVE_DEFS = [
     ] },
   { id: 'mp_speedTrap',      name: 'SPEED TRAP',        rarity: 'rare',      icon: '\u26D4', offensive: true, effect: 'speedTrap', maxPicks: 3,
     levels: [
-      { value: { count: 2, slowMult: 0.4 }, desc: "2 slow zones. Step in one and your speed halves." },
-      { value: { count: 3, slowMult: 0.3 }, desc: "3 slow zones. The floor is molasses." },
-      { value: { count: 5, slowMult: 0.2 }, desc: "5 slow zones. Basically quicksand everywhere." },
+      { value: { count: 3, slowMult: 0.3 }, desc: "3 slow zones. Step in one and you're stuck in tar." },
+      { value: { count: 5, slowMult: 0.2 }, desc: "5 slow zones. The floor is molasses." },
+      { value: { count: 7, slowMult: 0.15 }, desc: "7 slow zones. Basically quicksand everywhere." },
     ] },
   // Defensive — applied to self
   { id: 'mp_pocketHealer',   name: 'POCKET HEALER',     rarity: 'legendary', icon: '\u2764', offensive: false, defensive: true, effect: 'pocketHealer', maxPicks: 3,
@@ -5709,15 +5719,15 @@ class Game {
     if (this._upgradeTimerRAF) cancelAnimationFrame(this._upgradeTimerRAF);
     this.upgradeTimer = UPGRADE_INTERVAL;
     if (this.mpMode) {
-      // MP mode: no return-to-dot — auto-resume after 5s max
+      // MP mode: return-to-dot (same as SP)
+      this.returnToDot = true;
+      this.returnDotPos = { x: this.player.x, y: this.player.y };
       this.targetX = this.player.x;
       this.targetY = this.player.y;
-      this.inputFrozenTimer = 0;
-      this.returnToDot = false;
-      this.returnDotPos = null;
+      this.inputFrozenTimer = 999;
+      this.canvas.style.cursor = 'default';
       this.upgradeFreezePhase = 'easing-out';
       this.upgradeFrozen = false;
-      this.canvas.style.cursor = 'none';
     } else {
       // SP mode: return-to-dot
       this.returnToDot = true;
@@ -8898,11 +8908,7 @@ class Game {
       const deg = this.mpClient.debuffs.spinCamera;
       const cx = this.w / 2, cy = this.h / 2;
       ctx.translate(cx, cy);
-      if (deg >= 360) {
-        ctx.rotate(this.gameTime * 0.5); // slow full rotation
-      } else {
-        ctx.rotate(Math.sin(this.gameTime * 2) * deg * Math.PI / 180);
-      }
+      ctx.rotate(Math.sin(this.gameTime * 1.2) * deg * Math.PI / 180);
       ctx.translate(-cx, -cy);
     }
 
@@ -10503,6 +10509,22 @@ class MultiplayerClient {
     card.style.animation = 'none';
     card.offsetHeight;
     card.style.animation = 'reveal-slide 0.5s ease-out';
+
+    // Start countdown timer
+    const timerEl = document.getElementById('mp-reveal-timer');
+    let countdown = 5;
+    timerEl.textContent = countdown;
+    if (this._revealCountdown) clearInterval(this._revealCountdown);
+    this._revealCountdown = setInterval(() => {
+      countdown--;
+      if (countdown <= 0) {
+        clearInterval(this._revealCountdown);
+        this._revealCountdown = null;
+        timerEl.textContent = '';
+      } else {
+        timerEl.textContent = countdown;
+      }
+    }, 1000);
   }
 
   _applyOffensiveCard(pick) {
@@ -10591,9 +10613,9 @@ class MultiplayerClient {
           const gw = window._game.w, gh = window._game.h;
           for (let i = 0; i < val.count; i++) {
             window._game._mpSpeedTraps.push({
-              x: 60 + Math.random() * (gw - 120),
-              y: 60 + Math.random() * (gh - 120),
-              radius: 50 + Math.random() * 30,
+              x: 80 + Math.random() * (gw - 160),
+              y: 80 + Math.random() * (gh - 160),
+              radius: 90 + Math.random() * 60,
             });
           }
         }
@@ -10603,6 +10625,8 @@ class MultiplayerClient {
 
   _handleResume() {
     this.phase = 'playing';
+    if (this._revealCountdown) { clearInterval(this._revealCountdown); this._revealCountdown = null; }
+    document.getElementById('mp-reveal-timer').textContent = '';
     document.getElementById('mp-reveal').classList.remove('show');
     // Force-dismiss evolution overlay if active (prevent desync)
     const evoEl = document.getElementById('evolution-merge');

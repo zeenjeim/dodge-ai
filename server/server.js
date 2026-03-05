@@ -4,7 +4,7 @@ const http = require('http');
 const PORT = process.env.PORT || 1999;
 const UPGRADE_INTERVAL = 15; // seconds between upgrade rounds
 const COUNTDOWN_SECONDS = 3;
-const REVEAL_DURATION_MS = 3000;
+const REVEAL_DURATION_MS = 5000;
 const PICK_TIMEOUT_MS = 30000;
 
 // Room storage
