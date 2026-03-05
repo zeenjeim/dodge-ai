@@ -925,6 +925,12 @@
       animation: none;
     }
 
+    .menu-btn.uniform {
+      width: 220px;
+      padding: 12px 24px;
+      font-size: 11px;
+    }
+
     .menu-btn.small {
       padding: 8px 20px;
       font-size: 10px;
@@ -1085,7 +1091,7 @@
       letter-spacing: 1px;
     }
 
-    .start-hint { color: #444; font-size: 11px; margin-top: 12px; margin-bottom: 4px; }
+    .start-hint { color: #444; font-size: 11px; margin-top: 10px; margin-bottom: 12px; }
 
     /* --- Modals --- */
     .modal-overlay {
@@ -2104,17 +2110,15 @@
 <!-- Start Screen / Menu -->
 <div id="start-screen">
   <h1>DODGE <span>AI</span></h1>
+  <div class="start-hint">Mouse or touch. Try not to cry.</div>
   <div class="menu-buttons">
     <button class="menu-btn primary" id="btn-start">PLAY</button>
     <button class="menu-btn multiplayer" id="btn-multiplayer" style="display:none">DEATHMATCH</button>
-    <div class="start-hint">Mouse or touch. Try not to cry.</div>
-    <div class="menu-secondary">
-      <button class="menu-btn" id="btn-howto">HOW TO PLAY</button>
-      <button class="menu-btn" id="btn-leaderboard">LEADERBOARD</button>
-      <button class="menu-btn" id="btn-stats">STATS</button>
-    </div>
-    <button class="menu-btn small" id="btn-toggle-brain">AI BRAIN: OFF</button>
-    <button class="menu-btn small" id="btn-contact">CONTACT</button>
+    <button class="menu-btn uniform" id="btn-howto">HOW TO PLAY</button>
+    <button class="menu-btn uniform" id="btn-leaderboard">LEADERBOARD</button>
+    <button class="menu-btn uniform" id="btn-stats">STATS</button>
+    <button class="menu-btn uniform" id="btn-toggle-brain">AI BRAIN: OFF</button>
+    <button class="menu-btn uniform" id="btn-contact">CONTACT</button>
   </div>
 </div>
 
