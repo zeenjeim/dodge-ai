@@ -10009,10 +10009,9 @@ class MultiplayerClient {
   _handleUpgradeFreeze(round) {
     this.phase = 'upgrading';
     this._upgradePickSent = false;
-    // The game's own upgrade timer will handle the freeze visually
-    // But we need to FORCE a freeze now if the timer hasn't triggered yet
-    if (window._game && window._game.running) {
-      window._game.upgradeTimer = 0; // force trigger on next update tick
+    // Directly trigger the freeze — the local timer is disabled in MP mode
+    if (window._game && window._game.running && !window._game.upgradeFrozen && window._game.upgradeFreezePhase === 'none') {
+      window._game.startUpgradeFreeze();
     }
   }
 
