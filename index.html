@@ -5265,8 +5265,17 @@ class Game {
           this.inputFrozenTimer = 0;
           this.upgradeFreezePhase = 'easing-out';
           this.upgradeFrozen = false;
-          this.targetX = x;
-          this.targetY = y;
+          // If inverted debuff is active, pre-invert so the update loop's
+          // inversion resolves back to the player's actual position
+          if (this.mpClient && this.mpClient.debuffs.inverted) {
+            const cx = this.w / 2, cy = this.h / 2;
+            const inv = this.mpClient.debuffs.inverted;
+            this.targetX = (inv === 'full') ? (2 * cx - x) : x;
+            this.targetY = cy * 2 - y;
+          } else {
+            this.targetX = x;
+            this.targetY = y;
+          }
           // Hide cursor again
           this.canvas.style.cursor = 'none';
         }
