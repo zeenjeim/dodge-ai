@@ -923,12 +923,17 @@
       border-color: rgba(255,51,85,0.3);
     }
 
-    /* --- Mute Button --- */
-    #mute-btn {
+    /* --- Game Controls (mute, volume, pause) --- */
+    #game-controls {
       position: fixed;
       top: max(16px, calc(8px + var(--sa-top)));
       right: max(230px, calc(220px + var(--sa-right)));
       z-index: 15;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .ctrl-btn {
       background: rgba(10, 10, 30, 0.7);
       border: 1px solid rgba(255,255,255,0.15);
       border-radius: 50%;
@@ -938,9 +943,78 @@
       color: #888;
       font-size: 16px;
       transition: all 0.2s;
+      flex-shrink: 0;
     }
-    #mute-btn:hover { border-color: rgba(255,255,255,0.3); color: #ccc; }
+    .ctrl-btn:hover { border-color: rgba(255,255,255,0.3); color: #ccc; }
     #mute-btn.muted { color: #ff3355; border-color: rgba(255,51,85,0.3); }
+
+    /* Volume slider */
+    #vol-slider-wrap {
+      width: 0; overflow: hidden;
+      transition: width 0.25s ease;
+      display: flex; align-items: center;
+    }
+    #game-controls:hover #vol-slider-wrap,
+    #game-controls.vol-open #vol-slider-wrap { width: 70px; }
+    #vol-slider {
+      -webkit-appearance: none; appearance: none;
+      width: 62px; height: 4px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 2px; outline: none;
+      margin: 0 4px;
+      cursor: pointer;
+    }
+    #vol-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: #fff;
+      cursor: pointer;
+    }
+    #vol-slider::-moz-range-thumb {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: #fff;
+      border: none;
+      cursor: pointer;
+    }
+
+    /* Pause overlay */
+    #pause-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65);
+      z-index: 50;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+    }
+    #pause-overlay.show { display: flex; }
+    #pause-overlay .pause-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 48px;
+      color: #fff;
+      text-shadow: 0 0 20px rgba(255,51,85,0.5);
+      letter-spacing: 8px;
+    }
+    #pause-overlay .pause-resume {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 14px;
+      color: #888;
+      letter-spacing: 2px;
+      cursor: pointer;
+      padding: 12px 32px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      background: rgba(10,10,30,0.8);
+      transition: all 0.2s;
+    }
+    #pause-overlay .pause-resume:hover {
+      color: #fff;
+      border-color: rgba(255,51,85,0.5);
+      background: rgba(255,51,85,0.1);
+    }
 
     /* --- Heat Bar --- */
     #heat-bar-container {
@@ -1364,7 +1438,12 @@
       #hud { top: max(8px, calc(4px + var(--sa-top))); left: max(8px, calc(4px + var(--sa-left))); }
       #hud-time { font-size: 24px; }
       #phase-announce .phase-name { font-size: 28px; }
-      #mute-btn { right: max(170px, calc(160px + var(--sa-right))); width: 28px; height: 28px; font-size: 14px; }
+      #game-controls { right: max(170px, calc(160px + var(--sa-right))); }
+      .ctrl-btn { width: 28px; height: 28px; font-size: 14px; }
+      #game-controls:hover #vol-slider-wrap,
+      #game-controls.vol-open #vol-slider-wrap { width: 56px; }
+      #vol-slider { width: 48px; }
+      #pause-overlay .pause-title { font-size: 32px; }
       #heat-bar-container { top: max(50px, calc(42px + var(--sa-top))); width: 90px; }
     }
 
@@ -1450,8 +1529,19 @@
   <div class="powerup-indicator" id="pu-magnet">PERSONAL SPACE <div class="pu-bar"><div class="pu-bar-fill" id="pu-magnet-bar"></div></div></div>
 </div>
 
-<!-- Mute Button -->
-<button id="mute-btn" title="Toggle Sound">&#9834;</button>
+<!-- Game Controls -->
+<div id="game-controls">
+  <button id="pause-btn" class="ctrl-btn" title="Pause (Esc)">&#9208;</button>
+  <button id="mute-btn" class="ctrl-btn" title="Toggle Sound">&#9834;</button>
+  <div id="vol-slider-wrap"><input type="range" id="vol-slider" min="0" max="100" value="75" title="Volume"></div>
+</div>
+
+<!-- Pause Overlay -->
+<div id="pause-overlay">
+  <div class="pause-title">PAUSED</div>
+  <button class="pause-resume" id="pause-resume-btn">RESUME</button>
+  <div style="color:#555;font-size:12px;letter-spacing:1px;margin-top:4px;">or press ESC</div>
+</div>
 
 <!-- Heat Bar -->
 <div id="heat-bar-container" style="display:none">
@@ -3500,6 +3590,7 @@ class SoundEngine {
   constructor() {
     this.ctx = null;
     this.muted = false;
+    this._volume = parseFloat(localStorage.getItem('dodge-ai-volume') ?? '0.75');
     this.musicPlaying = false;
     this.musicBPM = 88;
     this.musicIntensity = 0;
@@ -3536,7 +3627,7 @@ class SoundEngine {
       this._compressor.release.value = 0.15;
       this._compressor.connect(this.ctx.destination);
       this._masterGain = this.ctx.createGain();
-      this._masterGain.gain.value = 0.75;
+      this._masterGain.gain.value = this._volume;
       this._masterGain.connect(this._compressor);
       // Reverb send (convolver with procedural impulse response)
       this._reverb = this._createReverb();
@@ -3567,6 +3658,14 @@ class SoundEngine {
   resume() {
     if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
   }
+
+  setVolume(v) {
+    this._volume = Math.max(0, Math.min(1, v));
+    if (this._masterGain) this._masterGain.gain.value = this._volume;
+    localStorage.setItem('dodge-ai-volume', this._volume.toString());
+  }
+
+  getVolume() { return this._volume ?? 0.75; }
 
   toggleMute() {
     this.muted = !this.muted;
@@ -4420,7 +4519,8 @@ class Game {
   setupInput() {
     const onMove = (x, y, isTouch = false) => {
       // Return-to-dot: check if mouse is close enough to player's saved position
-      if (this.returnToDot && this.returnDotPos) {
+      // Block dismissal while evolution overlay is active (player must press GOT IT first)
+      if (this.returnToDot && this.returnDotPos && !document.getElementById('evolution-merge')?.classList.contains('show')) {
         const rdx = x - this.returnDotPos.x, rdy = y - this.returnDotPos.y;
         const returnRadius = isTouch ? 60 : 35;
         if (Math.sqrt(rdx * rdx + rdy * rdy) < returnRadius) {
@@ -4470,6 +4570,45 @@ class Game {
       document.getElementById('mute-btn').classList.toggle('muted', muted);
       document.getElementById('mute-btn').innerHTML = muted ? '&#9835;' : '&#9834;';
     };
+
+    // Volume slider
+    const volSlider = document.getElementById('vol-slider');
+    volSlider.value = Math.round(soundEngine.getVolume() * 100);
+    volSlider.addEventListener('input', e => {
+      soundEngine.setVolume(parseInt(e.target.value) / 100);
+    });
+    // On mobile, keep slider open while interacting
+    volSlider.addEventListener('touchstart', () => {
+      document.getElementById('game-controls').classList.add('vol-open');
+    });
+    volSlider.addEventListener('touchend', () => {
+      setTimeout(() => document.getElementById('game-controls').classList.remove('vol-open'), 500);
+    });
+
+    // Pause button + Escape key
+    this.paused = false;
+    const togglePause = () => {
+      if (this.paused) {
+        this.paused = false;
+        this.running = true;
+        document.getElementById('pause-overlay').classList.remove('show');
+        soundEngine.resume();
+        this.lastTime = performance.now();
+        requestAnimationFrame(t => this.loop(t));
+      } else if (this.running) {
+        this.paused = true;
+        this.running = false;
+        document.getElementById('pause-overlay').classList.add('show');
+      }
+    };
+    document.getElementById('pause-btn').onclick = togglePause;
+    document.getElementById('pause-resume-btn').onclick = togglePause;
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        if (this.paused) { togglePause(); }
+        else if (this.running) { togglePause(); }
+      }
+    });
 
     document.getElementById('btn-start').onclick = () => this.start();
     document.getElementById('btn-retry').onclick = () => this.start();
@@ -4645,6 +4784,8 @@ class Game {
 
     this.rng = Math.random;
     this.running = true;
+    this.paused = false;
+    document.getElementById('pause-overlay').classList.remove('show');
     this.gameTime = 0;
     this.phase = 0;
 
