@@ -7581,7 +7581,7 @@ class Game {
           // Rotate beams
           this.deathRayAngle += 2.5 * dt; // rotation speed
           const beamCount = 4;
-          const beamLen = 350 + 150 * lvl; // Lv1: 500, Lv2: 650, Lv3: 800
+          const beamLen = 125 + 125 * lvl; // Lv1: 250, Lv2: 375, Lv3: 500
           const beamW = 12 + 4 * lvl;
           for (let b = 0; b < beamCount; b++) {
             const angle = this.deathRayAngle + (b * Math.PI * 2 / beamCount);
@@ -9654,7 +9654,7 @@ class Game {
       if (this.deathRayActive) {
         const lvl = this.upgrades.deathRay || 1;
         const beamCount = 2 + 2 * lvl;
-        const beamLen = 500 + 100 * lvl;
+        const beamLen = 125 + 125 * lvl;
         const flicker = 0.8 + Math.sin(this.gameTime * 20) * 0.2;
         for (let b = 0; b < beamCount; b++) {
           const angle = this.deathRayAngle + (b * Math.PI * 2 / beamCount);
