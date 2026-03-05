@@ -1673,11 +1673,28 @@
       inset: 0;
       z-index: 70;
       display: none;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       background: rgba(6, 6, 15, 0.9);
+      gap: 8px;
     }
     #mp-countdown.show { display: flex; }
+    .mp-countdown-rules {
+      font-size: 22px;
+      font-weight: bold;
+      color: #ff3355;
+      letter-spacing: 4px;
+      text-shadow: 0 0 20px rgba(255, 51, 85, 0.4);
+    }
+    .mp-countdown-sub {
+      font-size: 13px;
+      color: #888;
+      max-width: 340px;
+      text-align: center;
+      line-height: 1.4;
+      margin-bottom: 16px;
+    }
     #mp-countdown .countdown-num {
       font-size: 120px;
       color: #ff3355;
@@ -2166,6 +2183,8 @@
 
 <!-- MP Countdown -->
 <div id="mp-countdown">
+  <div class="mp-countdown-rules">LAST ONE ALIVE WINS</div>
+  <div class="mp-countdown-sub">Pick offensive cards to sabotage your opponent. Pick defensive cards to survive.</div>
   <div class="countdown-num" id="mp-countdown-num">3</div>
 </div>
 
@@ -6176,8 +6195,8 @@ class Game {
       this.updateUpgradeFreeze(dt);
     }
 
-    // --- Upgrade timer countdown ---
-    if (this.upgradeFreezePhase === 'none' && !this.upgradeFrozen) {
+    // --- Upgrade timer countdown (disabled in MP — server controls timing) ---
+    if (!this.mpMode && this.upgradeFreezePhase === 'none' && !this.upgradeFrozen) {
       this.upgradeTimer -= dt;
       if (this.upgradeTimer <= 0 && this.getAvailableUpgrades().length > 0) {
         this.startUpgradeFreeze();
