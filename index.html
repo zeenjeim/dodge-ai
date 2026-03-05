@@ -2723,6 +2723,18 @@ const MP_OFFENSIVE_DEFS = [
       { value: 2, desc: "Summon a tougher boss. They grow up so fast." },
       { value: 3, desc: "Summon an absolute unit. RIP opponent." },
     ] },
+  { id: 'mp_lagSpike',       name: 'LAG SPIKE',         rarity: 'rare',      icon: '\u23F3', offensive: true, effect: 'lagSpike', maxPicks: 3,
+    levels: [
+      { value: 0.10, desc: "100ms input delay on enemy. Feels like bad WiFi." },
+      { value: 0.25, desc: "250ms input delay. They're playing from the moon." },
+      { value: 0.50, desc: "500ms input delay. Basically a slideshow." },
+    ] },
+  { id: 'mp_deadZones',      name: 'DEAD ZONES',        rarity: 'rare',      icon: '\u2622', offensive: true, effect: 'deadZones', maxPicks: 3,
+    levels: [
+      { value: { count: 1, interval: 7 }, desc: "Spawn 1 dead zone every 7s on enemy's screen." },
+      { value: { count: 2, interval: 6 }, desc: "Spawn 2 dead zones every 6s. Floor is lava." },
+      { value: { count: 3, interval: 5 }, desc: "Spawn 3 dead zones every 5s. No safe space left." },
+    ] },
   // Defensive — applied to self
   { id: 'mp_cleanSlate',     name: 'CLEAN SLATE',       rarity: 'rare',      icon: '\u2728', offensive: false, defensive: true, effect: 'cleanSlate', maxPicks: 3,
     levels: [
@@ -5143,7 +5155,15 @@ class Game {
         }
         return; // don't move player while waiting for return
       }
-      if (this.inputFrozenTimer <= 0) { this.targetX = x; this.targetY = y; }
+      if (this.inputFrozenTimer <= 0) {
+        // MP debuff: LAG SPIKE — buffer inputs with delay
+        if (this.mpClient && this.mpClient.debuffs.lagSpike > 0) {
+          if (!this._lagQueue) this._lagQueue = [];
+          this._lagQueue.push({ x, y, t: performance.now() });
+        } else {
+          this.targetX = x; this.targetY = y;
+        }
+      }
     };
     this.canvas.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
     this.canvas.addEventListener('touchmove', e => {
@@ -6472,6 +6492,16 @@ class Game {
       };
     }
     if (this.abilities.timeWarp.active) lerp *= 0.7;
+    // MP debuff: LAG SPIKE — replay buffered inputs after delay
+    if (this.mpClient && this.mpClient.debuffs.lagSpike > 0 && this._lagQueue && this._lagQueue.length > 0) {
+      const delayMs = this.mpClient.debuffs.lagSpike * 1000;
+      const now = performance.now();
+      while (this._lagQueue.length > 0 && now - this._lagQueue[0].t >= delayMs) {
+        const entry = this._lagQueue.shift();
+        this.targetX = entry.x;
+        this.targetY = entry.y;
+      }
+    }
     // MP debuff: INVERTED flips target relative to player
     let tx = this.targetX, ty = this.targetY;
     if (this.mpClient && this.mpClient.debuffs.inverted) {
@@ -6884,9 +6914,8 @@ class Game {
     // Add split/cluster/mine children
     for (const c of newProjectiles) this.projectiles.push(c);
 
-    // --- CORRUPTION (Phase 7+): dead zones appear with 1.5s warning ---
+    // --- CORRUPTION (Phase 7+): dead zones spawn naturally ---
     if (this.phase >= CORRUPTION_PHASE_IDX) {
-      const px = this.player.x, py = this.player.y;
       this._deadZoneTimer = (this._deadZoneTimer || 0) - dt;
       if (this._deadZoneTimer <= 0 && this.deadZones.length < 8) {
         const margin = this.arenaInset + 40;
@@ -6896,12 +6925,31 @@ class Game {
         this.deadZones.push({ x: dzx, y: dzy, radius: 25 + this.rng() * 20, life: dzLife, maxLife: dzLife, warn: 1.5 });
         this._deadZoneTimer = 2.5 + this.rng() * 2;
       }
+    }
+
+    // --- MP debuff: DEAD ZONE spawning ---
+    if (this.mpClient && this.mpClient.debuffs.deadZoneCount > 0) {
+      this._mpDeadZoneTimer = (this._mpDeadZoneTimer || 0) - dt;
+      if (this._mpDeadZoneTimer <= 0) {
+        const count = this.mpClient.debuffs.deadZoneCount;
+        const margin = this.arenaInset + 40;
+        for (let dzi = 0; dzi < count && this.deadZones.length < 12; dzi++) {
+          const dzx = margin + Math.random() * (this.w - margin * 2);
+          const dzy = margin + Math.random() * (this.h - margin * 2);
+          this.deadZones.push({ x: dzx, y: dzy, radius: 30 + Math.random() * 15, life: 5, maxLife: 5, warn: 1.5 });
+        }
+        this._mpDeadZoneTimer = this.mpClient.debuffs.deadZoneInterval;
+      }
+    }
+
+    // --- Dead zone tick + collision (always runs if any exist) ---
+    if (this.deadZones.length > 0) {
+      const px = this.player.x, py = this.player.y;
       for (let i = this.deadZones.length - 1; i >= 0; i--) {
         const dz = this.deadZones[i];
-        // Tick warning phase first
         if (dz.warn > 0) {
           dz.warn -= dt;
-          continue; // not lethal yet
+          continue;
         }
         dz.life -= dt;
         if (dz.life <= 0) { this.deadZones.splice(i, 1); continue; }
@@ -9773,6 +9821,9 @@ class MultiplayerClient {
       inverted: false,
       fakeAd: false,
       fakeAdTimer: 0,
+      lagSpike: 0,
+      deadZoneCount: 0,
+      deadZoneInterval: 7,
     };
     this.reverseUnoActive = false;
     this._upgradePickSent = false;
@@ -9943,9 +9994,17 @@ class MultiplayerClient {
       inverted: false,
       fakeAd: false,
       fakeAdTimer: 0,
+      lagSpike: 0,
+      deadZoneCount: 0,
+      deadZoneInterval: 7,
     };
     this.reverseUnoActive = false;
     document.getElementById('mp-fake-ad').classList.remove('show');
+    // Clear lag queue and MP dead zones
+    if (window._game) {
+      window._game._lagQueue = [];
+      window._game._mpDeadZoneTimer = 0;
+    }
   }
 
   _handleMessage(msg) {
@@ -10201,6 +10260,13 @@ class MultiplayerClient {
       case 'fakeAd':
         this.debuffs.fakeAd = true;
         this.debuffs.fakeAdTimer = 0;
+        break;
+      case 'lagSpike':
+        this.debuffs.lagSpike = Math.min(0.5, this.debuffs.lagSpike + val);
+        break;
+      case 'deadZones':
+        this.debuffs.deadZoneCount = val.count;
+        this.debuffs.deadZoneInterval = val.interval;
         break;
       case 'spawnBoss':
         // Spawn a boss on this player's game
