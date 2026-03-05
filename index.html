@@ -10054,11 +10054,21 @@ class MultiplayerClient {
         break;
 
       case 'upgrade_reveal':
-        this._handleUpgradeReveal(msg.opponentPick);
+        // Buffer reveal until local player has picked
+        if (!this._upgradePickSent) {
+          this._pendingReveal = msg.opponentPick;
+        } else {
+          this._handleUpgradeReveal(msg.opponentPick);
+        }
         break;
 
       case 'resume':
-        this._handleResume();
+        // Buffer resume until local player has picked
+        if (!this._upgradePickSent) {
+          this._pendingResume = true;
+        } else {
+          this._handleResume();
+        }
         break;
 
       case 'you_win':
@@ -10176,6 +10186,8 @@ class MultiplayerClient {
   _handleUpgradeFreeze(round) {
     this.phase = 'upgrading';
     this._upgradePickSent = false;
+    this._pendingReveal = undefined;
+    this._pendingResume = false;
     // Directly trigger the freeze — the local timer is disabled in MP mode
     if (window._game && window._game.running && !window._game.upgradeFrozen && window._game.upgradeFreezePhase === 'none') {
       window._game.startUpgradeFreeze();
@@ -10301,11 +10313,6 @@ class MultiplayerClient {
       evoEl.querySelector('.evo-result')?.classList.remove('reveal', 'dismiss');
       evoEl.querySelector('.evo-particles') && (evoEl.querySelector('.evo-particles').innerHTML = '');
     }
-    // If we hadn't picked yet, auto-pick first available card
-    if (!this._upgradePickSent && window._game && window._game._currentCards && window._game._currentCards.length > 0) {
-      const autoCard = window._game._currentCards[0];
-      window._game.selectUpgrade(autoCard.id, document.querySelector('.upgrade-card'));
-    }
     // Trigger the game's dismiss/return-to-dot flow
     if (window._game) {
       window._game.dismissUpgradeOverlay();
@@ -10359,6 +10366,7 @@ class MultiplayerClient {
     // Handle skip (no cards available)
     if (upgradeId === '_skip') {
       this._send({ type: 'upgrade_pick', pick: { cardId: '_skip', cardName: 'SKIP', cardIcon: '\u23ED', cardRarity: 'common', cardLevel: 0, isOffensive: false, isDefensive: false } });
+      this._flushPendingMessages();
       return;
     }
 
@@ -10385,6 +10393,20 @@ class MultiplayerClient {
     };
 
     this._send({ type: 'upgrade_pick', pick });
+    this._flushPendingMessages();
+  }
+
+  _flushPendingMessages() {
+    // Process any reveal/resume that arrived while we were still picking
+    if (this._pendingReveal !== undefined) {
+      const reveal = this._pendingReveal;
+      this._pendingReveal = undefined;
+      this._handleUpgradeReveal(reveal);
+    }
+    if (this._pendingResume) {
+      this._pendingResume = false;
+      this._handleResume();
+    }
   }
 
   // Called by game when player dies in MP mode
