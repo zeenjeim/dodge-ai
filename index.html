@@ -928,7 +928,7 @@
       position: fixed;
       top: max(16px, calc(8px + var(--sa-top)));
       right: max(230px, calc(220px + var(--sa-right)));
-      z-index: 15;
+      z-index: 55;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -4593,6 +4593,13 @@ class Game {
         this.running = true;
         document.getElementById('pause-overlay').classList.remove('show');
         soundEngine.resume();
+        // Return-to-dot: freeze input until mouse returns to player
+        this.returnToDot = true;
+        this.returnDotPos = { x: this.player.x, y: this.player.y };
+        this.targetX = this.player.x;
+        this.targetY = this.player.y;
+        this.inputFrozenTimer = 999;
+        this.canvas.style.cursor = 'default';
         this.lastTime = performance.now();
         requestAnimationFrame(t => this.loop(t));
       } else if (this.running) {
@@ -8510,25 +8517,32 @@ class Game {
           const angle = this.orbitalAngle + (o * Math.PI * 2 / orbCount);
           const orbX = this.player.x + Math.cos(angle) * 60;
           const orbY = this.player.y + Math.sin(angle) * 60;
-          ctx.globalAlpha = 0.15;
+          // Energy dash: thick arc streak instead of circle
+          const dashLen = 0.45; // arc length in radians
+          ctx.globalAlpha = 0.12;
           ctx.strokeStyle = '#00e5ff';
-          ctx.lineWidth = 3;
+          ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.arc(this.player.x, this.player.y, 60, angle - 1.5, angle);
+          ctx.arc(this.player.x, this.player.y, 60, angle - dashLen * 2.5, angle - dashLen);
           ctx.stroke();
-          ctx.globalAlpha = 0.3;
+          // Main dash body
+          ctx.globalAlpha = 0.85;
           ctx.shadowColor = '#00e5ff';
-          ctx.shadowBlur = 15;
-          ctx.fillStyle = '#00e5ff';
+          ctx.shadowBlur = 12;
+          ctx.strokeStyle = '#00e5ff';
+          ctx.lineWidth = 6;
+          ctx.lineCap = 'round';
           ctx.beginPath();
-          ctx.arc(orbX, orbY, 10, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.globalAlpha = 1;
-          ctx.fillStyle = '#fff';
+          ctx.arc(this.player.x, this.player.y, 60, angle - dashLen, angle);
+          ctx.stroke();
+          // Bright core
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.arc(orbX, orbY, 5, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.arc(this.player.x, this.player.y, 60, angle - dashLen * 0.6, angle);
+          ctx.stroke();
           ctx.shadowBlur = 0;
+          ctx.lineCap = 'butt';
         }
       }
 
