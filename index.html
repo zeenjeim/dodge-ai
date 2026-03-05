@@ -4593,7 +4593,10 @@ class Game {
         this.running = true;
         document.getElementById('pause-overlay').classList.remove('show');
         soundEngine.resume();
-        // Return-to-dot: freeze input until mouse returns to player
+        // Freeze game + return-to-dot (same as upgrade dismiss)
+        this.upgradeFrozen = true;
+        this.upgradeFreezeBlend = 1;
+        this.upgradeFreezePhase = 'frozen';
         this.returnToDot = true;
         this.returnDotPos = { x: this.player.x, y: this.player.y };
         this.targetX = this.player.x;
