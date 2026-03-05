@@ -173,6 +173,7 @@ function handleUpgradePick(ws, pick) {
 function doRevealAndResume(room) {
   if (room.phase !== 'upgrading') return;
   room.phase = 'reveal';
+  clearRoomTimers(room); // cancel stale PICK_TIMEOUT from previous rounds
 
   const alivePlayers = [...room.players.entries()].filter(([, s]) => s.alive);
 
