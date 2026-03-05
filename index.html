@@ -10079,6 +10079,13 @@ class MultiplayerClient {
   _handleResume() {
     this.phase = 'playing';
     document.getElementById('mp-reveal').classList.remove('show');
+    // Force-dismiss evolution overlay if active (prevent desync)
+    const evoEl = document.getElementById('evolution-merge');
+    if (evoEl && evoEl.classList.contains('show')) {
+      evoEl.classList.remove('show');
+      evoEl.querySelector('.evo-result')?.classList.remove('reveal', 'dismiss');
+      evoEl.querySelector('.evo-particles') && (evoEl.querySelector('.evo-particles').innerHTML = '');
+    }
     // Trigger the game's dismiss/return-to-dot flow
     if (window._game) {
       window._game.dismissUpgradeOverlay();
