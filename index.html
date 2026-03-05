@@ -950,7 +950,7 @@
       position: fixed;
       top: max(16px, calc(8px + var(--sa-top)));
       right: max(230px, calc(220px + var(--sa-right)));
-      z-index: 55;
+      z-index: 56;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -1006,7 +1006,7 @@
       display: none;
       position: fixed; inset: 0;
       background: rgba(0,0,0,0.65);
-      z-index: 50;
+      z-index: 57;
       flex-direction: column;
       align-items: center;
       justify-content: center;
@@ -2113,7 +2113,7 @@
   <div class="start-hint">Mouse or touch. Try not to cry.</div>
   <div class="menu-buttons">
     <button class="menu-btn primary" id="btn-start">PLAY</button>
-    <button class="menu-btn multiplayer" id="btn-multiplayer" style="display:none">DEATHMATCH</button>
+    <button class="menu-btn multiplayer" id="btn-multiplayer" style="display:none">MULTIPLAYER</button>
     <button class="menu-btn uniform" id="btn-howto">HOW TO PLAY</button>
     <button class="menu-btn uniform" id="btn-leaderboard">LEADERBOARD</button>
     <button class="menu-btn uniform" id="btn-stats">STATS</button>
@@ -2195,7 +2195,7 @@
 
 <!-- Multiplayer Lobby -->
 <div id="mp-lobby">
-  <h2>DEATHMATCH</h2>
+  <h2>MULTIPLAYER</h2>
   <div id="mp-lobby-create" style="display:flex;flex-direction:column;align-items:center;gap:12px">
     <button class="menu-btn primary" id="mp-btn-create" style="font-size:16px;padding:14px 48px">CREATE ROOM</button>
     <div style="color:#444;font-size:11px;letter-spacing:1px">- OR -</div>
@@ -2608,11 +2608,11 @@ const BOSS_INTERVAL = 40; // seconds between bosses
 const BOSS_LIFETIME = 12; // seconds a boss lives
 
 const POWERUP_TYPES = {
-  slowmo:    { name: 'BULLET TIME',    color: '#3b82f6', duration: 8,   icon: 'S' },
-  emp:       { name: 'KABOOM',        color: '#facc15', duration: 0,   icon: 'E' },
-  shrink:    { name: 'SMOL MODE',     color: '#ec4899', duration: 10,  icon: 'K' },
-  magnet:    { name: 'PERSONAL SPACE', color: '#f97316', duration: 7,   icon: 'R' },
-  vortex:    { name: 'BLACK HOLE',    color: '#a855f7', duration: 10,  icon: 'V' },
+  slowmo:    { name: 'BULLET TIME',    color: '#3b82f6', duration: 8,   icon: '\u231B' },
+  emp:       { name: 'KABOOM',        color: '#facc15', duration: 0,   icon: '\u2738' },
+  shrink:    { name: 'SMOL MODE',     color: '#ec4899', duration: 10,  icon: '\u2B29' },
+  magnet:    { name: 'PERSONAL SPACE', color: '#f97316', duration: 7,   icon: '\u2742' },
+  vortex:    { name: 'BLACK HOLE',    color: '#a855f7', duration: 10,  icon: '\u2B2A' },
 };
 
 const POWERUP_SPAWN_MIN = 5;
@@ -2657,7 +2657,7 @@ const UPGRADE_DEFS = [
   // --- LEGENDARY (game-changing actives, unique mechanics) ---
   { id: 'shockwave',      name: 'SHOCKWAVE',         rarity: 'legendary', icon: '\u25C9', desc: "Auto-blast every 10s that pushes all projectiles away." },
   { id: 'orbitalGuard',   name: 'ORBITAL GUARD',     rarity: 'legendary', icon: '\u27E1', desc: "Spinning orb destroys any projectile it touches." },
-  { id: 'secondWind',     name: 'SECOND WIND',       rarity: 'legendary', icon: '\u2661', desc: "Cheat death once. Respawn with 2s invulnerability." },
+  { id: 'secondWind',     name: 'SECOND WIND',       rarity: 'legendary', icon: '\u2661', desc: "+1 extra life. Respawn with 2s invulnerability." },
   { id: 'ghostMode',      name: 'GHOST PROTOCOL',    rarity: 'legendary', icon: '\u2205', desc: "Phase through everything for 1.5s every 12s." },
   { id: 'deathRay',       name: 'NOVA STAR',         rarity: 'legendary', icon: '\u2738', desc: "Rotating beams sweep the field, vaporizing everything." },
   { id: 'luckyStar',      name: 'LUCKY STAR',        rarity: 'legendary', icon: '\u2606', desc: "All power-up effects last 30% longer." },
@@ -4229,51 +4229,58 @@ class PowerUp {
   isExpired() { return this.age > POWERUP_LIFETIME; }
   draw(ctx) {
     const pulse = Math.sin(this.age * 3) * 0.4 + 0.6;
-    const fadeOut = this.age > POWERUP_LIFETIME - 1.5 ? Math.max(0, (POWERUP_LIFETIME - this.age) / 1.5) : 1;
+    const timeLeft = POWERUP_LIFETIME - this.age;
+    const expiring = timeLeft < 2;
+    // Expiring: rapid blink (on/off flashing) + shrink
+    const blinkOn = expiring ? (Math.sin(this.age * 12) > -0.3) : true;
+    const fadeOut = timeLeft < 1.5 ? Math.max(0, timeLeft / 1.5) : 1;
+    const expiryScale = expiring ? 0.7 + 0.3 * (timeLeft / 2) : 1;
+
+    if (!blinkOn) { ctx.globalAlpha = 1; return; }
 
     // Rotating dashed ring — instantly distinguishes from bullets
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.age * 1.5);
     ctx.globalAlpha = 0.45 * fadeOut;
-    ctx.strokeStyle = this.def.color;
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = expiring ? '#ff4444' : this.def.color;
+    ctx.lineWidth = expiring ? 2.5 : 1.5;
     ctx.setLineDash([5, 5]);
     ctx.beginPath();
-    ctx.arc(0, 0, POWERUP_RADIUS + 10 + Math.sin(this.age * 3) * 2, 0, Math.PI * 2);
+    ctx.arc(0, 0, (POWERUP_RADIUS + 10 + Math.sin(this.age * 3) * 2) * expiryScale, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.restore();
 
     // Wider soft outer glow — powerups "breathe" light
     ctx.globalAlpha = 0.22 * pulse * fadeOut;
-    ctx.fillStyle = this.def.color;
+    ctx.fillStyle = expiring ? '#ff4444' : this.def.color;
     ctx.beginPath();
-    ctx.arc(this.x, this.y, POWERUP_RADIUS + 12 + Math.sin(this.age * 2.5) * 4, 0, Math.PI * 2);
+    ctx.arc(this.x, this.y, (POWERUP_RADIUS + 12 + Math.sin(this.age * 2.5) * 4) * expiryScale, 0, Math.PI * 2);
     ctx.fill();
 
     // Core orb — brighter with stronger glow
     ctx.globalAlpha = 0.95 * fadeOut;
-    ctx.shadowColor = this.def.color;
+    ctx.shadowColor = expiring ? '#ff4444' : this.def.color;
     ctx.shadowBlur = 28 * pulse;
-    ctx.fillStyle = this.def.color;
+    ctx.fillStyle = expiring ? '#ff4444' : this.def.color;
     ctx.beginPath();
-    ctx.arc(this.x, this.y, POWERUP_RADIUS * pulse, 0, Math.PI * 2);
+    ctx.arc(this.x, this.y, POWERUP_RADIUS * pulse * expiryScale, 0, Math.PI * 2);
     ctx.fill();
 
     // White border ring — powerups have a ring, bullets don't
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 0.55 * fadeOut;
-    ctx.strokeStyle = '#fff';
+    ctx.strokeStyle = expiring ? '#ff8888' : '#fff';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(this.x, this.y, POWERUP_RADIUS * pulse + 1, 0, Math.PI * 2);
+    ctx.arc(this.x, this.y, POWERUP_RADIUS * pulse * expiryScale + 1, 0, Math.PI * 2);
     ctx.stroke();
 
     // Icon text
     ctx.globalAlpha = fadeOut;
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 14px Courier New';
+    ctx.font = `bold ${Math.round(14 * expiryScale)}px Courier New`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(this.def.icon, this.x, this.y + 1);
@@ -4389,8 +4396,11 @@ class SoundEngine {
   updateMusicIntensity(phase, threatLevel) {
     if (!this.ctx) return;
     // Set targets — actual values lerp smoothly in _scheduleMeasure
-    this._targetIntensity = Math.min(1, (phase / (PHASE_DEFS.length - 1)) * 0.6 + threatLevel * 0.4);
-    this._targetBPM = 88 + this._targetIntensity * 72;
+    // Allow intensity beyond 1.0 for HIVEMIND ramp (extra 0.05 per sub-phase)
+    const baseIntensity = (phase / (PHASE_DEFS.length - 1)) * 0.6 + threatLevel * 0.4;
+    const hivemindExtra = phase >= PHASE_DEFS.length - 1 ? (window._game?._hivemindRamp || 0) * 0.05 : 0;
+    this._targetIntensity = Math.min(1.6, baseIntensity + hivemindExtra);
+    this._targetBPM = 88 + Math.min(this._targetIntensity, 1.0) * 72 + Math.max(0, this._targetIntensity - 1.0) * 40;
   }
 
   _scheduleMeasure() {
@@ -4462,6 +4472,34 @@ class SoundEngine {
     // === LEAD MELODY (fades in around I=0.65) ===
     if (I > 0.6) {
       this._scheduleLeadPhrase(chord.notes, now, measureDur, fade(0.6));
+    }
+
+    // === OVERDRIVE LAYERS (I > 1.0 — post-HIVEMIND escalation) ===
+    if (I > 1.0) {
+      const overI = Math.min(1, I - 1.0); // 0..1 for overdrive range
+      // Double-time hi-hats
+      for (let beat = 0; beat < 4; beat++) {
+        const bt = now + beat * beatDur;
+        this._scheduleHiHat(bt + beatDur * 0.25, overI * 0.35);
+        this._scheduleHiHat(bt + beatDur * 0.75, overI * 0.25);
+      }
+      // Extra octave arp notes (higher pitch, frantic)
+      const hiArpNotes = chord.notes.map(f => f * 16); // octave 6
+      const hiSteps = I > 1.3 ? 4 : 3;
+      const hiInterval = beatDur / hiSteps;
+      for (let beat = 0; beat < 4; beat++) {
+        for (let sub = 0; sub < hiSteps; sub++) {
+          const at = now + beat * beatDur + sub * hiInterval;
+          const noteIdx = (this._arpStep + sub) % hiArpNotes.length;
+          this._scheduleArpNote(hiArpNotes[noteIdx], at, hiInterval * 0.5, overI * 0.6);
+        }
+      }
+      // Extra snare ghost notes
+      if (I > 1.2) {
+        for (let beat = 0; beat < 4; beat++) {
+          this._scheduleSnare(now + beat * beatDur + beatDur * 0.5, (I - 1.2) * 0.5);
+        }
+      }
     }
 
     this._measureCount++;
@@ -5294,24 +5332,31 @@ class Game {
     // Pause button + Escape key
     this.paused = false;
     const togglePause = () => {
+      if (this.mpMode) return; // No pausing in multiplayer
       if (this.paused) {
         this.paused = false;
         this.running = true;
         document.getElementById('pause-overlay').classList.remove('show');
         soundEngine.resume();
-        // Freeze game + return-to-dot (same as upgrade dismiss)
-        this.upgradeFrozen = true;
-        this.upgradeFreezeBlend = 1;
-        this.upgradeFreezePhase = 'frozen';
-        this.returnToDot = true;
-        this.returnDotPos = { x: this.player.x, y: this.player.y };
-        this.targetX = this.player.x;
-        this.targetY = this.player.y;
-        this.inputFrozenTimer = 999;
-        this.canvas.style.cursor = 'default';
+        // If we paused during upgrade freeze, just resume — don't add return-to-dot
+        if (this._pausedDuringUpgrade) {
+          this._pausedDuringUpgrade = false;
+        } else {
+          // Freeze game + return-to-dot (same as upgrade dismiss)
+          this.upgradeFrozen = true;
+          this.upgradeFreezeBlend = 1;
+          this.upgradeFreezePhase = 'frozen';
+          this.returnToDot = true;
+          this.returnDotPos = { x: this.player.x, y: this.player.y };
+          this.targetX = this.player.x;
+          this.targetY = this.player.y;
+          this.inputFrozenTimer = 999;
+          this.canvas.style.cursor = 'default';
+        }
         this.lastTime = performance.now();
         requestAnimationFrame(t => this.loop(t));
       } else if (this.running) {
+        this._pausedDuringUpgrade = this.upgradeFrozen;
         this.paused = true;
         this.running = false;
         document.getElementById('pause-overlay').classList.add('show');
@@ -5913,9 +5958,14 @@ class Game {
       rerollBtn.classList.add('hidden');
     }
 
-    // Start pick countdown timer
-    this._upgradePickDeadline = performance.now() + 30000; // 30s to pick
-    this._updateUpgradeTimer();
+    // Start pick countdown timer (MP only — SP has no time pressure)
+    if (this.mpMode) {
+      this._upgradePickDeadline = performance.now() + 30000; // 30s to pick
+      this._updateUpgradeTimer();
+    } else {
+      const timerEl = document.getElementById('upgrade-timer');
+      if (timerEl) timerEl.textContent = '';
+    }
 
     const overlay = document.getElementById('upgrade-overlay');
     overlay.classList.add('show');
@@ -6197,7 +6247,7 @@ class Game {
       case 'orbitalGuard': this.orbitalAngle = 0; break;
       case 'ghostMode':    this.ghostTimer = 12; this.ghostActive = false; break;
       case 'deathRay':     this.deathRayTimer = 15; this.deathRayActive = false; break;
-      case 'secondWind':   this.secondWindUses = 0; break;
+      case 'secondWind':   break; // don't reset uses — each level adds 1 life total
       case 'omegaBeam':    this.omegaBeamTimer = 0.5; break;
     }
   }
@@ -6278,6 +6328,13 @@ class Game {
     el.classList.add('show');
     soundEngine.playCollect();
 
+    // Freeze game during evolution in single player
+    if (!this.mpMode) {
+      this.upgradeFrozen = true;
+      this.upgradeFreezeBlend = 1;
+      this.upgradeFreezePhase = 'frozen';
+    }
+
     // Step 1: Cards slide in (0ms)
     requestAnimationFrame(() => {
       ingL.classList.add('slide-in');
@@ -6335,6 +6392,17 @@ class Game {
         result.classList.remove('reveal', 'dismiss');
         particles.innerHTML = '';
       }, 600);
+      // SP: return-to-dot after evolution dismiss
+      if (!this.mpMode) {
+        this.returnToDot = true;
+        this.returnDotPos = { x: this.player.x, y: this.player.y };
+        this.targetX = this.player.x;
+        this.targetY = this.player.y;
+        this.inputFrozenTimer = 999;
+        this.canvas.style.cursor = 'default';
+        this.upgradeFreezePhase = 'easing-out';
+        this.upgradeFrozen = false;
+      }
     };
     okBtn.addEventListener('click', dismissEvo);
 
@@ -8484,9 +8552,10 @@ class Game {
   }
 
   die() {
-    // Second Wind: cheat death once
+    // Second Wind: 1 extra life per pick (Lv1=1, Lv2=2, Lv3=3 total lives)
     const lastStandExtra = this.evolutions.lastStand ? 2 : 0;
-    if (this.upgrades.secondWind && this.secondWindUses < this.upgrades.secondWind + lastStandExtra) {
+    const maxLives = this.upgrades.secondWind + lastStandExtra;
+    if (this.upgrades.secondWind && this.secondWindUses < maxLives) {
       this.secondWindUses++;
       // Dramatic revival VFX
       this.flashAlpha = 1;
@@ -10160,6 +10229,7 @@ class MultiplayerClient {
         window._game.mpMode = false;
         window._game.mpClient = null;
       }
+      document.getElementById('pause-btn').style.display = '';
       document.getElementById('mp-lobby').classList.remove('show');
       document.getElementById('start-screen').classList.remove('hidden');
     });
@@ -10178,6 +10248,7 @@ class MultiplayerClient {
         window._game.mpMode = false;
         window._game.mpClient = null;
       }
+      document.getElementById('pause-btn').style.display = '';
       document.getElementById('mp-gameover').classList.remove('show');
       document.getElementById('start-screen').classList.remove('hidden');
     });
@@ -10466,6 +10537,7 @@ class MultiplayerClient {
     if (window._game) {
       window._game.mpMode = true;
       window._game.mpClient = this;
+      document.getElementById('pause-btn').style.display = 'none';
       window._game.start();
     }
   }
@@ -10765,7 +10837,7 @@ class MultiplayerClient {
 // Global multiplayer client
 const mpClient = new MultiplayerClient();
 
-// Show DEATHMATCH button only with ?mp=1
+// Show MULTIPLAYER button only with ?mp=1
 if (new URLSearchParams(window.location.search).get('mp') === '1') {
   document.getElementById('btn-multiplayer').style.display = '';
 }
