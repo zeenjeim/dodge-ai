@@ -2714,9 +2714,11 @@ const MP_OFFENSIVE_DEFS = [
       { value: 'vertical',   desc: "Enemy vertical controls flipped. Up is down now." },
       { value: 'full',       desc: "Both axes flipped. Complete chaos. Good luck." },
     ] },
-  { id: 'mp_fakeAd',         name: 'FAKE AD',           rarity: 'legendary', icon: '\u25B6', offensive: true, effect: 'fakeAd', maxPicks: 1,
+  { id: 'mp_fakeAd',         name: 'FAKE AD',           rarity: 'legendary', icon: '\u25B6', offensive: true, effect: 'fakeAd', maxPicks: 3,
     levels: [
-      { value: true, desc: "Force opponent to 'watch an ad' for 10s every 60s. Brutal." },
+      { value: { adDur: 10, cycle: 30, count: 1 }, desc: "10s ad every 30s. Brought to you by our sponsors." },
+      { value: { adDur: 10, cycle: 20, count: 2 }, desc: "Two 10s ads back-to-back every 20s. Double feature." },
+      { value: { adDur: 10, cycle: 15, count: 4 }, desc: "Four 10s ads every 15s. Basically cable TV now." },
     ] },
   { id: 'mp_spawnBoss',      name: 'SURPRISE BOSS',     rarity: 'legendary', icon: '\u2620', offensive: true, effect: 'spawnBoss', maxPicks: 3,
     levels: [
@@ -6411,14 +6413,39 @@ class Game {
 
     // --- MP timed debuffs (fake ad) ---
     if (this.mpClient && this.mpClient.debuffs.fakeAd) {
+      const adCfg = this.mpClient.debuffs.fakeAd;
       this.mpClient.debuffs.fakeAdTimer += dt;
-      const cycle = 60; // 60s cycle
-      const adDuration = 10; // 10s ad
+      const adDur = adCfg.adDur;
+      const totalAdTime = adDur * adCfg.count;
+      const cycle = adCfg.cycle + totalAdTime; // cycle = gap + total ad time
       const timeInCycle = this.mpClient.debuffs.fakeAdTimer % cycle;
       const adEl = document.getElementById('mp-fake-ad');
-      if (timeInCycle < adDuration) {
-        if (!adEl.classList.contains('show')) adEl.classList.add('show');
-        const remaining = Math.ceil(adDuration - timeInCycle);
+      if (timeInCycle < totalAdTime) {
+        // Which ad in the sequence?
+        const adIdx = Math.floor(timeInCycle / adDur);
+        const timeInAd = timeInCycle - adIdx * adDur;
+        if (!adEl.classList.contains('show')) {
+          adEl.classList.add('show');
+          this._lastFakeAdIdx = -1;
+        }
+        // Swap ad content when ad index changes
+        if (adIdx !== this._lastFakeAdIdx) {
+          this._lastFakeAdIdx = adIdx;
+          const ads = [
+            { product: 'RAID: SHADOW LEGENDS', tagline: 'Over 500 champions to collect!', cta: 'INSTALL NOW' },
+            { product: 'COIN MASTER', tagline: 'Spin to win! Attack your friends!', cta: 'PLAY FREE' },
+            { product: 'GRAMMARLY', tagline: 'Write with confidence everywhere.', cta: 'ADD TO CHROME' },
+            { product: 'NORDVPN', tagline: 'Protect yourself online today!', cta: 'GET 70% OFF' },
+          ];
+          const ad = ads[adIdx % ads.length];
+          const prodEl = adEl.querySelector('.fake-ad-product');
+          const tagEl = adEl.querySelector('.fake-ad-tagline');
+          const ctaEl = adEl.querySelector('.fake-ad-cta');
+          if (prodEl) prodEl.textContent = ad.product;
+          if (tagEl) tagEl.textContent = ad.tagline;
+          if (ctaEl) ctaEl.textContent = ad.cta;
+        }
+        const remaining = Math.ceil(adDur - timeInAd);
         const timerEl = document.getElementById('fake-ad-timer');
         if (timerEl) timerEl.textContent = remaining;
       } else {
@@ -9821,7 +9848,7 @@ class MultiplayerClient {
       homingChance: 0,
       drunkWobble: 0,
       inverted: false,
-      fakeAd: false,
+      fakeAd: null,
       fakeAdTimer: 0,
       lagSpike: 0,
       deadZoneCount: 0,
@@ -9994,7 +10021,7 @@ class MultiplayerClient {
       homingChance: 0,
       drunkWobble: 0,
       inverted: false,
-      fakeAd: false,
+      fakeAd: null,
       fakeAdTimer: 0,
       lagSpike: 0,
       deadZoneCount: 0,
@@ -10274,7 +10301,7 @@ class MultiplayerClient {
         this.debuffs.inverted = val; // 'vertical' or 'full'
         break;
       case 'fakeAd':
-        this.debuffs.fakeAd = true;
+        this.debuffs.fakeAd = val;
         this.debuffs.fakeAdTimer = 0;
         break;
       case 'lagSpike':
