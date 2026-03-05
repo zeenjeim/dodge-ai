@@ -2738,7 +2738,55 @@ const MP_OFFENSIVE_DEFS = [
       { value: { count: 2, interval: 6 }, desc: "Spawn 2 dead zones every 6s. Floor is lava." },
       { value: { count: 3, interval: 5 }, desc: "Spawn 3 dead zones every 5s. No safe space left." },
     ] },
+  { id: 'mp_screenShake',    name: 'SCREEN SHAKE',      rarity: 'common',    icon: '\u2B55', offensive: true, effect: 'screenShake', maxPicks: 3,
+    levels: [
+      { value: 3,  desc: "Mild tremors. Did the earth just move?" },
+      { value: 7,  desc: "Full earthquake. Hold onto your pixels." },
+      { value: 14, desc: "Seizure mode. The screen is having a tantrum." },
+    ] },
+  { id: 'mp_identityCrisis', name: 'IDENTITY CRISIS',   rarity: 'rare',      icon: '\u2753', offensive: true, effect: 'identityCrisis', maxPicks: 3,
+    levels: [
+      { value: 1, desc: "Enemy dot matches projectile colors. Who am I?" },
+      { value: 2, desc: "Enemy dot also shrinks to projectile size. Find yourself." },
+      { value: 3, desc: "Projectiles also look like the player dot. Total chaos." },
+    ] },
+  { id: 'mp_ghostBullets',   name: 'GHOST BULLETS',     rarity: 'rare',      icon: '\u{1F47B}', offensive: true, effect: 'ghostBullets', maxPicks: 3,
+    levels: [
+      { value: 0.10, desc: "10% of projectiles are invisible. Trust issues." },
+      { value: 0.25, desc: "25% invisible. You can't dodge what you can't see." },
+      { value: 0.40, desc: "40% invisible. Might as well close your eyes." },
+    ] },
+  { id: 'mp_inflation',      name: 'INFLATION',         rarity: 'common',    icon: '\u2B24', offensive: true, effect: 'inflation', maxPicks: 3,
+    levels: [
+      { value: 1.5, desc: "Projectiles grow 50% as they fly. Getting chunky." },
+      { value: 2.0, desc: "Projectiles double in size mid-flight. Absolute units." },
+      { value: 3.0, desc: "Projectiles triple in size. The sky is falling." },
+    ] },
+  { id: 'mp_spinCamera',     name: 'SPINNING CAMERA',   rarity: 'legendary', icon: '\u27F3', offensive: true, effect: 'spinCamera', maxPicks: 3,
+    levels: [
+      { value: 5,  desc: "5 degree wobble. Slightly seasick." },
+      { value: 15, desc: "15 degree swings. Full vertigo mode." },
+      { value: 360, desc: "Slow 360 rotation. Welcome to the washing machine." },
+    ] },
+  { id: 'mp_backseat',       name: 'BACKSEAT GAMER',    rarity: 'common',    icon: '\u{1F4AC}', offensive: true, effect: 'backseat', maxPicks: 3,
+    levels: [
+      { value: 1, desc: "Random 'helpful' tips pop up. Have you tried not dying?" },
+      { value: 2, desc: "Tips appear faster and bigger. SKILL ISSUE detected." },
+      { value: 3, desc: "Non-stop commentary. You now have a Twitch chat." },
+    ] },
+  { id: 'mp_speedTrap',      name: 'SPEED TRAP',        rarity: 'rare',      icon: '\u26D4', offensive: true, effect: 'speedTrap', maxPicks: 3,
+    levels: [
+      { value: { count: 2, slowMult: 0.4 }, desc: "2 slow zones. Step in one and your speed halves." },
+      { value: { count: 3, slowMult: 0.3 }, desc: "3 slow zones. The floor is molasses." },
+      { value: { count: 5, slowMult: 0.2 }, desc: "5 slow zones. Basically quicksand everywhere." },
+    ] },
   // Defensive — applied to self
+  { id: 'mp_pocketHealer',   name: 'POCKET HEALER',     rarity: 'legendary', icon: '\u2764', offensive: false, defensive: true, effect: 'pocketHealer', maxPicks: 3,
+    levels: [
+      { value: 1, desc: "Survive death once with 2s invincibility. One extra life." },
+      { value: 1, desc: "Survive death again. Cats have 9 lives, you have 2." },
+      { value: 1, desc: "Third life. At this point you're basically immortal." },
+    ] },
   { id: 'mp_cleanSlate',     name: 'CLEAN SLATE',       rarity: 'common',    icon: '\u2728', offensive: false, defensive: true, effect: 'cleanSlate', maxPicks: 5,
     levels: [
       { desc: "Purge ALL debuffs. Fresh start, baby." },
@@ -5873,6 +5921,8 @@ class Game {
           this.mpClient._resetDebuffs();
         } else if (mpDef.effect === 'reverseUno') {
           this.mpClient.reverseUnoActive = true;
+        } else if (mpDef.effect === 'pocketHealer') {
+          this.mpClient.debuffs.pocketHealer++;
         }
       }
     } else {
@@ -6551,6 +6601,10 @@ class Game {
         ty = cy - (this.targetY - cy);
       }
     }
+    // MP debuff: SPEED TRAP slows movement
+    if (this._inSpeedTrap && this.mpClient && this.mpClient.debuffs.speedTraps) {
+      lerp *= this.mpClient.debuffs.speedTraps.slowMult;
+    }
     this.player.x += (tx - this.player.x) * lerp;
     this.player.y += (ty - this.player.y) * lerp;
     // MP debuff: DRUNK MODE adds sine wobble
@@ -6999,6 +7053,56 @@ class Game {
             angle: 0, playerX: px, playerY: py, bossName: null };
           this.die();
           return;
+        }
+      }
+    }
+
+    // --- MP debuff: BACKSEAT GAMER tips ---
+    if (this.mpClient && this.mpClient.debuffs.backseat > 0) {
+      const lvl = this.mpClient.debuffs.backseat;
+      const interval = lvl >= 3 ? 2 : lvl >= 2 ? 4 : 7;
+      this.mpClient.debuffs.backseatTimer += dt;
+      if (this.mpClient.debuffs.backseatTimer >= interval) {
+        this.mpClient.debuffs.backseatTimer = 0;
+        const tips = [
+          'HAVE YOU TRIED NOT DYING?', 'SKILL ISSUE', 'JUST DODGE LOL',
+          'MY GRANDMA PLAYS BETTER', 'MAYBE TRY FORTNITE', 'L + RATIO',
+          'UNINSTALL PLS', 'SKILL DIFF', 'YOU GOOD BRO?', 'DODGE THE RED THINGS',
+          'PRO TIP: DON\'T GET HIT', 'THIS IS PAINFUL TO WATCH', 'GG EZ',
+          'HAVE YOU TRIED TURNING IT OFF AND ON', 'COPIUM', 'ARE YOU AFK?',
+        ];
+        const tip = tips[Math.floor(Math.random() * tips.length)];
+        const size = lvl >= 2 ? 28 : 20;
+        this.scorePopups.push({
+          x: 60 + Math.random() * (this.w - 120),
+          y: 60 + Math.random() * (this.h - 120),
+          text: tip, color: '#ff69b4', size,
+          life: 3, maxLife: 3,
+          update(dt) { this.life -= dt; this.y -= dt * 15; },
+          draw(ctx) {
+            ctx.globalAlpha = Math.min(1, this.life / 0.5);
+            ctx.font = `bold ${this.size}px monospace`;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = this.color;
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = 10;
+            ctx.fillText(this.text, this.x, this.y);
+            ctx.shadowBlur = 0;
+            ctx.globalAlpha = 1;
+          }
+        });
+      }
+    }
+
+    // --- MP debuff: SPEED TRAP slow zones ---
+    if (this._mpSpeedTraps && this._mpSpeedTraps.length > 0 && this.mpClient && this.mpClient.debuffs.speedTraps) {
+      const px = this.player.x, py = this.player.y;
+      this._inSpeedTrap = false;
+      for (const trap of this._mpSpeedTraps) {
+        const dx = px - trap.x, dy = py - trap.y;
+        if (Math.sqrt(dx * dx + dy * dy) < trap.radius) {
+          this._inSpeedTrap = true;
+          break;
         }
       }
     }
@@ -8390,6 +8494,38 @@ class Game {
       return; // cancel death
     }
 
+    // MP debuff: POCKET HEALER — survive death with invincibility
+    if (this.mpClient && this.mpClient.debuffs.pocketHealer > 0) {
+      this.mpClient.debuffs.pocketHealer--;
+      this.flashAlpha = 1;
+      this.flashColor = '#00ff88';
+      this.screenShake.intensity = 15;
+      this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 250, '#00ff88', 0.8));
+      for (let i = 0; i < 25; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = Math.random() * 150 + 40;
+        this.particles.push(new Particle(this.player.x, this.player.y, Math.cos(a) * sp, Math.sin(a) * sp, 0.5, '#00ff88', 2 + Math.random() * 2));
+      }
+      this.player.x = this.w / 2;
+      this.player.y = this.h / 2;
+      this.targetX = this.w / 2;
+      this.targetY = this.h / 2;
+      this.abilities.phaseShift.active = true;
+      this.abilities.phaseShift.remaining = 2;
+      this.projectiles = this.projectiles.filter(p => {
+        const dx = p.x - this.player.x, dy = p.y - this.player.y;
+        return Math.sqrt(dx * dx + dy * dy) > 150;
+      });
+      const el = document.getElementById('pickup-announce');
+      el.textContent = 'POCKET HEALER!';
+      el.style.color = '#00ff88';
+      el.style.textShadow = '0 0 20px #00ff88';
+      el.classList.add('show');
+      this.pickupAnnounceTimer = 2;
+      soundEngine.playStreakMilestone();
+      return; // cancel death
+    }
+
     // Clear upgrade overlay if dying during freeze
     const upgradeOverlay = document.getElementById('upgrade-overlay');
     if (upgradeOverlay) upgradeOverlay.classList.remove('show');
@@ -8752,6 +8888,23 @@ class Game {
     if (this.screenShake.intensity > 0) {
       ctx.translate(this.screenShake.x, this.screenShake.y);
     }
+    // MP debuff: SCREEN SHAKE — permanent tremor
+    if (this.mpClient && this.mpClient.debuffs.screenShake > 0) {
+      const s = this.mpClient.debuffs.screenShake;
+      ctx.translate((Math.random() - 0.5) * s, (Math.random() - 0.5) * s);
+    }
+    // MP debuff: SPINNING CAMERA
+    if (this.mpClient && this.mpClient.debuffs.spinCamera > 0) {
+      const deg = this.mpClient.debuffs.spinCamera;
+      const cx = this.w / 2, cy = this.h / 2;
+      ctx.translate(cx, cy);
+      if (deg >= 360) {
+        ctx.rotate(this.gameTime * 0.5); // slow full rotation
+      } else {
+        ctx.rotate(Math.sin(this.gameTime * 2) * deg * Math.PI / 180);
+      }
+      ctx.translate(-cx, -cy);
+    }
 
     // Slowmo tint (eased with blend)
     if (this.effects.slowmo.blend > 0.01) {
@@ -8943,8 +9096,54 @@ class Game {
     // Score popups (above particles, below player)
     for (const sp of this.scorePopups) sp.draw(ctx);
 
+    // MP debuff: SPEED TRAP zones
+    if (this._mpSpeedTraps && this._mpSpeedTraps.length > 0) {
+      for (const trap of this._mpSpeedTraps) {
+        const pulse = 0.15 + Math.sin(this.gameTime * 2 + trap.x) * 0.05;
+        ctx.globalAlpha = pulse;
+        ctx.fillStyle = '#ff4444';
+        ctx.beginPath();
+        ctx.arc(trap.x, trap.y, trap.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.4;
+        ctx.strokeStyle = '#ff4444';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 8]);
+        ctx.beginPath();
+        ctx.arc(trap.x, trap.y, trap.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 0.5;
+        ctx.font = 'bold 14px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#ff6666';
+        ctx.fillText('SLOW', trap.x, trap.y);
+      }
+      ctx.globalAlpha = 1;
+    }
+
     // Projectiles
-    for (const p of this.projectiles) p.draw(ctx);
+    const _ghostChance = this.mpClient ? this.mpClient.debuffs.ghostBullets : 0;
+    const _inflationMult = this.mpClient ? this.mpClient.debuffs.inflation : 1;
+    const _idCrisis3 = this.mpClient && this.mpClient.debuffs.identityCrisis >= 3;
+    for (const p of this.projectiles) {
+      // Ghost bullets: hide some projectiles deterministically based on index
+      if (_ghostChance > 0 && !p._ghostChecked) {
+        p._ghostChecked = true;
+        p._isGhost = Math.random() < _ghostChance;
+      }
+      if (p._isGhost) continue;
+      // Inflation: temporarily inflate radius for drawing
+      const origR = p.radius;
+      if (_inflationMult > 1) p.radius *= (1 + ((_inflationMult - 1) * Math.min(1, p.age / 2)));
+      // Identity crisis L3: projectiles look like player
+      const origColor = p.color;
+      if (_idCrisis3) p.color = getRank(this.totalGames).color;
+      p.draw(ctx);
+      p.radius = origR;
+      p.color = origColor;
+    }
 
     // Bosses
     for (const boss of this.bosses) boss.draw(ctx);
@@ -8969,9 +9168,14 @@ class Game {
 
     // Player
     if (this.running) {
-      const pr = this.getPlayerRadius();
+      let pr = this.getPlayerRadius();
       const rankColor = getRank(this.totalGames).color;
-      const playerColor = this.effects.shrink.active ? '#ec4899' : rankColor;
+      let playerColor = this.effects.shrink.active ? '#ec4899' : rankColor;
+      // MP debuff: IDENTITY CRISIS
+      if (this.mpClient && this.mpClient.debuffs.identityCrisis >= 1 && this.projectiles.length > 0) {
+        playerColor = this.projectiles[Math.floor(this.gameTime * 3) % this.projectiles.length].color;
+        if (this.mpClient.debuffs.identityCrisis >= 2) pr = PROJECTILE_RADIUS; // visually shrink to projectile size
+      }
 
       // Personal Space force field
       if (this.effects.magnet.active) {
@@ -9863,6 +10067,15 @@ class MultiplayerClient {
       lagSpike: 0,
       deadZoneCount: 0,
       deadZoneInterval: 7,
+      screenShake: 0,
+      identityCrisis: 0,
+      ghostBullets: 0,
+      inflation: 1,
+      spinCamera: 0,
+      backseat: 0,
+      backseatTimer: 0,
+      speedTraps: null,
+      pocketHealer: 0,
     };
     this.reverseUnoActive = false;
     this._upgradePickSent = false;
@@ -10036,6 +10249,15 @@ class MultiplayerClient {
       lagSpike: 0,
       deadZoneCount: 0,
       deadZoneInterval: 7,
+      screenShake: 0,
+      identityCrisis: 0,
+      ghostBullets: 0,
+      inflation: 1,
+      spinCamera: 0,
+      backseat: 0,
+      backseatTimer: 0,
+      speedTraps: null,
+      pocketHealer: 0,
     };
     this.reverseUnoActive = false;
     document.getElementById('mp-fake-ad').classList.remove('show');
@@ -10043,6 +10265,8 @@ class MultiplayerClient {
     if (window._game) {
       window._game._lagQueue = [];
       window._game._mpDeadZoneTimer = 0;
+      window._game._mpSpeedTraps = [];
+      window._game._inSpeedTrap = false;
     }
   }
 
@@ -10339,6 +10563,39 @@ class MultiplayerClient {
             case 3: bx = -30; by = Math.random() * h; break;
           }
           window._game.bosses.push(new Boss(bx, by, w, h, val));
+        }
+        break;
+      case 'screenShake':
+        this.debuffs.screenShake += val;
+        break;
+      case 'identityCrisis':
+        this.debuffs.identityCrisis = Math.max(this.debuffs.identityCrisis, val);
+        break;
+      case 'ghostBullets':
+        this.debuffs.ghostBullets = Math.min(0.5, this.debuffs.ghostBullets + val);
+        break;
+      case 'inflation':
+        this.debuffs.inflation *= val;
+        break;
+      case 'spinCamera':
+        this.debuffs.spinCamera = Math.max(this.debuffs.spinCamera, val);
+        break;
+      case 'backseat':
+        this.debuffs.backseat = Math.max(this.debuffs.backseat, val);
+        break;
+      case 'speedTrap':
+        this.debuffs.speedTraps = val;
+        // Spawn the traps immediately
+        if (window._game) {
+          window._game._mpSpeedTraps = [];
+          const gw = window._game.w, gh = window._game.h;
+          for (let i = 0; i < val.count; i++) {
+            window._game._mpSpeedTraps.push({
+              x: 60 + Math.random() * (gw - 120),
+              y: 60 + Math.random() * (gh - 120),
+              radius: 50 + Math.random() * 30,
+            });
+          }
         }
         break;
     }
