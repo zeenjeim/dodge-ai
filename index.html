@@ -2622,7 +2622,7 @@ const UPGRADE_DEFS = [
   { id: 'chainReaction',  name: 'CHAIN REACTION',    rarity: 'rare',      icon: '\u2726', desc: "EMPs trigger a second blast 3s later." },
   { id: 'ricochet',       name: 'RICOCHET',          rarity: 'rare',      icon: '\u27A5', desc: "20% chance destroyed projectiles fire back at threats." },
   { id: 'stormRunner',    name: 'STORM RUNNER',      rarity: 'rare',      icon: '\u2607', desc: "Move fast to build lightning that chains between projectiles." },
-  { id: 'thinTheHerd',   name: 'THIN THE HERD',     rarity: 'rare',      icon: '\u2702', desc: "15% of projectiles just don't spawn." },
+  { id: 'thinTheHerd',   name: 'THIN THE HERD',     rarity: 'legendary', icon: '\u2702', desc: "15% of projectiles just don't spawn." },
   { id: 'reroll',         name: 'LOADED DICE',       rarity: 'rare',      icon: '\u2684', desc: "1 reroll per upgrade offering. Don't like it? Send it back." },
 
   // --- LEGENDARY (game-changing actives, unique mechanics) ---
@@ -2671,18 +2671,69 @@ const EVOLUTION_DEFS = [
 // Multiplayer Cards (only appear in deathmatch)
 // ============================================================
 const MP_OFFENSIVE_DEFS = [
-  // Offensive — applied to opponent
-  { id: 'mp_biggerTarget',   name: 'BIGGER TARGET',     rarity: 'common',    icon: '\u29BF', desc: "Enemy hitbox grows 20%. They're basically a barn door now.",  offensive: true, effect: 'hitboxScale', value: 1.2 },
-  { id: 'mp_drunkMode',      name: 'DRUNK MODE',        rarity: 'common',    icon: '\u223F', desc: "Enemy movement gets wobbly. Hope they don't get seasick.",     offensive: true, effect: 'drunkWobble', value: 6 },
-  { id: 'mp_bulletStorm',    name: 'BULLET STORM',      rarity: 'rare',      icon: '\u2602', desc: "Spawn 30% more projectiles on enemy's screen. You're welcome.", offensive: true, effect: 'spawnRateMulti', value: 1.3 },
-  { id: 'mp_velocityCurse',  name: 'VELOCITY CURSE',    rarity: 'rare',      icon: '\u21AF', desc: "Enemy projectiles move 25% faster. Blink and you're dead.",   offensive: true, effect: 'projectileSpeedMulti', value: 1.25 },
-  { id: 'mp_shrinkZone',     name: 'SHRINK ZONE',       rarity: 'legendary', icon: '\u25A3', desc: "Enemy play area shrinks by 15%. Walls closing in...",         offensive: true, effect: 'arenaInset', value: 0.15 },
-  { id: 'mp_homingHex',      name: 'HOMING HEX',        rarity: 'legendary', icon: '\u2316', desc: "20% of enemy projectiles now track them. Nowhere to hide.",    offensive: true, effect: 'homingChance', value: 0.2 },
-  { id: 'mp_inverted',       name: 'INVERTED',          rarity: 'legendary', icon: '\u21C5', desc: "Enemy controls are permanently flipped. Good luck with that.", offensive: true, effect: 'inverted', value: true },
-  { id: 'mp_fakeAd',         name: 'FAKE AD',           rarity: 'legendary', icon: '\u25B6', desc: "Force opponent to 'watch an ad' for 10s every 60s. Brutal.",   offensive: true, effect: 'fakeAd', value: true },
+  // Offensive — applied to opponent (L1/L2/L3 scaling via maxPicks:3)
+  { id: 'mp_biggerTarget',   name: 'BIGGER TARGET',     rarity: 'common',    icon: '\u29BF', offensive: true, effect: 'hitboxScale', maxPicks: 3,
+    levels: [
+      { value: 1.15, desc: "Enemy hitbox grows 15%. Starting to look like a barn door." },
+      { value: 1.25, desc: "Enemy hitbox grows 25%. They ARE the barn door now." },
+      { value: 1.4,  desc: "Enemy hitbox grows 40%. Just a giant bullseye at this point." },
+    ] },
+  { id: 'mp_drunkMode',      name: 'DRUNK MODE',        rarity: 'common',    icon: '\u223F', offensive: true, effect: 'drunkWobble', maxPicks: 3,
+    levels: [
+      { value: 4,  desc: "Enemy movement gets slightly wobbly. Light buzz." },
+      { value: 7,  desc: "Enemy movement is very wobbly. Three drinks deep." },
+      { value: 12, desc: "Full blackout wobble. Floor is lava AND moving." },
+    ] },
+  { id: 'mp_bulletStorm',    name: 'BULLET STORM',      rarity: 'rare',      icon: '\u2602', offensive: true, effect: 'spawnRateMulti', maxPicks: 3,
+    levels: [
+      { value: 1.2,  desc: "20% more projectiles on enemy's screen. Light drizzle." },
+      { value: 1.35, desc: "35% more projectiles. It's raining death." },
+      { value: 1.5,  desc: "50% more projectiles. Biblical flood of bullets." },
+    ] },
+  { id: 'mp_velocityCurse',  name: 'VELOCITY CURSE',    rarity: 'rare',      icon: '\u21AF', offensive: true, effect: 'projectileSpeedMulti', maxPicks: 3,
+    levels: [
+      { value: 1.15, desc: "Enemy projectiles 15% faster. Quick reflexes needed." },
+      { value: 1.3,  desc: "Enemy projectiles 30% faster. Blink and you're dead." },
+      { value: 1.5,  desc: "Enemy projectiles 50% faster. Basically lightspeed." },
+    ] },
+  { id: 'mp_shrinkZone',     name: 'SHRINK ZONE',       rarity: 'legendary', icon: '\u25A3', offensive: true, effect: 'arenaInset', maxPicks: 3,
+    levels: [
+      { value: 0.10, desc: "Enemy play area shrinks 10%. Getting cozy." },
+      { value: 0.15, desc: "Enemy play area shrinks 15%. Walls closing in..." },
+      { value: 0.20, desc: "Enemy play area shrinks 20%. Claustrophobia intensifies." },
+    ] },
+  { id: 'mp_homingHex',      name: 'HOMING HEX',        rarity: 'legendary', icon: '\u2316', offensive: true, effect: 'homingChance', maxPicks: 3,
+    levels: [
+      { value: 0.12, desc: "12% of enemy projectiles track them. Eyes in the dark." },
+      { value: 0.20, desc: "20% track them. Nowhere to run." },
+      { value: 0.30, desc: "30% track them. They have your scent now." },
+    ] },
+  { id: 'mp_inverted',       name: 'INVERTED',          rarity: 'legendary', icon: '\u21C5', offensive: true, effect: 'inverted', maxPicks: 2,
+    levels: [
+      { value: 'vertical',   desc: "Enemy vertical controls flipped. Up is down now." },
+      { value: 'full',       desc: "Both axes flipped. Complete chaos. Good luck." },
+    ] },
+  { id: 'mp_fakeAd',         name: 'FAKE AD',           rarity: 'legendary', icon: '\u25B6', offensive: true, effect: 'fakeAd', maxPicks: 1,
+    levels: [
+      { value: true, desc: "Force opponent to 'watch an ad' for 10s every 60s. Brutal." },
+    ] },
+  { id: 'mp_spawnBoss',      name: 'SURPRISE BOSS',     rarity: 'legendary', icon: '\u2620', offensive: true, effect: 'spawnBoss', maxPicks: 3,
+    levels: [
+      { value: 1, desc: "Summon a random boss on opponent's screen. Surprise!" },
+      { value: 2, desc: "Summon a tougher boss. They grow up so fast." },
+      { value: 3, desc: "Summon an absolute unit. RIP opponent." },
+    ] },
   // Defensive — applied to self
-  { id: 'mp_cleanSlate',     name: 'CLEAN SLATE',       rarity: 'rare',      icon: '\u2728', desc: "Purge ALL debuffs. Fresh start, baby.",                       offensive: false, defensive: true, effect: 'cleanSlate', maxPicks: 3 },
-  { id: 'mp_reverseUno',     name: 'REVERSE UNO',       rarity: 'legendary', icon: '\u21BA', desc: "Next offensive card bounces back to opponent. No u.",          offensive: false, defensive: true, effect: 'reverseUno' },
+  { id: 'mp_cleanSlate',     name: 'CLEAN SLATE',       rarity: 'rare',      icon: '\u2728', offensive: false, defensive: true, effect: 'cleanSlate', maxPicks: 3,
+    levels: [
+      { desc: "Purge ALL debuffs. Fresh start, baby." },
+      { desc: "Purge ALL debuffs. Again. They never learn." },
+      { desc: "Purge ALL debuffs. Third time's the charm." },
+    ] },
+  { id: 'mp_reverseUno',     name: 'REVERSE UNO',       rarity: 'legendary', icon: '\u21BA', offensive: false, defensive: true, effect: 'reverseUno', maxPicks: 1,
+    levels: [
+      { desc: "Next offensive card bounces back to opponent. No u." },
+    ] },
 ];
 
 // ============================================================
@@ -5617,45 +5668,41 @@ class Game {
 
   generateUpgradeCards() {
     const available = this.getAvailableUpgrades();
-    // In MP mode, mix in offensive cards that haven't been picked yet
-    let mpPool = [];
     if (this.mpMode) {
-      mpPool = MP_OFFENSIVE_DEFS.filter(d => {
+      // MP mode: only MP cards (offensive/defensive) + legendary regular upgrades
+      const mpPool = MP_OFFENSIVE_DEFS.filter(d => {
         const picks = (this._mpOffensivePicked || {})[d.id] || 0;
         const maxPicks = d.maxPicks || 1;
         return picks < maxPicks;
       });
-    }
-    const allAvailable = [...available, ...mpPool];
-    if (allAvailable.length === 0) return [];
-    const chosen = [];
-    const usedIds = new Set();
-    const count = Math.min(3, allAvailable.length);
-    for (let i = 0; i < count; i++) {
-      const remaining = allAvailable.filter(u => !usedIds.has(u.id));
-      // In MP mode: ~40% chance to offer an MP card (offensive or defensive) per slot
-      if (this.mpMode && Math.random() < 0.4) {
-        const mpPool2 = remaining.filter(u => u.offensive || u.defensive);
-        if (mpPool2.length > 0) {
-          const pick = mpPool2[Math.floor(Math.random() * mpPool2.length)];
-          chosen.push(pick);
-          usedIds.add(pick.id);
-          continue;
-        }
-      }
-      const regRemaining = remaining.filter(u => !u.offensive && !u.defensive);
-      if (regRemaining.length === 0 && remaining.length > 0) {
+      const legendaryPool = available.filter(u => u.rarity === 'legendary');
+      const allAvailable = [...mpPool, ...legendaryPool];
+      if (allAvailable.length === 0) return [];
+      const chosen = [];
+      const usedIds = new Set();
+      const count = Math.min(3, allAvailable.length);
+      for (let i = 0; i < count; i++) {
+        const remaining = allAvailable.filter(u => !usedIds.has(u.id));
+        if (remaining.length === 0) break;
         const pick = remaining[Math.floor(Math.random() * remaining.length)];
         chosen.push(pick);
         usedIds.add(pick.id);
-        continue;
       }
-      if (regRemaining.length === 0) break;
-      const rarity = this.rollUpgradeRarity(regRemaining);
-      const pool = regRemaining.filter(u => u.rarity === rarity);
+      return chosen;
+    }
+    // Single player mode: normal rarity-weighted selection
+    if (available.length === 0) return [];
+    const chosen = [];
+    const usedIds = new Set();
+    const count = Math.min(3, available.length);
+    for (let i = 0; i < count; i++) {
+      const remaining = available.filter(u => !usedIds.has(u.id));
+      if (remaining.length === 0) break;
+      const rarity = this.rollUpgradeRarity(remaining);
+      const pool = remaining.filter(u => u.rarity === rarity);
       const pick = pool.length > 0
         ? pool[Math.floor(Math.random() * pool.length)]
-        : regRemaining[Math.floor(Math.random() * regRemaining.length)];
+        : remaining[Math.floor(Math.random() * remaining.length)];
       chosen.push(pick);
       usedIds.add(pick.id);
     }
@@ -5669,6 +5716,10 @@ class Game {
     const titleEl = document.querySelector('.upgrade-title');
     if (titleEl) titleEl.textContent = this.mpMode ? 'CHOOSE YOUR UPGRADE (BOTH PLAYERS PICKING)' : 'CHOOSE YOUR UPGRADE';
     if (cards.length === 0) {
+      // In MP mode, still need to send a pick so server can proceed
+      if (this.mpMode && this.mpClient) {
+        this.mpClient.sendUpgradePick('_skip');
+      }
       this.dismissUpgradeOverlay();
       return;
     }
@@ -5679,8 +5730,12 @@ class Game {
       const isOffensive = !!card.offensive;
       const isDefensive = !!card.defensive;
       const isMpCard = isOffensive || isDefensive;
-      const currentLvl = isMpCard ? 0 : (this.upgrades[card.id] || 0);
+      const mpPicks = isMpCard ? ((this._mpOffensivePicked || {})[card.id] || 0) : 0;
+      const currentLvl = isMpCard ? mpPicks : (this.upgrades[card.id] || 0);
       const nextLvl = currentLvl + 1;
+      // Get level-specific desc for MP cards
+      const mpLevelData = isMpCard && card.levels ? card.levels[Math.min(currentLvl, card.levels.length - 1)] : null;
+      const cardDesc = mpLevelData ? mpLevelData.desc : (card.desc || '');
       el.className = 'upgrade-card'
         + (card.rarity === 'legendary' ? ' legendary' : '')
         + (isOffensive ? ' offensive' : '')
@@ -5700,15 +5755,15 @@ class Game {
           }
         }
       }
-      const levelLabel = isOffensive ? '<div class="card-level" style="color:#ff3355">ATTACK</div>'
-        : isDefensive ? '<div class="card-level" style="color:#00ff64">DEFEND</div>'
+      const levelLabel = isMpCard
+        ? `<div class="card-level" style="color:${isOffensive ? '#ff3355' : '#00ff64'}">${isOffensive ? 'ATTACK' : 'DEFEND'} Lv.${nextLvl}</div>`
         : `<div class="card-level">Lv.${nextLvl}</div>`;
       el.innerHTML = `
         ${levelLabel}
         <div class="card-icon">${card.icon}</div>
         <div class="card-name">${card.name}</div>
         <div class="card-rarity">${isOffensive ? 'OFFENSIVE' : isDefensive ? 'DEFENSIVE' : card.rarity}</div>
-        <div class="card-desc">${card.desc}</div>
+        <div class="card-desc">${cardDesc}</div>
         ${evoHint}
       `;
       const handler = (e) => {
@@ -5807,7 +5862,7 @@ class Game {
 
     // Sound + announce
     soundEngine.playCollect();
-    const def = isOffensive
+    const def = mpDef
       ? MP_OFFENSIVE_DEFS.find(u => u.id === id)
       : UPGRADE_DEFS.find(u => u.id === id);
     if (def) {
@@ -6420,8 +6475,12 @@ class Game {
     // MP debuff: INVERTED flips target relative to player
     let tx = this.targetX, ty = this.targetY;
     if (this.mpClient && this.mpClient.debuffs.inverted) {
-      tx = this.player.x - (this.targetX - this.player.x);
-      ty = this.player.y - (this.targetY - this.player.y);
+      if (this.mpClient.debuffs.inverted === 'vertical') {
+        ty = this.player.y - (this.targetY - this.player.y);
+      } else {
+        tx = this.player.x - (this.targetX - this.player.x);
+        ty = this.player.y - (this.targetY - this.player.y);
+      }
     }
     this.player.x += (tx - this.player.x) * lerp;
     this.player.y += (ty - this.player.y) * lerp;
@@ -10111,32 +10170,53 @@ class MultiplayerClient {
     const def = MP_OFFENSIVE_DEFS.find(d => d.id === pick.cardId);
     if (!def) return;
 
+    // Get level-specific value
+    const lvl = pick.cardLevel || 1;
+    const levelData = def.levels ? def.levels[Math.min(lvl - 1, def.levels.length - 1)] : null;
+    const val = levelData ? levelData.value : def.value;
+
     // Stack the debuff
     switch (def.effect) {
       case 'hitboxScale':
-        this.debuffs.hitboxScale *= def.value;
+        this.debuffs.hitboxScale *= val;
         break;
       case 'spawnRateMulti':
-        this.debuffs.spawnRateMulti *= def.value;
+        this.debuffs.spawnRateMulti *= val;
         break;
       case 'projectileSpeedMulti':
-        this.debuffs.projectileSpeedMulti *= def.value;
+        this.debuffs.projectileSpeedMulti *= val;
         break;
       case 'arenaInset':
-        this.debuffs.arenaInset = Math.min(0.4, this.debuffs.arenaInset + def.value);
+        this.debuffs.arenaInset = Math.min(0.4, this.debuffs.arenaInset + val);
         break;
       case 'homingChance':
-        this.debuffs.homingChance = Math.min(0.6, this.debuffs.homingChance + def.value);
+        this.debuffs.homingChance = Math.min(0.6, this.debuffs.homingChance + val);
         break;
       case 'drunkWobble':
-        this.debuffs.drunkWobble += def.value;
+        this.debuffs.drunkWobble += val;
         break;
       case 'inverted':
-        this.debuffs.inverted = true;
+        this.debuffs.inverted = val; // 'vertical' or 'full'
         break;
       case 'fakeAd':
         this.debuffs.fakeAd = true;
         this.debuffs.fakeAdTimer = 0;
+        break;
+      case 'spawnBoss':
+        // Spawn a boss on this player's game
+        if (window._game && window._game.running) {
+          window._game.bossLevel = Math.max(window._game.bossLevel || 1, val);
+          const edge = Math.floor(Math.random() * 4);
+          let bx, by;
+          const w = window._game.w, h = window._game.h;
+          switch (edge) {
+            case 0: bx = Math.random() * w; by = -30; break;
+            case 1: bx = w + 30; by = Math.random() * h; break;
+            case 2: bx = Math.random() * w; by = h + 30; break;
+            case 3: bx = -30; by = Math.random() * h; break;
+          }
+          window._game.bosses.push(new Boss(bx, by, w, h, val));
+        }
         break;
     }
   }
@@ -10201,20 +10281,32 @@ class MultiplayerClient {
     if (this._upgradePickSent) return;
     this._upgradePickSent = true;
 
+    // Handle skip (no cards available)
+    if (upgradeId === '_skip') {
+      this._send({ type: 'upgrade_pick', pick: { cardId: '_skip', cardName: 'SKIP', cardIcon: '\u23ED', cardRarity: 'common', cardLevel: 0, isOffensive: false, isDefensive: false } });
+      return;
+    }
+
     // Check if it's an offensive card
     const offDef = MP_OFFENSIVE_DEFS.find(d => d.id === upgradeId);
     const regDef = UPGRADE_DEFS.find(d => d.id === upgradeId);
     const def = offDef || regDef;
     if (!def) return;
 
+    // Get the level this card was just picked at (picks already incremented by selectUpgrade)
+    const mpPicks = offDef ? ((window._game._mpOffensivePicked || {})[upgradeId] || 0) : 0;
+    const cardLevel = offDef ? mpPicks : (window._game.upgrades[upgradeId] || 1);
+    const levelData = offDef && offDef.levels ? offDef.levels[Math.min(cardLevel - 1, offDef.levels.length - 1)] : null;
+
     const pick = {
       cardId: def.id,
       cardName: def.name,
       cardIcon: def.icon,
       cardRarity: def.rarity,
+      cardLevel: cardLevel,
       isOffensive: !!(offDef && offDef.offensive),
       isDefensive: !!(offDef && offDef.defensive),
-      offensiveDesc: offDef ? def.desc : undefined,
+      offensiveDesc: levelData ? levelData.desc : (offDef ? def.desc : undefined),
     };
 
     this._send({ type: 'upgrade_pick', pick });
