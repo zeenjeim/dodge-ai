@@ -1515,6 +1515,15 @@
       border-color: #ff3355 !important;
       box-shadow: 0 0 20px rgba(255, 51, 85, 0.3) !important;
     }
+    /* Defensive MP card styling */
+    .upgrade-card.mp-defensive {
+      border-color: rgba(0, 255, 100, 0.5) !important;
+      background: rgba(0, 255, 100, 0.08) !important;
+    }
+    .upgrade-card.mp-defensive:hover {
+      border-color: #00ff64 !important;
+      box-shadow: 0 0 20px rgba(0, 255, 100, 0.3) !important;
+    }
 
     /* ============================================================
        MULTIPLAYER UI
@@ -1744,6 +1753,87 @@
     .mp-reveal-card.defensive {
       border-color: rgba(0, 240, 255, 0.3);
       background: rgba(0, 240, 255, 0.03);
+    }
+    .mp-reveal-card.reversed {
+      border-color: rgba(0, 255, 100, 0.6);
+      background: rgba(0, 255, 100, 0.1);
+      box-shadow: 0 0 30px rgba(0, 255, 100, 0.2);
+    }
+
+    /* Fake Ad Overlay */
+    #mp-fake-ad {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      display: none;
+      flex-direction: column;
+      background: linear-gradient(135deg, #1a0a2e 0%, #0d0d0d 50%, #1a0a2e 100%);
+    }
+    #mp-fake-ad.show { display: flex; }
+    .fake-ad-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+    }
+    .fake-ad-badge {
+      background: #ff0;
+      color: #000;
+      font-weight: bold;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 3px;
+    }
+    .fake-ad-skip {
+      color: #888;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    .fake-ad-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      text-align: center;
+    }
+    .fake-ad-product {
+      font-size: 42px;
+      font-weight: bold;
+      color: #ff6600;
+      text-shadow: 0 0 30px rgba(255, 102, 0, 0.5);
+      letter-spacing: 4px;
+      animation: fake-ad-pulse 2s ease-in-out infinite;
+    }
+    .fake-ad-tagline {
+      font-size: 18px;
+      color: #ccc;
+      font-style: italic;
+    }
+    .fake-ad-cta {
+      background: linear-gradient(135deg, #ff6600, #ff3300);
+      color: #fff;
+      font-size: 22px;
+      font-weight: bold;
+      padding: 14px 40px;
+      border-radius: 8px;
+      cursor: not-allowed;
+      animation: fake-ad-bounce 1s ease-in-out infinite;
+      margin-top: 8px;
+    }
+    .fake-ad-fine {
+      color: #666;
+      font-size: 12px;
+      margin-top: 20px;
+    }
+    @keyframes fake-ad-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    @keyframes fake-ad-bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
     }
 
     /* MP game over */
@@ -2107,6 +2197,20 @@
     <button class="menu-btn" id="mp-btn-menu-mp">MENU</button>
   </div>
   <div class="mp-status" id="mp-rematch-status"></div>
+</div>
+
+<!-- MP Fake Ad Overlay -->
+<div id="mp-fake-ad">
+  <div class="fake-ad-header">
+    <span class="fake-ad-badge">AD</span>
+    <span class="fake-ad-skip" id="fake-ad-skip">Skip in <span id="fake-ad-timer">10</span>s</span>
+  </div>
+  <div class="fake-ad-content">
+    <div class="fake-ad-product">RAID: SHADOW LEGENDS</div>
+    <div class="fake-ad-tagline">Over 500 champions to collect!</div>
+    <div class="fake-ad-cta">INSTALL NOW</div>
+    <div class="fake-ad-fine">*Your opponent sent you this. Blame them.</div>
+  </div>
 </div>
 
 <!-- Ad Zone Placeholder -->
@@ -2517,15 +2621,21 @@ const EVOLUTION_DEFS = [
 ];
 
 // ============================================================
-// Multiplayer Offensive Upgrades (only appear in deathmatch)
+// Multiplayer Cards (only appear in deathmatch)
 // ============================================================
 const MP_OFFENSIVE_DEFS = [
+  // Offensive — applied to opponent
   { id: 'mp_biggerTarget',   name: 'BIGGER TARGET',     rarity: 'common',    icon: '\u29BF', desc: "Enemy hitbox grows 20%. They're basically a barn door now.",  offensive: true, effect: 'hitboxScale', value: 1.2 },
+  { id: 'mp_drunkMode',      name: 'DRUNK MODE',        rarity: 'common',    icon: '\u223F', desc: "Enemy movement gets wobbly. Hope they don't get seasick.",     offensive: true, effect: 'drunkWobble', value: 12 },
   { id: 'mp_bulletStorm',    name: 'BULLET STORM',      rarity: 'rare',      icon: '\u2602', desc: "Spawn 30% more projectiles on enemy's screen. You're welcome.", offensive: true, effect: 'spawnRateMulti', value: 1.3 },
-  { id: 'mp_velocityCurse',  name: 'VELOCITY CURSE',    rarity: 'rare',      icon: '\u21AF', desc: "Enemy projectiles move 25% faster. Blink and you're dead.", offensive: true, effect: 'projectileSpeedMulti', value: 1.25 },
-  { id: 'mp_slowReflexes',   name: 'SLOW REFLEXES',     rarity: 'common',    icon: '\u231B', desc: "Enemy moves 15% slower. Like playing in honey.", offensive: true, effect: 'moveSpeedMulti', value: 0.85 },
-  { id: 'mp_shrinkZone',     name: 'SHRINK ZONE',       rarity: 'legendary', icon: '\u25A3', desc: "Enemy play area shrinks by 15%. Walls closing in...", offensive: true, effect: 'arenaInset', value: 0.15 },
-  { id: 'mp_homingHex',      name: 'HOMING HEX',        rarity: 'legendary', icon: '\u2316', desc: "20% of enemy projectiles now track them. Nowhere to hide.", offensive: true, effect: 'homingChance', value: 0.2 },
+  { id: 'mp_velocityCurse',  name: 'VELOCITY CURSE',    rarity: 'rare',      icon: '\u21AF', desc: "Enemy projectiles move 25% faster. Blink and you're dead.",   offensive: true, effect: 'projectileSpeedMulti', value: 1.25 },
+  { id: 'mp_shrinkZone',     name: 'SHRINK ZONE',       rarity: 'legendary', icon: '\u25A3', desc: "Enemy play area shrinks by 15%. Walls closing in...",         offensive: true, effect: 'arenaInset', value: 0.15 },
+  { id: 'mp_homingHex',      name: 'HOMING HEX',        rarity: 'legendary', icon: '\u2316', desc: "20% of enemy projectiles now track them. Nowhere to hide.",    offensive: true, effect: 'homingChance', value: 0.2 },
+  { id: 'mp_inverted',       name: 'INVERTED',          rarity: 'legendary', icon: '\u21C5', desc: "Enemy controls are permanently flipped. Good luck with that.", offensive: true, effect: 'inverted', value: true },
+  { id: 'mp_fakeAd',         name: 'FAKE AD',           rarity: 'legendary', icon: '\u25B6', desc: "Force opponent to 'watch an ad' for 10s every 60s. Brutal.",   offensive: true, effect: 'fakeAd', value: true },
+  // Defensive — applied to self
+  { id: 'mp_cleanSlate',     name: 'CLEAN SLATE',       rarity: 'rare',      icon: '\u2728', desc: "Purge ALL debuffs. Fresh start, baby.",                       offensive: false, defensive: true, effect: 'cleanSlate' },
+  { id: 'mp_reverseUno',     name: 'REVERSE UNO',       rarity: 'legendary', icon: '\u21BA', desc: "Next offensive card bounces back to opponent. No u.",          offensive: false, defensive: true, effect: 'reverseUno' },
 ];
 
 // ============================================================
@@ -5470,17 +5580,17 @@ class Game {
     const count = Math.min(3, allAvailable.length);
     for (let i = 0; i < count; i++) {
       const remaining = allAvailable.filter(u => !usedIds.has(u.id));
-      // In MP mode: ~40% chance to offer an offensive card per slot
+      // In MP mode: ~40% chance to offer an MP card (offensive or defensive) per slot
       if (this.mpMode && Math.random() < 0.4) {
-        const offPool = remaining.filter(u => u.offensive);
-        if (offPool.length > 0) {
-          const pick = offPool[Math.floor(Math.random() * offPool.length)];
+        const mpPool2 = remaining.filter(u => u.offensive || u.defensive);
+        if (mpPool2.length > 0) {
+          const pick = mpPool2[Math.floor(Math.random() * mpPool2.length)];
           chosen.push(pick);
           usedIds.add(pick.id);
           continue;
         }
       }
-      const regRemaining = remaining.filter(u => !u.offensive);
+      const regRemaining = remaining.filter(u => !u.offensive && !u.defensive);
       if (regRemaining.length === 0 && remaining.length > 0) {
         const pick = remaining[Math.floor(Math.random() * remaining.length)];
         chosen.push(pick);
@@ -5514,15 +5624,18 @@ class Game {
     for (const card of cards) {
       const el = document.createElement('div');
       const isOffensive = !!card.offensive;
-      const currentLvl = isOffensive ? 0 : (this.upgrades[card.id] || 0);
+      const isDefensive = !!card.defensive;
+      const isMpCard = isOffensive || isDefensive;
+      const currentLvl = isMpCard ? 0 : (this.upgrades[card.id] || 0);
       const nextLvl = currentLvl + 1;
       el.className = 'upgrade-card'
         + (card.rarity === 'legendary' ? ' legendary' : '')
-        + (isOffensive ? ' offensive' : '');
-      el.style.setProperty('--rarity-color', isOffensive ? '#ff3355' : RARITY_COLORS[card.rarity]);
+        + (isOffensive ? ' offensive' : '')
+        + (isDefensive ? ' mp-defensive' : '');
+      el.style.setProperty('--rarity-color', isOffensive ? '#ff3355' : isDefensive ? '#00ff64' : RARITY_COLORS[card.rarity]);
       // Check if this card is one pick away from an evolution
       let evoHint = '';
-      if (!isOffensive) {
+      if (!isMpCard) {
         for (const evo of EVOLUTION_DEFS) {
           if (this.evolutions[evo.id]) continue;
           const idx = evo.ingredients.indexOf(card.id);
@@ -5534,12 +5647,14 @@ class Game {
           }
         }
       }
-      const levelLabel = isOffensive ? '<div class="card-level" style="color:#ff3355">ATTACK</div>' : `<div class="card-level">Lv.${nextLvl}</div>`;
+      const levelLabel = isOffensive ? '<div class="card-level" style="color:#ff3355">ATTACK</div>'
+        : isDefensive ? '<div class="card-level" style="color:#00ff64">DEFEND</div>'
+        : `<div class="card-level">Lv.${nextLvl}</div>`;
       el.innerHTML = `
         ${levelLabel}
         <div class="card-icon">${card.icon}</div>
         <div class="card-name">${card.name}</div>
-        <div class="card-rarity">${isOffensive ? 'OFFENSIVE' : card.rarity}</div>
+        <div class="card-rarity">${isOffensive ? 'OFFENSIVE' : isDefensive ? 'DEFENSIVE' : card.rarity}</div>
         <div class="card-desc">${card.desc}</div>
         ${evoHint}
       `;
@@ -5588,12 +5703,20 @@ class Game {
     if (this._upgradeSelecting) return;
     this._upgradeSelecting = true;
 
-    // Check if this is an offensive MP card
-    const isOffensive = MP_OFFENSIVE_DEFS.some(d => d.id === id);
-    if (isOffensive) {
+    // Check if this is an MP card (offensive or defensive)
+    const mpDef = MP_OFFENSIVE_DEFS.find(d => d.id === id);
+    if (mpDef) {
       // Mark as picked so it won't appear again
       if (!this._mpOffensivePicked) this._mpOffensivePicked = {};
       this._mpOffensivePicked[id] = true;
+      // Apply defensive MP cards to self
+      if (mpDef.defensive && this.mpClient) {
+        if (mpDef.effect === 'cleanSlate') {
+          this.mpClient._resetDebuffs();
+        } else if (mpDef.effect === 'reverseUno') {
+          this.mpClient.reverseUnoActive = true;
+        }
+      }
     } else {
       this.upgrades[id] = (this.upgrades[id] || 0) + 1;
       // Apply upgrade
@@ -6140,12 +6263,27 @@ class Game {
       }
     }
 
+    // --- MP timed debuffs (fake ad) ---
+    if (this.mpClient && this.mpClient.debuffs.fakeAd) {
+      this.mpClient.debuffs.fakeAdTimer += dt;
+      const cycle = 60; // 60s cycle
+      const adDuration = 10; // 10s ad
+      const timeInCycle = this.mpClient.debuffs.fakeAdTimer % cycle;
+      const adEl = document.getElementById('mp-fake-ad');
+      if (timeInCycle < adDuration) {
+        if (!adEl.classList.contains('show')) adEl.classList.add('show');
+        const remaining = Math.ceil(adDuration - timeInCycle);
+        const timerEl = document.getElementById('fake-ad-timer');
+        if (timerEl) timerEl.textContent = remaining;
+      } else {
+        if (adEl.classList.contains('show')) adEl.classList.remove('show');
+      }
+    }
+
     // --- Move player ---
     const prevX = this.player.x;
     const prevY = this.player.y;
     let lerp = PLAYER_LERP;
-    // MP debuff: SLOW REFLEXES reduces movement speed
-    if (this.mpClient) lerp *= this.mpClient.debuffs.moveSpeedMulti;
     // ECHO: record position buffer and manage ghost replay
     if (this.upgrades.echo) {
       this.echoBuffer.push({ x: this.player.x, y: this.player.y });
@@ -6209,8 +6347,20 @@ class Game {
       };
     }
     if (this.abilities.timeWarp.active) lerp *= 0.7;
-    this.player.x += (this.targetX - this.player.x) * lerp;
-    this.player.y += (this.targetY - this.player.y) * lerp;
+    // MP debuff: INVERTED flips target relative to player
+    let tx = this.targetX, ty = this.targetY;
+    if (this.mpClient && this.mpClient.debuffs.inverted) {
+      tx = this.player.x - (this.targetX - this.player.x);
+      ty = this.player.y - (this.targetY - this.player.y);
+    }
+    this.player.x += (tx - this.player.x) * lerp;
+    this.player.y += (ty - this.player.y) * lerp;
+    // MP debuff: DRUNK MODE adds sine wobble
+    if (this.mpClient && this.mpClient.debuffs.drunkWobble > 0) {
+      const wobble = this.mpClient.debuffs.drunkWobble;
+      this.player.x += Math.sin(this.gameTime * 3.7) * wobble;
+      this.player.y += Math.cos(this.gameTime * 2.9) * wobble;
+    }
     this.player.vx = this.player.x - prevX;
     this.player.vy = this.player.y - prevY;
 
@@ -9490,7 +9640,12 @@ class MultiplayerClient {
       moveSpeedMulti: 1,
       arenaInset: 0,
       homingChance: 0,
+      drunkWobble: 0,
+      inverted: false,
+      fakeAd: false,
+      fakeAdTimer: 0,
     };
+    this.reverseUnoActive = false;
     this._upgradePickSent = false;
     this._setupUI();
   }
@@ -9655,7 +9810,13 @@ class MultiplayerClient {
       moveSpeedMulti: 1,
       arenaInset: 0,
       homingChance: 0,
+      drunkWobble: 0,
+      inverted: false,
+      fakeAd: false,
+      fakeAdTimer: 0,
     };
+    this.reverseUnoActive = false;
+    document.getElementById('mp-fake-ad').classList.remove('show');
   }
 
   _handleMessage(msg) {
@@ -9739,6 +9900,13 @@ class MultiplayerClient {
 
       case 'opponent_died':
         // Handled by you_win
+        break;
+
+      case 'debuff_reversed':
+        // Our offensive card got bounced back — apply to self
+        if (msg.pick) {
+          this._applyOffensiveCard(msg.pick);
+        }
         break;
     }
   }
@@ -9840,16 +10008,26 @@ class MultiplayerClient {
     document.getElementById('mp-reveal-rarity').style.color = RARITY_COLORS[opponentPick.cardRarity] || '#888';
 
     if (opponentPick.isOffensive) {
-      card.className = 'mp-reveal-card offensive';
-      document.getElementById('mp-reveal-effect').textContent =
-        opponentPick.offensiveDesc || 'Targeting YOU';
-      document.getElementById('mp-reveal-effect').style.display = 'block';
-      // Apply the debuff
-      this._applyOffensiveCard(opponentPick);
+      // Check for Reverse Uno
+      if (this.reverseUnoActive) {
+        this.reverseUnoActive = false;
+        card.className = 'mp-reveal-card reversed';
+        document.getElementById('mp-reveal-effect').textContent = 'REVERSED! Bounced back to opponent!';
+        document.getElementById('mp-reveal-effect').style.display = 'block';
+        // Tell server to apply debuff to opponent instead
+        this._send({ type: 'reverse_uno', pick: opponentPick });
+      } else {
+        card.className = 'mp-reveal-card offensive';
+        document.getElementById('mp-reveal-effect').textContent =
+          opponentPick.offensiveDesc || 'Targeting YOU';
+        document.getElementById('mp-reveal-effect').style.display = 'block';
+        this._applyOffensiveCard(opponentPick);
+      }
     } else {
       card.className = 'mp-reveal-card defensive';
-      document.getElementById('mp-reveal-effect').textContent = '';
-      document.getElementById('mp-reveal-effect').style.display = 'none';
+      document.getElementById('mp-reveal-effect').textContent =
+        opponentPick.isDefensive ? 'Opponent buffed themselves' : '';
+      document.getElementById('mp-reveal-effect').style.display = opponentPick.isDefensive ? 'block' : 'none';
     }
 
     overlay.classList.add('show');
@@ -9875,14 +10053,21 @@ class MultiplayerClient {
       case 'projectileSpeedMulti':
         this.debuffs.projectileSpeedMulti *= def.value;
         break;
-      case 'moveSpeedMulti':
-        this.debuffs.moveSpeedMulti *= def.value;
-        break;
       case 'arenaInset':
         this.debuffs.arenaInset = Math.min(0.4, this.debuffs.arenaInset + def.value);
         break;
       case 'homingChance':
         this.debuffs.homingChance = Math.min(0.6, this.debuffs.homingChance + def.value);
+        break;
+      case 'drunkWobble':
+        this.debuffs.drunkWobble += def.value;
+        break;
+      case 'inverted':
+        this.debuffs.inverted = true;
+        break;
+      case 'fakeAd':
+        this.debuffs.fakeAd = true;
+        this.debuffs.fakeAdTimer = 0;
         break;
     }
   }
@@ -9909,6 +10094,7 @@ class MultiplayerClient {
     document.getElementById('mp-vs-bar').classList.remove('show');
     document.getElementById('mp-reveal').classList.remove('show');
     document.getElementById('mp-countdown').classList.remove('show');
+    document.getElementById('mp-fake-ad').classList.remove('show');
     // Hide the single-player game over if showing
     document.getElementById('gameover-screen').classList.remove('show');
     // Hide upgrade overlay if showing
@@ -9950,7 +10136,8 @@ class MultiplayerClient {
       cardName: def.name,
       cardIcon: def.icon,
       cardRarity: def.rarity,
-      isOffensive: !!offDef,
+      isOffensive: !!(offDef && offDef.offensive),
+      isDefensive: !!(offDef && offDef.defensive),
       offensiveDesc: offDef ? def.desc : undefined,
     };
 
