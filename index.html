@@ -2634,7 +2634,7 @@ const MP_OFFENSIVE_DEFS = [
   { id: 'mp_inverted',       name: 'INVERTED',          rarity: 'legendary', icon: '\u21C5', desc: "Enemy controls are permanently flipped. Good luck with that.", offensive: true, effect: 'inverted', value: true },
   { id: 'mp_fakeAd',         name: 'FAKE AD',           rarity: 'legendary', icon: '\u25B6', desc: "Force opponent to 'watch an ad' for 10s every 60s. Brutal.",   offensive: true, effect: 'fakeAd', value: true },
   // Defensive — applied to self
-  { id: 'mp_cleanSlate',     name: 'CLEAN SLATE',       rarity: 'rare',      icon: '\u2728', desc: "Purge ALL debuffs. Fresh start, baby.",                       offensive: false, defensive: true, effect: 'cleanSlate' },
+  { id: 'mp_cleanSlate',     name: 'CLEAN SLATE',       rarity: 'rare',      icon: '\u2728', desc: "Purge ALL debuffs. Fresh start, baby.",                       offensive: false, defensive: true, effect: 'cleanSlate', maxPicks: 3 },
   { id: 'mp_reverseUno',     name: 'REVERSE UNO',       rarity: 'legendary', icon: '\u21BA', desc: "Next offensive card bounces back to opponent. No u.",          offensive: false, defensive: true, effect: 'reverseUno' },
 ];
 
@@ -5571,7 +5571,11 @@ class Game {
     // In MP mode, mix in offensive cards that haven't been picked yet
     let mpPool = [];
     if (this.mpMode) {
-      mpPool = MP_OFFENSIVE_DEFS.filter(d => !(this._mpOffensivePicked || {})[d.id]);
+      mpPool = MP_OFFENSIVE_DEFS.filter(d => {
+        const picks = (this._mpOffensivePicked || {})[d.id] || 0;
+        const maxPicks = d.maxPicks || 1;
+        return picks < maxPicks;
+      });
     }
     const allAvailable = [...available, ...mpPool];
     if (allAvailable.length === 0) return [];
@@ -5708,7 +5712,7 @@ class Game {
     if (mpDef) {
       // Mark as picked so it won't appear again
       if (!this._mpOffensivePicked) this._mpOffensivePicked = {};
-      this._mpOffensivePicked[id] = true;
+      this._mpOffensivePicked[id] = (this._mpOffensivePicked[id] || 0) + 1;
       // Apply defensive MP cards to self
       if (mpDef.defensive && this.mpClient) {
         if (mpDef.effect === 'cleanSlate') {
