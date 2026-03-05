@@ -2399,6 +2399,12 @@ async function fetchLeaderboard(forceRefresh = false) {
 }
 
 async function submitScore(name, time_s, phase, dodges, bosses) {
+  // Re-init Supabase client if stale (long games can lose connection)
+  if (!sb) {
+    try {
+      sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+    } catch (e) { /* ignore */ }
+  }
   if (!sb) throw new Error('Leaderboard unavailable');
   const row = {
     name: name.trim().slice(0, 20),
@@ -2407,9 +2413,17 @@ async function submitScore(name, time_s, phase, dodges, bosses) {
     dodges: dodges || 0,
     bosses: bosses || 0
   };
-  const { error } = await sb.from('leaderboard').insert(row);
-  if (error) throw error;
-  _lbCache = null; // bust cache
+  // Retry once on failure
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { error } = await sb.from('leaderboard').insert(row);
+    if (!error) { _lbCache = null; return; }
+    if (attempt === 0) {
+      // Re-create client and retry
+      try { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch (e) { /* ignore */ }
+      continue;
+    }
+    throw error;
+  }
 }
 
 function getPlayerName() {
