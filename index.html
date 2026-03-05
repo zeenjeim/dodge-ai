@@ -665,8 +665,23 @@
       letter-spacing: 4px;
       color: #facc15;
       text-shadow: 0 0 20px rgba(250,204,21,0.5);
-      margin-bottom: 24px;
+      margin-bottom: 8px;
       text-transform: uppercase;
+    }
+    #upgrade-timer {
+      font-size: 28px;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 16px;
+      font-variant-numeric: tabular-nums;
+    }
+    #upgrade-timer.urgent {
+      color: #ff4444;
+      animation: timer-pulse 0.5s ease-in-out infinite;
+    }
+    @keyframes timer-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
     }
     #upgrade-cards {
       display: flex;
@@ -1780,13 +1795,25 @@
     /* Fake Ad Overlay */
     #mp-fake-ad {
       position: fixed;
-      inset: 0;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 340px;
+      max-width: 80vw;
       z-index: 80;
       display: none;
       flex-direction: column;
       background: linear-gradient(135deg, #1a0a2e 0%, #0d0d0d 50%, #1a0a2e 100%);
+      border: 2px solid #ff6600;
+      border-radius: 12px;
+      opacity: 0.85;
+      padding-bottom: 16px;
+      animation: fake-ad-sway 2.5s ease-in-out infinite;
     }
     #mp-fake-ad.show { display: flex; }
+    @keyframes fake-ad-sway {
+      0%, 100% { transform: translate(calc(-50% - 40px), -50%) rotate(-1deg); }
+      50% { transform: translate(calc(-50% + 40px), -50%) rotate(1deg); }
+    }
     .fake-ad-header {
       display: flex;
       justify-content: space-between;
@@ -1816,7 +1843,7 @@
       text-align: center;
     }
     .fake-ad-product {
-      font-size: 42px;
+      font-size: 28px;
       font-weight: bold;
       color: #ff6600;
       text-shadow: 0 0 30px rgba(255, 102, 0, 0.5);
@@ -1831,9 +1858,9 @@
     .fake-ad-cta {
       background: linear-gradient(135deg, #ff6600, #ff3300);
       color: #fff;
-      font-size: 22px;
+      font-size: 16px;
       font-weight: bold;
-      padding: 14px 40px;
+      padding: 10px 28px;
       border-radius: 8px;
       cursor: not-allowed;
       animation: fake-ad-bounce 1s ease-in-out infinite;
@@ -2058,6 +2085,7 @@
 <!-- Upgrade Selection Overlay -->
 <div id="upgrade-overlay">
   <div class="upgrade-title">CHOOSE YOUR UPGRADE</div>
+  <div id="upgrade-timer"></div>
   <div id="upgrade-cards"></div>
   <button id="reroll-btn" class="hidden">&#x2684; REROLL (0)</button>
 </div>
@@ -2645,7 +2673,7 @@ const EVOLUTION_DEFS = [
 const MP_OFFENSIVE_DEFS = [
   // Offensive — applied to opponent
   { id: 'mp_biggerTarget',   name: 'BIGGER TARGET',     rarity: 'common',    icon: '\u29BF', desc: "Enemy hitbox grows 20%. They're basically a barn door now.",  offensive: true, effect: 'hitboxScale', value: 1.2 },
-  { id: 'mp_drunkMode',      name: 'DRUNK MODE',        rarity: 'common',    icon: '\u223F', desc: "Enemy movement gets wobbly. Hope they don't get seasick.",     offensive: true, effect: 'drunkWobble', value: 12 },
+  { id: 'mp_drunkMode',      name: 'DRUNK MODE',        rarity: 'common',    icon: '\u223F', desc: "Enemy movement gets wobbly. Hope they don't get seasick.",     offensive: true, effect: 'drunkWobble', value: 6 },
   { id: 'mp_bulletStorm',    name: 'BULLET STORM',      rarity: 'rare',      icon: '\u2602', desc: "Spawn 30% more projectiles on enemy's screen. You're welcome.", offensive: true, effect: 'spawnRateMulti', value: 1.3 },
   { id: 'mp_velocityCurse',  name: 'VELOCITY CURSE',    rarity: 'rare',      icon: '\u21AF', desc: "Enemy projectiles move 25% faster. Blink and you're dead.",   offensive: true, effect: 'projectileSpeedMulti', value: 1.25 },
   { id: 'mp_shrinkZone',     name: 'SHRINK ZONE',       rarity: 'legendary', icon: '\u25A3', desc: "Enemy play area shrinks by 15%. Walls closing in...",         offensive: true, effect: 'arenaInset', value: 0.15 },
@@ -5555,6 +5583,8 @@ class Game {
     const overlay = document.getElementById('upgrade-overlay');
     if (overlay) overlay.classList.remove('show');
     this._upgradeSelecting = false;
+    this._upgradePickDeadline = null;
+    if (this._upgradeTimerRAF) cancelAnimationFrame(this._upgradeTimerRAF);
     this.upgradeTimer = UPGRADE_INTERVAL;
     // Save player position and enter return-to-dot mode
     this.returnToDot = true;
@@ -5717,8 +5747,25 @@ class Game {
       rerollBtn.classList.add('hidden');
     }
 
+    // Start pick countdown timer
+    this._upgradePickDeadline = performance.now() + 30000; // 30s to pick
+    this._updateUpgradeTimer();
+
     const overlay = document.getElementById('upgrade-overlay');
     overlay.classList.add('show');
+  }
+
+  _updateUpgradeTimer() {
+    if (!this._upgradePickDeadline) return;
+    const remaining = Math.max(0, Math.ceil((this._upgradePickDeadline - performance.now()) / 1000));
+    const timerEl = document.getElementById('upgrade-timer');
+    if (timerEl) {
+      timerEl.textContent = remaining + 's';
+      timerEl.classList.toggle('urgent', remaining <= 5);
+    }
+    if (remaining > 0 && this.upgradeFrozen) {
+      this._upgradeTimerRAF = requestAnimationFrame(() => this._updateUpgradeTimer());
+    }
   }
 
   selectUpgrade(id, selectedEl) {
