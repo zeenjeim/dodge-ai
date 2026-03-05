@@ -2739,7 +2739,7 @@ const MP_OFFENSIVE_DEFS = [
       { value: { count: 3, interval: 5 }, desc: "Spawn 3 dead zones every 5s. No safe space left." },
     ] },
   // Defensive — applied to self
-  { id: 'mp_cleanSlate',     name: 'CLEAN SLATE',       rarity: 'rare',      icon: '\u2728', offensive: false, defensive: true, effect: 'cleanSlate', maxPicks: 3,
+  { id: 'mp_cleanSlate',     name: 'CLEAN SLATE',       rarity: 'common',    icon: '\u2728', offensive: false, defensive: true, effect: 'cleanSlate', maxPicks: 5,
     levels: [
       { desc: "Purge ALL debuffs. Fresh start, baby." },
       { desc: "Purge ALL debuffs. Again. They never learn." },
@@ -5660,15 +5660,25 @@ class Game {
     this._upgradePickDeadline = null;
     if (this._upgradeTimerRAF) cancelAnimationFrame(this._upgradeTimerRAF);
     this.upgradeTimer = UPGRADE_INTERVAL;
-    // Save player position and enter return-to-dot mode
-    this.returnToDot = true;
-    this.returnDotPos = { x: this.player.x, y: this.player.y };
-    // Keep input frozen until mouse returns to dot
-    this.targetX = this.player.x;
-    this.targetY = this.player.y;
-    this.inputFrozenTimer = 999; // stays frozen until return-to-dot clears it
-    // Show cursor so player can see where their mouse is
-    this.canvas.style.cursor = 'default';
+    if (this.mpMode) {
+      // MP mode: no return-to-dot — auto-resume after 5s max
+      this.targetX = this.player.x;
+      this.targetY = this.player.y;
+      this.inputFrozenTimer = 0;
+      this.returnToDot = false;
+      this.returnDotPos = null;
+      this.upgradeFreezePhase = 'easing-out';
+      this.upgradeFrozen = false;
+      this.canvas.style.cursor = 'none';
+    } else {
+      // SP mode: return-to-dot
+      this.returnToDot = true;
+      this.returnDotPos = { x: this.player.x, y: this.player.y };
+      this.targetX = this.player.x;
+      this.targetY = this.player.y;
+      this.inputFrozenTimer = 999;
+      this.canvas.style.cursor = 'default';
+    }
   }
 
   rollUpgradeRarity(available) {
@@ -10253,11 +10263,15 @@ class MultiplayerClient {
         document.getElementById('mp-reveal-effect').style.display = 'block';
         this._applyOffensiveCard(opponentPick);
       }
-    } else {
+    } else if (opponentPick.isDefensive) {
       card.className = 'mp-reveal-card defensive';
-      document.getElementById('mp-reveal-effect').textContent =
-        opponentPick.isDefensive ? 'Opponent buffed themselves' : '';
-      document.getElementById('mp-reveal-effect').style.display = opponentPick.isDefensive ? 'block' : 'none';
+      document.getElementById('mp-reveal-effect').textContent = 'Opponent buffed themselves';
+      document.getElementById('mp-reveal-effect').style.display = 'block';
+    } else {
+      // Regular upgrade (legendary SP card in MP)
+      card.className = 'mp-reveal-card';
+      document.getElementById('mp-reveal-effect').textContent = 'Opponent upgraded themselves';
+      document.getElementById('mp-reveal-effect').style.display = 'block';
     }
 
     overlay.classList.add('show');
