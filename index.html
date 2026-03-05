@@ -21,8 +21,8 @@
   <meta property="og:title" content="DODGE AI - The AI That Learns How You Dodge">
   <meta property="og:description" content="A bullet hell browser game where the AI studies your patterns and adapts. How long can you survive?">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://dodgeai.example.com">
-  <meta property="og:image" content="https://dodgeai.example.com/og-image.png">
+  <meta property="og:url" content="https://dodge-ai.com">
+  <meta property="og:image" content="https://dodge-ai.com/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="DODGE AI - A bullet hell browser game where the AI learns how you dodge">
@@ -31,7 +31,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="DODGE AI - The AI That Learns How You Dodge">
   <meta name="twitter:description" content="A bullet hell browser game where the AI studies your patterns and adapts. How long can you survive?">
-  <meta name="twitter:image" content="https://dodgeai.example.com/og-image.png">
+  <meta name="twitter:image" content="https://dodge-ai.com/og-image.png">
 
   <!-- Structured Data -->
   <script type="application/ld+json">
@@ -40,7 +40,7 @@
     "@type": "VideoGame",
     "name": "DODGE AI",
     "description": "A browser-based bullet hell game where an AI learns how you dodge and adapts to kill you. Features pattern detection, adaptive difficulty, and 6 escalating phases.",
-    "url": "https://dodgeai.example.com",
+    "url": "https://dodge-ai.com",
     "genre": ["Bullet Hell", "Action", "Browser Game"],
     "gamePlatform": ["Web Browser"],
     "operatingSystem": "Any",
@@ -823,7 +823,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: rgba(6, 6, 15, 0.88);
+      background: radial-gradient(ellipse at center, rgba(6, 6, 15, 0.82) 0%, rgba(6, 6, 15, 0.95) 100%);
     }
 
     #start-screen.hidden { display: none; }
@@ -860,18 +860,25 @@
       align-items: center;
     }
 
+    .menu-secondary {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
     .menu-btn {
-      padding: 12px 40px;
+      padding: 10px 24px;
       background: transparent;
-      border: 1px solid rgba(255,255,255,0.15);
-      color: #888;
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #666;
       font-family: 'Courier New', monospace;
-      font-size: 13px;
-      letter-spacing: 2px;
+      font-size: 11px;
+      letter-spacing: 1.5px;
       cursor: pointer;
       border-radius: 4px;
       transition: all 0.2s;
-      min-width: 220px;
       text-align: center;
     }
 
@@ -882,17 +889,24 @@
     }
 
     .menu-btn.primary {
-      padding: 14px 48px;
-      border-color: rgba(0, 240, 255, 0.4);
+      padding: 18px 64px;
+      border-color: rgba(0, 240, 255, 0.5);
       color: #00f0ff;
-      font-size: 16px;
-      letter-spacing: 3px;
+      font-size: 20px;
+      letter-spacing: 4px;
+      animation: play-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes play-pulse {
+      0%, 100% { box-shadow: 0 0 15px rgba(0, 240, 255, 0.15); }
+      50% { box-shadow: 0 0 30px rgba(0, 240, 255, 0.35), 0 0 60px rgba(0, 240, 255, 0.1); }
     }
 
     .menu-btn.primary:hover {
       background: rgba(0, 240, 255, 0.1);
       border-color: #00f0ff;
-      box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+      box-shadow: 0 0 30px rgba(0, 240, 255, 0.3);
+      animation: none;
     }
 
     .menu-btn.small {
@@ -965,7 +979,23 @@
       min-height: 14px;
     }
 
-    .start-hint { color: #444; font-size: 11px; margin-top: 16px; }
+    .player-rank {
+      font-size: 12px;
+      letter-spacing: 2px;
+      margin-top: 16px;
+      min-height: 16px;
+      text-transform: uppercase;
+    }
+    .player-rank .rank-title { font-weight: bold; }
+    .player-rank .rank-progress {
+      display: block;
+      font-size: 10px;
+      color: #444;
+      margin-top: 4px;
+      letter-spacing: 1px;
+    }
+
+    .start-hint { color: #444; font-size: 11px; margin-top: 12px; margin-bottom: 4px; }
 
     /* --- Modals --- */
     .modal-overlay {
@@ -1147,6 +1177,8 @@
     .go-stat-val { font-size: 24px; font-weight: bold; color: #fff; }
     .go-stat-label { font-size: 10px; color: #666; margin-top: 2px; text-transform: uppercase; letter-spacing: 1px; }
     .go-new-best { color: #00f0ff; font-size: 12px; margin-top: 12px; letter-spacing: 2px; }
+    .go-rank-up { font-size: 13px; margin-top: 8px; letter-spacing: 2px; color: #facc15; animation: rank-glow 1.5s ease-in-out 3; }
+    @keyframes rank-glow { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; text-shadow: 0 0 20px currentColor; } }
     .go-buttons { display: flex; gap: 12px; margin-top: 28px; }
 
     .go-btn {
@@ -1516,16 +1548,19 @@
 <div id="start-screen">
   <h1>DODGE <span>AI</span></h1>
   <div class="tagline">Maximum effort. Minimum survival.</div>
+  <div class="player-rank" id="start-rank"></div>
   <div class="best-time" id="start-best"></div>
   <div class="menu-buttons">
     <button class="menu-btn primary" id="btn-start">PLAY</button>
-    <button class="menu-btn" id="btn-howto">HOW TO PLAY</button>
-    <button class="menu-btn" id="btn-stats">STATS</button>
-    <button class="menu-btn" id="btn-leaderboard">LEADERBOARD</button>
-    <button class="menu-btn" id="btn-contact">CONTACT</button>
-    <button class="menu-btn" id="btn-toggle-brain">AI BRAIN: OFF</button>
+    <div class="start-hint">Mouse or touch. Try not to cry.</div>
+    <div class="menu-secondary">
+      <button class="menu-btn" id="btn-howto">HOW TO PLAY</button>
+      <button class="menu-btn" id="btn-leaderboard">LEADERBOARD</button>
+      <button class="menu-btn" id="btn-stats">STATS</button>
+    </div>
+    <button class="menu-btn small" id="btn-toggle-brain">AI BRAIN: OFF</button>
+    <button class="menu-btn small" id="btn-contact">CONTACT</button>
   </div>
-  <div class="start-hint">Mouse or touch. Try not to cry.</div>
 </div>
 
 <!-- How to Play Modal -->
@@ -1580,6 +1615,7 @@
     </div>
   </div>
   <div class="go-new-best" id="go-new-best" style="display:none">NEW BEST</div>
+  <div class="go-rank-up" id="go-rank-up" style="display:none"></div>
   <div class="go-buttons">
     <button class="go-btn" id="btn-share">SHARE</button>
     <button class="go-btn retry-primary" id="btn-retry">RETRY</button>
@@ -1811,6 +1847,46 @@ function migrateBestTime() {
       daily: false,
     }]));
   }
+}
+
+// --- Meta-progression: lifetime stats & ranks ---
+const META_KEY = 'dodge-ai-meta';
+const RANKS = [
+  { games: 0,   title: 'Fresh Meat',        color: '#00f0ff' },
+  { games: 5,   title: 'Cannon Fodder',      color: '#00f0ff' },
+  { games: 15,  title: 'Slightly Less Dead',  color: '#38bdf8' },
+  { games: 30,  title: 'Dodge Apprentice',    color: '#22d3ee' },
+  { games: 50,  title: 'Pattern Breaker',     color: '#34d399' },
+  { games: 75,  title: 'Bullet Whisperer',    color: '#a78bfa' },
+  { games: 100, title: 'AI Nemesis',          color: '#f472b6' },
+  { games: 150, title: 'Death Defier',        color: '#fb923c' },
+  { games: 200, title: 'Untouchable',         color: '#facc15' },
+  { games: 300, title: 'LEGEND',              color: '#ff3355' },
+];
+
+function loadMeta() {
+  try {
+    return JSON.parse(localStorage.getItem(META_KEY)) || { totalTime: 0, totalDodges: 0, totalPowerups: 0, totalBosses: 0 };
+  } catch { return { totalTime: 0, totalDodges: 0, totalPowerups: 0, totalBosses: 0 }; }
+}
+
+function saveMeta(meta) {
+  localStorage.setItem(META_KEY, JSON.stringify(meta));
+}
+
+function getRank(totalGames) {
+  let rank = RANKS[0];
+  for (const r of RANKS) {
+    if (totalGames >= r.games) rank = r;
+  }
+  return rank;
+}
+
+function getNextRank(totalGames) {
+  for (const r of RANKS) {
+    if (totalGames < r.games) return r;
+  }
+  return null;
 }
 
 // Analytics: fire-and-forget event tracking via GoatCounter + GA4
@@ -4414,14 +4490,23 @@ class Game {
       const grid = document.getElementById('stats-grid');
       const dom = this.brain.getDominantDodge();
       const reaction = this.brain.getAvgReaction();
+      const meta = loadMeta();
+      const rank = getRank(this.totalGames);
+      const next = getNextRank(this.totalGames);
       // Remove previous bests section to prevent duplicates on re-open
       const existingBests = document.querySelector('.bests-list');
       if (existingBests) existingBests.remove();
+      const existingCareer = document.querySelector('.career-section');
+      if (existingCareer) existingCareer.remove();
       grid.innerHTML = `
+        <div class="stat-item"><div class="stat-val" style="color:${rank.color}">${rank.title}</div><div class="stat-label">Rank${next ? ` (${next.games - this.totalGames} to ${next.title})` : ''}</div></div>
         <div class="stat-item"><div class="stat-val">${this.bestTime > 0 ? this.bestTime.toFixed(1) + 's' : '\u2014'}</div><div class="stat-label">Longest Not-Dead</div></div>
         <div class="stat-item"><div class="stat-val">${this.totalGames}</div><div class="stat-label">Lives Sacrificed</div></div>
+        <div class="stat-item"><div class="stat-val">${meta.totalTime > 0 ? meta.totalTime.toFixed(0) + 's' : '\u2014'}</div><div class="stat-label">Total Time Alive</div></div>
+        <div class="stat-item"><div class="stat-val">${meta.totalDodges || 0}</div><div class="stat-label">Lifetime Dodges</div></div>
+        <div class="stat-item"><div class="stat-val">${meta.totalPowerups || 0}</div><div class="stat-label">Powerups Grabbed</div></div>
+        <div class="stat-item"><div class="stat-val">${meta.totalBosses || 0}</div><div class="stat-label">Bosses Defeated</div></div>
         <div class="stat-item"><div class="stat-val">${this.brain.getConfidence()}%</div><div class="stat-label">How Screwed You Are</div></div>
-        <div class="stat-item"><div class="stat-val">${this.brain.totalSamples}</div><div class="stat-label">Your Moves Stolen</div></div>
         <div class="stat-item"><div class="stat-val">${dom ? dom.direction + ' ' + dom.pct + '%' : '\u2014'}</div><div class="stat-label">Predictable Dodge</div></div>
         <div class="stat-item"><div class="stat-val">${reaction ? reaction + 'ms' : '\u2014'}</div><div class="stat-label">Reaction Time</div></div>
       `;
@@ -4535,6 +4620,20 @@ class Game {
     const best = bests.length > 0 ? bests[0].time : 0;
     const el = document.getElementById('start-best');
     el.textContent = best > 0 ? `Best: ${best.toFixed(1)}s` : '';
+
+    // Show rank
+    const rankEl = document.getElementById('start-rank');
+    const rank = getRank(this.totalGames);
+    const next = getNextRank(this.totalGames);
+    if (this.totalGames > 0) {
+      let html = `<span class="rank-title" style="color:${rank.color}">${rank.title}</span>`;
+      if (next) {
+        html += `<span class="rank-progress">${next.games - this.totalGames} games to ${next.title}</span>`;
+      }
+      rankEl.innerHTML = html;
+    } else {
+      rankEl.innerHTML = '';
+    }
   }
 
   start() {
@@ -4594,6 +4693,7 @@ class Game {
     this.lastPowerupType = null;
     this.deathContext = null;
     this._lastShotWasCounter = false;
+    this.powerupsCollected = 0;
 
     // Reset upgrade system
     this.upgrades = {};
@@ -6693,6 +6793,7 @@ class Game {
   collectPowerup(pu) {
     const def = pu.def;
     soundEngine.playCollect();
+    this.powerupsCollected = (this.powerupsCollected || 0) + 1;
     trackGA('powerup_collected', { powerup_type: pu.type, time_s: parseFloat(this.gameTime.toFixed(1)) });
 
     // Pickup particles — burst outward
@@ -7324,6 +7425,14 @@ class Game {
     this.totalGames++;
     localStorage.setItem('dodge-ai-games', this.totalGames.toString());
 
+    // Update lifetime meta-progression
+    const meta = loadMeta();
+    meta.totalTime = (meta.totalTime || 0) + this.gameTime;
+    meta.totalDodges = (meta.totalDodges || 0) + this.dodgedCount;
+    meta.totalPowerups = (meta.totalPowerups || 0) + (this.powerupsCollected || 0);
+    meta.totalBosses = (meta.totalBosses || 0) + this.bossesDefeated;
+    saveMeta(meta);
+
 
     for (let i = 0; i < 50; i++) {
       const angle = Math.random() * Math.PI * 2;
@@ -7331,7 +7440,7 @@ class Game {
       this.particles.push(new Particle(
         this.player.x, this.player.y,
         Math.cos(angle) * speed, Math.sin(angle) * speed,
-        0.8, '#00f0ff', Math.random() * 4 + 1
+        0.8, getRank(this.totalGames).color, Math.random() * 4 + 1
       ));
     }
 
@@ -7456,6 +7565,17 @@ class Game {
     document.getElementById('go-closest').textContent = this.closestCall === Infinity ? '0px' : `${Math.round(this.closestCall)}px`;
     document.getElementById('go-games').textContent = this.totalGames;
     document.getElementById('go-new-best').style.display = isNewBest ? 'block' : 'none';
+
+    // Rank-up check
+    const rank = getRank(this.totalGames);
+    const prevRank = getRank(this.totalGames - 1);
+    const rankUpEl = document.getElementById('go-rank-up');
+    if (rank.title !== prevRank.title) {
+      rankUpEl.innerHTML = `RANK UP: <span style="color:${rank.color}">${rank.title}</span>`;
+      rankUpEl.style.display = 'block';
+    } else {
+      rankUpEl.style.display = 'none';
+    }
 
     // Leaderboard: store pending score, pre-fill name, reset submit UI
     this._pendingScore = {
@@ -7832,7 +7952,8 @@ class Game {
     // Player
     if (this.running) {
       const pr = this.getPlayerRadius();
-      const playerColor = this.effects.shrink.active ? '#ec4899' : '#00f0ff';
+      const rankColor = getRank(this.totalGames).color;
+      const playerColor = this.effects.shrink.active ? '#ec4899' : rankColor;
 
       // Personal Space force field
       if (this.effects.magnet.active) {
@@ -8663,6 +8784,9 @@ let _gameEverStarted = false;
 function _initAnalytics() {
   trackEvent('page-load', 'Page Loaded');
 }
+// Fire GA4 page_load immediately (doesn't depend on GoatCounter)
+trackGA('page_load', { referrer: document.referrer || 'direct' });
+
 // GoatCounter loads async; poll briefly to fire page-load event
 (function() {
   let attempts = 0;
