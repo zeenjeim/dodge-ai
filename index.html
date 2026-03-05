@@ -1807,6 +1807,7 @@
       border-radius: 12px;
       opacity: 0.85;
       padding-bottom: 16px;
+      pointer-events: none;
       animation: fake-ad-sway 2.5s ease-in-out infinite;
     }
     #mp-fake-ad.show { display: flex; }
@@ -5916,7 +5917,7 @@ class Game {
       }).then(() => {}).catch(() => {}); // fire-and-forget
     }
     // Update upgrade bar icon
-    if (!isOffensive) this.addUpgradeBarIcon(id);
+    if (!mpDef) this.addUpgradeBarIcon(id);
     // In MP mode: don't dismiss immediately, wait for server reveal
     if (this.mpMode) {
       setTimeout(() => {
@@ -6502,14 +6503,15 @@ class Game {
         this.targetY = entry.y;
       }
     }
-    // MP debuff: INVERTED flips target relative to player
+    // MP debuff: INVERTED mirrors mouse target across screen center
     let tx = this.targetX, ty = this.targetY;
     if (this.mpClient && this.mpClient.debuffs.inverted) {
+      const cx = this.w / 2, cy = this.h / 2;
       if (this.mpClient.debuffs.inverted === 'vertical') {
-        ty = this.player.y - (this.targetY - this.player.y);
+        ty = cy - (this.targetY - cy);
       } else {
-        tx = this.player.x - (this.targetX - this.player.x);
-        ty = this.player.y - (this.targetY - this.player.y);
+        tx = cx - (this.targetX - cx);
+        ty = cy - (this.targetY - cy);
       }
     }
     this.player.x += (tx - this.player.x) * lerp;
@@ -10182,9 +10184,11 @@ class MultiplayerClient {
 
   _handleUpgradeReveal(opponentPick) {
     this.phase = 'reveal';
-    // Dismiss the upgrade overlay
-    const upgradeOverlay = document.getElementById('upgrade-overlay');
-    if (upgradeOverlay) upgradeOverlay.classList.remove('show');
+    // Dismiss the upgrade overlay only if we already picked
+    if (this._upgradePickSent) {
+      const upgradeOverlay = document.getElementById('upgrade-overlay');
+      if (upgradeOverlay) upgradeOverlay.classList.remove('show');
+    }
     if (!opponentPick) return;
 
     const overlay = document.getElementById('mp-reveal');
@@ -10296,6 +10300,11 @@ class MultiplayerClient {
       evoEl.classList.remove('show');
       evoEl.querySelector('.evo-result')?.classList.remove('reveal', 'dismiss');
       evoEl.querySelector('.evo-particles') && (evoEl.querySelector('.evo-particles').innerHTML = '');
+    }
+    // If we hadn't picked yet, auto-pick first available card
+    if (!this._upgradePickSent && window._game && window._game._currentCards && window._game._currentCards.length > 0) {
+      const autoCard = window._game._currentCards[0];
+      window._game.selectUpgrade(autoCard.id, document.querySelector('.upgrade-card'));
     }
     // Trigger the game's dismiss/return-to-dot flow
     if (window._game) {
