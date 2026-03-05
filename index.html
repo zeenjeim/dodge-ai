@@ -1813,7 +1813,7 @@ function migrateBestTime() {
   }
 }
 
-// Analytics: fire-and-forget event tracking via GoatCounter
+// Analytics: fire-and-forget event tracking via GoatCounter + GA4
 // All calls are guarded -- never throws, never blocks gameplay
 function trackEvent(name, title) {
   try {
@@ -1827,6 +1827,12 @@ function trackEvent(name, title) {
   } catch (e) {
     // Silently ignore -- analytics must never affect gameplay
   }
+}
+
+function trackGA(eventName, params) {
+  try {
+    if (window.gtag) gtag('event', eventName, params || {});
+  } catch (e) { /* analytics must never affect gameplay */ }
 }
 
 const PHASE_DEFS = [
@@ -4481,6 +4487,10 @@ class Game {
           this._pendingScore.bosses
         );
         setPlayerName(name);
+        trackGA('leaderboard_submit', {
+          survival_time: this._pendingScore.time,
+          phase: this._pendingScore.phase
+        });
         lbStatus.textContent = 'Score submitted!';
         lbStatus.className = 'lb-status success';
         document.getElementById('go-lb-submit').style.display = 'none';
@@ -4674,6 +4684,7 @@ class Game {
     _gameEverStarted = true;
     _sessionGamesPlayed++;
     trackEvent('game-start', `Game ${_sessionGamesPlayed} started`);
+    trackGA('game_start', { game_number: _sessionGamesPlayed });
     if (_sessionGamesPlayed === 1) {
       trackEvent('milestone-first-game', 'First game this session');
     }
@@ -4911,6 +4922,13 @@ class Game {
       this.pickupAnnounceTimer = 1.5;
     }
     // Analytics: log upgrade pick
+    trackGA('upgrade_picked', {
+      upgrade_id: id,
+      upgrade_level: this.upgrades[id],
+      rarity: def ? def.rarity : 'unknown',
+      time_s: parseFloat(this.gameTime.toFixed(1)),
+      phase: this.phase + 1
+    });
     if (sb) {
       const alternatives = (this._currentCards || [])
         .filter(c => c.id !== id)
@@ -5384,6 +5402,11 @@ class Game {
       this.announcePhase();
       // Analytics: phase milestone
       trackEvent(`milestone-phase-${this.phase + 1}`, `Reached Phase ${this.phase + 1}: ${PHASE_DEFS[this.phase].name}`);
+      trackGA('phase_reached', {
+        phase: this.phase + 1,
+        phase_name: PHASE_DEFS[this.phase].name,
+        time_s: parseFloat(this.gameTime.toFixed(1))
+      });
     }
 
     // HIVEMIND sub-phase announcements (every 25s ramp = new "phase")
@@ -6670,6 +6693,7 @@ class Game {
   collectPowerup(pu) {
     const def = pu.def;
     soundEngine.playCollect();
+    trackGA('powerup_collected', { powerup_type: pu.type, time_s: parseFloat(this.gameTime.toFixed(1)) });
 
     // Pickup particles — burst outward
     for (let i = 0; i < 20; i++) {
@@ -7282,6 +7306,13 @@ class Game {
       `death-phase-${this.phase + 1}`,
       `Died at ${this.gameTime.toFixed(1)}s in Phase ${this.phase + 1}: ${PHASE_DEFS[Math.min(this.phase, PHASE_DEFS.length - 1)].name}`
     );
+    trackGA('game_death', {
+      survival_time: parseFloat(this.gameTime.toFixed(1)),
+      phase: this.phase + 1,
+      phase_name: PHASE_DEFS[Math.min(this.phase, PHASE_DEFS.length - 1)].name,
+      upgrades_picked: Object.keys(this.upgrades).filter(k => this.upgrades[k] > 0).length,
+      game_number: _sessionGamesPlayed
+    });
 
     this.running = false;
     this.canvas.classList.remove('active');
@@ -7527,6 +7558,7 @@ class Game {
 
   share() {
     trackEvent('share-card-generated', 'Share Card Generated');
+    trackGA('share', { survival_time: parseFloat(this.gameTime.toFixed(1)), phase: this.phase + 1 });
 
     // Generate visual card
     const card = this.generateShareCard();
@@ -8650,6 +8682,7 @@ window.addEventListener('beforeunload', () => {
   if (_sessionGamesPlayed > 0) {
     trackEvent(`session-games-${Math.min(_sessionGamesPlayed, 10)}`,
       `Session ended after ${_sessionGamesPlayed} games`);
+    trackGA('session_end', { games_played: _sessionGamesPlayed });
   }
 });
 
