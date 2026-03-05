@@ -871,7 +871,7 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
-      margin-top: 28px;
+      margin-top: 20px;
       align-items: center;
     }
 
@@ -2103,13 +2103,9 @@
 <!-- Start Screen / Menu -->
 <div id="start-screen">
   <h1>DODGE <span>AI</span></h1>
-  <div class="tagline">Maximum effort. Minimum survival.</div>
-  <div class="player-rank" id="start-rank"></div>
-  <div class="best-time" id="start-best"></div>
   <div class="menu-buttons">
     <button class="menu-btn primary" id="btn-start">PLAY</button>
     <button class="menu-btn multiplayer" id="btn-multiplayer" style="display:none">DEATHMATCH</button>
-    <div class="start-hint">Mouse or touch. Try not to cry.</div>
     <div class="menu-secondary">
       <button class="menu-btn" id="btn-howto">HOW TO PLAY</button>
       <button class="menu-btn" id="btn-leaderboard">LEADERBOARD</button>
@@ -5456,20 +5452,22 @@ class Game {
     const bests = loadBests();
     const best = bests.length > 0 ? bests[0].time : 0;
     const el = document.getElementById('start-best');
-    el.textContent = best > 0 ? `Best: ${best.toFixed(1)}s` : '';
+    if (el) el.textContent = best > 0 ? `Best: ${best.toFixed(1)}s` : '';
 
     // Show rank
     const rankEl = document.getElementById('start-rank');
-    const rank = getRank(this.totalGames);
-    const next = getNextRank(this.totalGames);
-    if (this.totalGames > 0) {
-      let html = `<span class="rank-title" style="color:${rank.color}">${rank.title}</span>`;
-      if (next) {
-        html += `<span class="rank-progress">${next.games - this.totalGames} games to ${next.title}</span>`;
+    if (rankEl) {
+      const rank = getRank(this.totalGames);
+      const next = getNextRank(this.totalGames);
+      if (this.totalGames > 0) {
+        let html = `<span class="rank-title" style="color:${rank.color}">${rank.title}</span>`;
+        if (next) {
+          html += `<span class="rank-progress">${next.games - this.totalGames} games to ${next.title}</span>`;
+        }
+        rankEl.innerHTML = html;
+      } else {
+        rankEl.innerHTML = '';
       }
-      rankEl.innerHTML = html;
-    } else {
-      rankEl.innerHTML = '';
     }
   }
 
