@@ -1505,6 +1505,327 @@
       color: #555;
       font-size: 0.85rem;
     }
+
+    /* Offensive upgrade card styling */
+    .upgrade-card.offensive {
+      border-color: rgba(255, 51, 85, 0.5) !important;
+      background: rgba(255, 51, 85, 0.08) !important;
+    }
+    .upgrade-card.offensive:hover {
+      border-color: #ff3355 !important;
+      box-shadow: 0 0 20px rgba(255, 51, 85, 0.3) !important;
+    }
+
+    /* ============================================================
+       MULTIPLAYER UI
+       ============================================================ */
+
+    /* Multiplayer button on start screen */
+    .menu-btn.multiplayer {
+      padding: 14px 48px;
+      border-color: rgba(255, 51, 85, 0.5);
+      color: #ff3355;
+      font-size: 16px;
+      letter-spacing: 3px;
+      animation: mp-pulse 2s ease-in-out infinite;
+    }
+    .menu-btn.multiplayer:hover {
+      background: rgba(255, 51, 85, 0.1);
+      border-color: #ff3355;
+      box-shadow: 0 0 30px rgba(255, 51, 85, 0.3);
+      animation: none;
+    }
+    @keyframes mp-pulse {
+      0%, 100% { box-shadow: 0 0 15px rgba(255, 51, 85, 0.15); }
+      50% { box-shadow: 0 0 30px rgba(255, 51, 85, 0.35), 0 0 60px rgba(255, 51, 85, 0.1); }
+    }
+
+    /* Lobby screen */
+    #mp-lobby {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at center, rgba(6, 6, 15, 0.92) 0%, rgba(6, 6, 15, 0.98) 100%);
+      gap: 16px;
+    }
+    #mp-lobby.show { display: flex; }
+
+    #mp-lobby h2 {
+      font-size: 28px;
+      color: #ff3355;
+      letter-spacing: 4px;
+      text-shadow: 0 0 30px rgba(255, 51, 85, 0.4);
+      margin-bottom: 8px;
+    }
+
+    .mp-room-code {
+      font-size: 36px;
+      color: #fff;
+      letter-spacing: 8px;
+      font-weight: bold;
+      text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+      user-select: all;
+      cursor: pointer;
+    }
+
+    .mp-room-code-label {
+      color: #666;
+      font-size: 11px;
+      letter-spacing: 1px;
+      margin-top: -4px;
+    }
+
+    .mp-lobby-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .mp-lobby-actions input {
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #fff;
+      font-family: 'Courier New', monospace;
+      font-size: 18px;
+      letter-spacing: 4px;
+      text-align: center;
+      text-transform: uppercase;
+      border-radius: 4px;
+      width: 200px;
+      outline: none;
+    }
+    .mp-lobby-actions input:focus {
+      border-color: rgba(255, 51, 85, 0.5);
+      box-shadow: 0 0 15px rgba(255, 51, 85, 0.15);
+    }
+    .mp-lobby-actions input::placeholder {
+      color: #444;
+      letter-spacing: 2px;
+      font-size: 12px;
+    }
+
+    .mp-players {
+      display: flex;
+      gap: 40px;
+      margin: 20px 0;
+    }
+    .mp-player-slot {
+      width: 120px;
+      height: 120px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.3s;
+    }
+    .mp-player-slot.filled {
+      border-color: rgba(0, 240, 255, 0.3);
+      background: rgba(0, 240, 255, 0.03);
+    }
+    .mp-player-slot.ready {
+      border-color: rgba(0, 255, 100, 0.5);
+      background: rgba(0, 255, 100, 0.05);
+    }
+    .mp-player-slot .slot-icon {
+      font-size: 28px;
+      color: #333;
+    }
+    .mp-player-slot.filled .slot-icon { color: #00f0ff; }
+    .mp-player-slot.ready .slot-icon { color: #00ff64; }
+    .mp-player-slot .slot-label {
+      font-size: 10px;
+      color: #555;
+      letter-spacing: 1px;
+    }
+    .mp-player-slot.filled .slot-label { color: #00f0ff; }
+    .mp-player-slot.ready .slot-label { color: #00ff64; }
+
+    .mp-status {
+      color: #666;
+      font-size: 12px;
+      letter-spacing: 1px;
+      min-height: 16px;
+    }
+    .mp-status.error { color: #ff3355; }
+
+    /* Multiplayer countdown overlay */
+    #mp-countdown {
+      position: fixed;
+      inset: 0;
+      z-index: 70;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(6, 6, 15, 0.9);
+    }
+    #mp-countdown.show { display: flex; }
+    #mp-countdown .countdown-num {
+      font-size: 120px;
+      color: #ff3355;
+      font-weight: bold;
+      text-shadow: 0 0 60px rgba(255, 51, 85, 0.5);
+      animation: countdown-pop 0.8s ease-out;
+    }
+    @keyframes countdown-pop {
+      0% { transform: scale(2); opacity: 0; }
+      50% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(1); }
+    }
+
+    /* Opponent reveal overlay */
+    #mp-reveal {
+      position: fixed;
+      inset: 0;
+      z-index: 65;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(6, 6, 15, 0.85);
+      gap: 16px;
+    }
+    #mp-reveal.show { display: flex; }
+
+    .mp-reveal-title {
+      font-size: 14px;
+      color: #ff3355;
+      letter-spacing: 3px;
+      margin-bottom: 8px;
+    }
+
+    .mp-reveal-card {
+      padding: 20px 32px;
+      border: 1px solid rgba(255, 51, 85, 0.4);
+      border-radius: 8px;
+      background: rgba(255, 51, 85, 0.05);
+      text-align: center;
+      animation: reveal-slide 0.5s ease-out;
+    }
+    @keyframes reveal-slide {
+      0% { transform: translateY(30px); opacity: 0; }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+    .mp-reveal-card .reveal-icon {
+      font-size: 36px;
+      margin-bottom: 8px;
+    }
+    .mp-reveal-card .reveal-name {
+      font-size: 16px;
+      color: #fff;
+      letter-spacing: 2px;
+      font-weight: bold;
+    }
+    .mp-reveal-card .reveal-rarity {
+      font-size: 10px;
+      letter-spacing: 1px;
+      margin-top: 4px;
+    }
+    .mp-reveal-card .reveal-effect {
+      font-size: 11px;
+      color: #ff3355;
+      margin-top: 8px;
+      font-style: italic;
+    }
+    .mp-reveal-card.offensive {
+      border-color: rgba(255, 51, 85, 0.6);
+      background: rgba(255, 51, 85, 0.1);
+      box-shadow: 0 0 30px rgba(255, 51, 85, 0.15);
+    }
+    .mp-reveal-card.defensive {
+      border-color: rgba(0, 240, 255, 0.3);
+      background: rgba(0, 240, 255, 0.03);
+    }
+
+    /* MP game over */
+    #mp-gameover {
+      position: fixed;
+      inset: 0;
+      z-index: 70;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at center, rgba(6, 6, 15, 0.88) 0%, rgba(6, 6, 15, 0.97) 100%);
+      gap: 12px;
+    }
+    #mp-gameover.show { display: flex; }
+
+    .mp-result {
+      font-size: 48px;
+      font-weight: bold;
+      letter-spacing: 6px;
+      text-shadow: 0 0 40px currentColor;
+      animation: result-pop 0.6s ease-out;
+    }
+    .mp-result.win { color: #00ff64; }
+    .mp-result.lose { color: #ff3355; }
+
+    @keyframes result-pop {
+      0% { transform: scale(0.5); opacity: 0; }
+      60% { transform: scale(1.15); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .mp-result-sub {
+      color: #666;
+      font-size: 13px;
+      letter-spacing: 1px;
+    }
+
+    .mp-result-time {
+      font-size: 20px;
+      color: #8b5cf6;
+      margin: 8px 0;
+    }
+
+    .mp-gameover-buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    /* VS indicator during match */
+    #mp-vs-bar {
+      position: fixed;
+      top: max(8px, var(--sa-top));
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 15;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 16px;
+      background: rgba(6, 6, 15, 0.7);
+      border: 1px solid rgba(255, 51, 85, 0.2);
+      border-radius: 20px;
+      font-size: 10px;
+      letter-spacing: 1px;
+    }
+    #mp-vs-bar.show { display: flex; }
+    .vs-label { color: #ff3355; font-weight: bold; }
+    .vs-you, .vs-them { color: #888; }
+
+    /* Waiting for opponent pick */
+    .mp-waiting {
+      color: #666;
+      font-size: 11px;
+      letter-spacing: 1px;
+      animation: waiting-blink 1.5s ease-in-out infinite;
+    }
+    @keyframes waiting-blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
   </style>
 </head>
 <body>
@@ -1642,6 +1963,7 @@
   <div class="best-time" id="start-best"></div>
   <div class="menu-buttons">
     <button class="menu-btn primary" id="btn-start">PLAY</button>
+    <button class="menu-btn multiplayer" id="btn-multiplayer" style="display:none">DEATHMATCH</button>
     <div class="start-hint">Mouse or touch. Try not to cry.</div>
     <div class="menu-secondary">
       <button class="menu-btn" id="btn-howto">HOW TO PLAY</button>
@@ -1720,6 +2042,71 @@
     <div class="lb-title">GLOBAL TOP 100</div>
     <div class="lb-scroll-box" id="go-lb-body"><div class="lb-loading">Loading...</div></div>
   </div>
+</div>
+
+<!-- Multiplayer Lobby -->
+<div id="mp-lobby">
+  <h2>DEATHMATCH</h2>
+  <div id="mp-lobby-create" style="display:flex;flex-direction:column;align-items:center;gap:12px">
+    <button class="menu-btn primary" id="mp-btn-create" style="font-size:16px;padding:14px 48px">CREATE ROOM</button>
+    <div style="color:#444;font-size:11px;letter-spacing:1px">- OR -</div>
+    <div class="mp-lobby-actions">
+      <input type="text" id="mp-join-input" placeholder="ROOM CODE" maxlength="6" autocomplete="off">
+      <button class="menu-btn" id="mp-btn-join">JOIN ROOM</button>
+    </div>
+  </div>
+  <div id="mp-lobby-room" style="display:none;flex-direction:column;align-items:center;gap:8px">
+    <div class="mp-room-code-label">ROOM CODE (share with friend)</div>
+    <div class="mp-room-code" id="mp-room-code">----</div>
+    <div class="mp-players">
+      <div class="mp-player-slot" id="mp-slot-1">
+        <div class="slot-icon">&#x25CB;</div>
+        <div class="slot-label">WAITING</div>
+      </div>
+      <div class="mp-player-slot" id="mp-slot-2">
+        <div class="slot-icon">&#x25CB;</div>
+        <div class="slot-label">WAITING</div>
+      </div>
+    </div>
+    <button class="menu-btn primary" id="mp-btn-ready" style="font-size:14px;padding:12px 40px;display:none">READY</button>
+  </div>
+  <div class="mp-status" id="mp-status"></div>
+  <button class="menu-btn small" id="mp-btn-back">BACK</button>
+</div>
+
+<!-- MP Countdown -->
+<div id="mp-countdown">
+  <div class="countdown-num" id="mp-countdown-num">3</div>
+</div>
+
+<!-- MP Opponent Reveal -->
+<div id="mp-reveal">
+  <div class="mp-reveal-title">OPPONENT PICKED</div>
+  <div class="mp-reveal-card" id="mp-reveal-card">
+    <div class="reveal-icon" id="mp-reveal-icon"></div>
+    <div class="reveal-name" id="mp-reveal-name"></div>
+    <div class="reveal-rarity" id="mp-reveal-rarity"></div>
+    <div class="reveal-effect" id="mp-reveal-effect"></div>
+  </div>
+</div>
+
+<!-- MP VS bar during match -->
+<div id="mp-vs-bar">
+  <span class="vs-you">YOU</span>
+  <span class="vs-label">VS</span>
+  <span class="vs-them">OPPONENT</span>
+</div>
+
+<!-- MP Game Over -->
+<div id="mp-gameover">
+  <div class="mp-result" id="mp-result">YOU WIN</div>
+  <div class="mp-result-sub" id="mp-result-sub"></div>
+  <div class="mp-result-time" id="mp-result-time"></div>
+  <div class="mp-gameover-buttons">
+    <button class="menu-btn" id="mp-btn-rematch">REMATCH</button>
+    <button class="menu-btn" id="mp-btn-menu-mp">MENU</button>
+  </div>
+  <div class="mp-status" id="mp-rematch-status"></div>
 </div>
 
 <!-- Ad Zone Placeholder -->
@@ -2127,6 +2514,18 @@ const EVOLUTION_DEFS = [
     icon: '\u25C8', color: '#ec4899', desc: 'Store a power-up in your pocket. Next pickup fires both at once.' },
   { id: 'extinction', name: 'EXTINCTION', ingredients: ['orbitalGuard', 'thinTheHerd'],
     icon: '\u2604', color: '#06b6d4', desc: '6 orbs of doom. Each kill chokes the spawn rate.' },
+];
+
+// ============================================================
+// Multiplayer Offensive Upgrades (only appear in deathmatch)
+// ============================================================
+const MP_OFFENSIVE_DEFS = [
+  { id: 'mp_biggerTarget',   name: 'BIGGER TARGET',     rarity: 'common',    icon: '\u29BF', desc: "Enemy hitbox grows 20%. They're basically a barn door now.",  offensive: true, effect: 'hitboxScale', value: 1.2 },
+  { id: 'mp_bulletStorm',    name: 'BULLET STORM',      rarity: 'rare',      icon: '\u2602', desc: "Spawn 30% more projectiles on enemy's screen. You're welcome.", offensive: true, effect: 'spawnRateMulti', value: 1.3 },
+  { id: 'mp_velocityCurse',  name: 'VELOCITY CURSE',    rarity: 'rare',      icon: '\u21AF', desc: "Enemy projectiles move 25% faster. Blink and you're dead.", offensive: true, effect: 'projectileSpeedMulti', value: 1.25 },
+  { id: 'mp_slowReflexes',   name: 'SLOW REFLEXES',     rarity: 'common',    icon: '\u231B', desc: "Enemy moves 15% slower. Like playing in honey.", offensive: true, effect: 'moveSpeedMulti', value: 0.85 },
+  { id: 'mp_shrinkZone',     name: 'SHRINK ZONE',       rarity: 'legendary', icon: '\u25A3', desc: "Enemy play area shrinks by 15%. Walls closing in...", offensive: true, effect: 'arenaInset', value: 0.15 },
+  { id: 'mp_homingHex',      name: 'HOMING HEX',        rarity: 'legendary', icon: '\u2316', desc: "20% of enemy projectiles now track them. Nowhere to hide.", offensive: true, effect: 'homingChance', value: 0.2 },
 ];
 
 // ============================================================
@@ -4798,6 +5197,9 @@ class Game {
     document.getElementById('pause-overlay').classList.remove('show');
     this.gameTime = 0;
     this.phase = 0;
+    // MP state reset
+    if (!this.mpMode) { this.mpClient = null; }
+    this._mpOffensivePicked = {};
 
     // Debug: ?phase=N skips to that phase (1-indexed)
     const urlPhase = parseInt(new URLSearchParams(window.location.search).get('phase'));
@@ -4966,6 +5368,8 @@ class Game {
   getPlayerRadius() {
     let r = this.effects.shrink.active ? PLAYER_RADIUS * 0.5 : PLAYER_RADIUS;
     if (this.upgrades.smolSupreme) r *= Math.max(0.35, 0.65 - 0.1 * this.upgrades.smolSupreme);
+    // MP debuff: opponent's BIGGER TARGET card
+    if (this.mpClient) r *= this.mpClient.debuffs.hitboxScale;
     return r;
   }
 
@@ -5054,18 +5458,41 @@ class Game {
 
   generateUpgradeCards() {
     const available = this.getAvailableUpgrades();
-    if (available.length === 0) return [];
+    // In MP mode, mix in offensive cards that haven't been picked yet
+    let mpPool = [];
+    if (this.mpMode) {
+      mpPool = MP_OFFENSIVE_DEFS.filter(d => !(this._mpOffensivePicked || {})[d.id]);
+    }
+    const allAvailable = [...available, ...mpPool];
+    if (allAvailable.length === 0) return [];
     const chosen = [];
     const usedIds = new Set();
-    const count = Math.min(3, available.length);
+    const count = Math.min(3, allAvailable.length);
     for (let i = 0; i < count; i++) {
-      const remaining = available.filter(u => !usedIds.has(u.id));
-      const rarity = this.rollUpgradeRarity(remaining);
-      const pool = remaining.filter(u => u.rarity === rarity);
-      // If rarity pool exhausted, pick from any remaining
+      const remaining = allAvailable.filter(u => !usedIds.has(u.id));
+      // In MP mode: ~40% chance to offer an offensive card per slot
+      if (this.mpMode && Math.random() < 0.4) {
+        const offPool = remaining.filter(u => u.offensive);
+        if (offPool.length > 0) {
+          const pick = offPool[Math.floor(Math.random() * offPool.length)];
+          chosen.push(pick);
+          usedIds.add(pick.id);
+          continue;
+        }
+      }
+      const regRemaining = remaining.filter(u => !u.offensive);
+      if (regRemaining.length === 0 && remaining.length > 0) {
+        const pick = remaining[Math.floor(Math.random() * remaining.length)];
+        chosen.push(pick);
+        usedIds.add(pick.id);
+        continue;
+      }
+      if (regRemaining.length === 0) break;
+      const rarity = this.rollUpgradeRarity(regRemaining);
+      const pool = regRemaining.filter(u => u.rarity === rarity);
       const pick = pool.length > 0
         ? pool[Math.floor(Math.random() * pool.length)]
-        : remaining[Math.floor(Math.random() * remaining.length)];
+        : regRemaining[Math.floor(Math.random() * regRemaining.length)];
       chosen.push(pick);
       usedIds.add(pick.id);
     }
@@ -5075,6 +5502,9 @@ class Game {
   showUpgradeCards() {
     const cards = this.generateUpgradeCards();
     this._currentCards = cards;
+    // Update title for MP mode
+    const titleEl = document.querySelector('.upgrade-title');
+    if (titleEl) titleEl.textContent = this.mpMode ? 'CHOOSE YOUR UPGRADE (BOTH PLAYERS PICKING)' : 'CHOOSE YOUR UPGRADE';
     if (cards.length === 0) {
       this.dismissUpgradeOverlay();
       return;
@@ -5083,27 +5513,33 @@ class Game {
     container.innerHTML = '';
     for (const card of cards) {
       const el = document.createElement('div');
-      const currentLvl = this.upgrades[card.id] || 0;
+      const isOffensive = !!card.offensive;
+      const currentLvl = isOffensive ? 0 : (this.upgrades[card.id] || 0);
       const nextLvl = currentLvl + 1;
-      el.className = 'upgrade-card' + (card.rarity === 'legendary' ? ' legendary' : '');
-      el.style.setProperty('--rarity-color', RARITY_COLORS[card.rarity]);
+      el.className = 'upgrade-card'
+        + (card.rarity === 'legendary' ? ' legendary' : '')
+        + (isOffensive ? ' offensive' : '');
+      el.style.setProperty('--rarity-color', isOffensive ? '#ff3355' : RARITY_COLORS[card.rarity]);
       // Check if this card is one pick away from an evolution
       let evoHint = '';
-      for (const evo of EVOLUTION_DEFS) {
-        if (this.evolutions[evo.id]) continue;
-        const idx = evo.ingredients.indexOf(card.id);
-        if (idx === -1) continue;
-        const partner = evo.ingredients[1 - idx];
-        if (this.upgrades[partner]) {
-          evoHint = `<div class="card-evo-hint" style="color:${evo.color}">${evo.icon} \u2192 ${evo.name}</div>`;
-          break;
+      if (!isOffensive) {
+        for (const evo of EVOLUTION_DEFS) {
+          if (this.evolutions[evo.id]) continue;
+          const idx = evo.ingredients.indexOf(card.id);
+          if (idx === -1) continue;
+          const partner = evo.ingredients[1 - idx];
+          if (this.upgrades[partner]) {
+            evoHint = `<div class="card-evo-hint" style="color:${evo.color}">${evo.icon} \u2192 ${evo.name}</div>`;
+            break;
+          }
         }
       }
+      const levelLabel = isOffensive ? '<div class="card-level" style="color:#ff3355">ATTACK</div>' : `<div class="card-level">Lv.${nextLvl}</div>`;
       el.innerHTML = `
-        <div class="card-level">Lv.${nextLvl}</div>
+        ${levelLabel}
         <div class="card-icon">${card.icon}</div>
         <div class="card-name">${card.name}</div>
-        <div class="card-rarity">${card.rarity}</div>
+        <div class="card-rarity">${isOffensive ? 'OFFENSIVE' : card.rarity}</div>
         <div class="card-desc">${card.desc}</div>
         ${evoHint}
       `;
@@ -5151,18 +5587,36 @@ class Game {
     // Prevent double-selection during animation
     if (this._upgradeSelecting) return;
     this._upgradeSelecting = true;
-    this.upgrades[id] = (this.upgrades[id] || 0) + 1;
+
+    // Check if this is an offensive MP card
+    const isOffensive = MP_OFFENSIVE_DEFS.some(d => d.id === id);
+    if (isOffensive) {
+      // Mark as picked so it won't appear again
+      if (!this._mpOffensivePicked) this._mpOffensivePicked = {};
+      this._mpOffensivePicked[id] = true;
+    } else {
+      this.upgrades[id] = (this.upgrades[id] || 0) + 1;
+      // Apply upgrade
+      this.applyUpgrade(id);
+      // Check for evolution combos
+      this.checkEvolutions();
+    }
+
+    // Send to MP server
+    if (this.mpMode && this.mpClient) {
+      this.mpClient.sendUpgradePick(id);
+    }
+
     // Animate selection
     selectedEl.classList.add('selected');
     const allCards = document.querySelectorAll('.upgrade-card');
     allCards.forEach(c => { if (c !== selectedEl) c.classList.add('dismissed'); });
-    // Apply upgrade
-    this.applyUpgrade(id);
-    // Check for evolution combos
-    this.checkEvolutions();
+
     // Sound + announce
     soundEngine.playCollect();
-    const def = UPGRADE_DEFS.find(u => u.id === id);
+    const def = isOffensive
+      ? MP_OFFENSIVE_DEFS.find(u => u.id === id)
+      : UPGRADE_DEFS.find(u => u.id === id);
     if (def) {
       const lvl = this.upgrades[id] || 1;
       const el = document.getElementById('pickup-announce');
@@ -5194,9 +5648,18 @@ class Game {
       }).then(() => {}).catch(() => {}); // fire-and-forget
     }
     // Update upgrade bar icon
-    this.addUpgradeBarIcon(id);
-    // Dismiss after a beat
-    setTimeout(() => this.dismissUpgradeOverlay(), 500);
+    if (!isOffensive) this.addUpgradeBarIcon(id);
+    // In MP mode: don't dismiss immediately, wait for server reveal
+    if (this.mpMode) {
+      setTimeout(() => {
+        // Replace cards with "waiting for opponent" message
+        const container = document.getElementById('upgrade-cards');
+        container.innerHTML = '<div class="mp-waiting">WAITING FOR OPPONENT...</div>';
+      }, 500);
+    } else {
+      // Dismiss after a beat
+      setTimeout(() => this.dismissUpgradeOverlay(), 500);
+    }
   }
 
   // Upgrade bar: add or update icon for picked upgrade
@@ -5681,6 +6144,8 @@ class Game {
     const prevX = this.player.x;
     const prevY = this.player.y;
     let lerp = PLAYER_LERP;
+    // MP debuff: SLOW REFLEXES reduces movement speed
+    if (this.mpClient) lerp *= this.mpClient.debuffs.moveSpeedMulti;
     // ECHO: record position buffer and manage ghost replay
     if (this.upgrades.echo) {
       this.echoBuffer.push({ x: this.player.x, y: this.player.y });
@@ -5751,8 +6216,10 @@ class Game {
 
     const pr = this.getPlayerRadius();
     const sa = this.safeArea;
-    this.player.x = Math.max(pr + sa.left, Math.min(this.w - pr - sa.right, this.player.x));
-    this.player.y = Math.max(pr + sa.top, Math.min(this.h - pr - sa.bottom, this.player.y));
+    // MP debuff: SHRINK ZONE reduces play area
+    const mpInset = this.mpClient ? this.mpClient.debuffs.arenaInset * Math.min(this.w, this.h) * 0.5 : 0;
+    this.player.x = Math.max(pr + sa.left + mpInset, Math.min(this.w - pr - sa.right - mpInset, this.player.x));
+    this.player.y = Math.max(pr + sa.top + mpInset, Math.min(this.h - pr - sa.bottom - mpInset, this.player.y));
 
     this.brain.trackPosition(this.player.x, this.player.y, this.gameTime * 1000, this.w, this.h);
     this.updateThreatLevel(dt);
@@ -5817,7 +6284,10 @@ class Game {
     // --- Spawn projectiles ---
     if (this.spawnTimer <= 0 && this.phaseAnnounceTimer <= 0 && this.bossAnnounceTimer <= 0) {
       this.spawnWarnings();
-      this.spawnTimer = this.getPhaseDef().spawnRate;
+      let sr = this.getPhaseDef().spawnRate;
+      // MP debuff: BULLET STORM makes projectiles spawn faster
+      if (this.mpClient) sr /= this.mpClient.debuffs.spawnRateMulti;
+      this.spawnTimer = sr;
     }
 
     // --- Warnings -> projectiles ---
@@ -7382,7 +7852,15 @@ class Game {
     const dx = targetX - warning.x;
     const dy = targetY - warning.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-    const speed = def.speed;
+    let speed = def.speed;
+    // MP debuff: VELOCITY CURSE makes projectiles faster
+    if (this.mpClient) speed *= this.mpClient.debuffs.projectileSpeedMulti;
+
+    // MP debuff: HOMING HEX forces some projectiles to track
+    let isHomingFinal = isHoming;
+    if (!isHomingFinal && this.mpClient && this.mpClient.debuffs.homingChance > 0) {
+      if (this.rng() < this.mpClient.debuffs.homingChance) isHomingFinal = true;
+    }
 
     // Determine special type
     let type = 'normal';
@@ -7396,7 +7874,7 @@ class Game {
     else if (typeRoll < def.splitterChance + def.bouncerChance + def.waveChance + def.accelChance + def.spiralChance + def.clusterChance + def.mineChance) type = 'mine';
 
     let color = def.color;
-    if (isHoming) color = '#ffaa00';
+    if (isHomingFinal) color = '#ffaa00';
     else if (type === 'splitter') color = '#ff69b4';
     else if (type === 'bouncer') color = '#00ff88';
     else if (type === 'wave') color = '#a78bfa';
@@ -7405,7 +7883,7 @@ class Game {
     else if (type === 'cluster') color = '#ff8800';
     else if (type === 'mine') color = '#ff0066';
 
-    const opts = { homing: isHoming, type };
+    const opts = { homing: isHomingFinal, type };
     if (type === 'cluster') opts.fuseTime = 0.8 + this.rng() * 0.4;
     if (type === 'mine') { opts.travelTime = 0.5; opts.dwellTime = 2.0 + this.rng() * 1.0; }
     const proj = new Projectile(
@@ -7596,6 +8074,13 @@ class Game {
     }
 
     this.renderDeathFrame();
+
+    // In MP mode, notify server and let MP handle game over
+    if (this.mpMode && this.mpClient) {
+      this.mpClient.sendDeath(this.gameTime);
+      // Don't show regular game over — MP overlay handles it
+      return;
+    }
 
     const currentBests = loadBests();
     const currentBest = currentBests.length > 0 ? currentBests[0].time : 0;
@@ -7943,6 +8428,22 @@ class Game {
         ctx.stroke();
       }
     }
+    // MP debuff: SHRINK ZONE visual
+    if (this.mpClient && this.mpClient.debuffs.arenaInset > 0) {
+      const mi = this.mpClient.debuffs.arenaInset * Math.min(w, h) * 0.5;
+      ctx.fillStyle = 'rgba(255, 51, 85, 0.06)';
+      ctx.fillRect(0, 0, w, mi);
+      ctx.fillRect(0, h - mi, w, mi);
+      ctx.fillRect(0, mi, mi, h - mi * 2);
+      ctx.fillRect(w - mi, mi, mi, h - mi * 2);
+      const pulse = 0.3 + Math.sin(this.gameTime * 3) * 0.15;
+      ctx.strokeStyle = `rgba(255, 51, 85, ${pulse})`;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 4]);
+      ctx.strokeRect(mi, mi, w - mi * 2, h - mi * 2);
+      ctx.setLineDash([]);
+    }
+
     // Dead zones (with warning phase)
     for (const dz of this.deadZones) {
       const wobble = Math.sin(this.gameTime * 3 + dz.x) * 3;
@@ -8967,6 +9468,513 @@ window.addEventListener('beforeunload', () => {
     trackGA('session_end', { games_played: _sessionGamesPlayed });
   }
 });
+
+// ============================================================
+// Multiplayer Client
+// ============================================================
+const MP_SERVER_URL = 'wss://dodge-ai-mp.fly.dev';
+const MP_DEV_URL = 'ws://127.0.0.1:1999';
+
+class MultiplayerClient {
+  constructor() {
+    this.ws = null;
+    this.roomId = null;
+    this.myId = null;
+    this.active = false;
+    this.phase = 'disconnected'; // disconnected | lobby | countdown | playing | upgrading | reveal | gameover
+    // Offensive debuffs applied to us by opponent
+    this.debuffs = {
+      hitboxScale: 1,
+      spawnRateMulti: 1,
+      projectileSpeedMulti: 1,
+      moveSpeedMulti: 1,
+      arenaInset: 0,
+      homingChance: 0,
+    };
+    this._upgradePickSent = false;
+    this._setupUI();
+  }
+
+  _getServerUrl() {
+    // Use local dev server if on localhost
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+      return MP_DEV_URL;
+    }
+    return MP_SERVER_URL;
+  }
+
+  _setupUI() {
+    // Multiplayer button on start screen
+    document.getElementById('btn-multiplayer').addEventListener('click', () => {
+      document.getElementById('start-screen').classList.add('hidden');
+      document.getElementById('mp-lobby').classList.add('show');
+      document.getElementById('mp-lobby-create').style.display = 'flex';
+      document.getElementById('mp-lobby-room').style.display = 'none';
+      this._setStatus('');
+    });
+
+    // Create room
+    document.getElementById('mp-btn-create').addEventListener('click', () => {
+      this._createRoom();
+    });
+
+    // Join room
+    document.getElementById('mp-btn-join').addEventListener('click', () => {
+      const code = document.getElementById('mp-join-input').value.trim().toUpperCase();
+      if (code.length < 4) {
+        this._setStatus('Enter a room code', true);
+        return;
+      }
+      this._joinRoom(code);
+    });
+
+    // Enter key on input
+    document.getElementById('mp-join-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('mp-btn-join').click();
+    });
+
+    // Ready button
+    document.getElementById('mp-btn-ready').addEventListener('click', () => {
+      this._send({ type: 'ready' });
+      document.getElementById('mp-btn-ready').style.display = 'none';
+      this._setStatus('Waiting for opponent...');
+    });
+
+    // Back button
+    document.getElementById('mp-btn-back').addEventListener('click', () => {
+      this._disconnect();
+      if (window._game) {
+        window._game.mpMode = false;
+        window._game.mpClient = null;
+      }
+      document.getElementById('mp-lobby').classList.remove('show');
+      document.getElementById('start-screen').classList.remove('hidden');
+    });
+
+    // Rematch
+    document.getElementById('mp-btn-rematch').addEventListener('click', () => {
+      this._send({ type: 'rematch' });
+      document.getElementById('mp-btn-rematch').style.display = 'none';
+      document.getElementById('mp-rematch-status').textContent = 'Waiting for opponent...';
+    });
+
+    // Menu from MP gameover
+    document.getElementById('mp-btn-menu-mp').addEventListener('click', () => {
+      this._disconnect();
+      if (window._game) {
+        window._game.mpMode = false;
+        window._game.mpClient = null;
+      }
+      document.getElementById('mp-gameover').classList.remove('show');
+      document.getElementById('start-screen').classList.remove('hidden');
+    });
+  }
+
+  _generateRoomCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 5; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  }
+
+  _createRoom() {
+    const code = this._generateRoomCode();
+    this._joinRoom(code);
+  }
+
+  _joinRoom(roomId) {
+    this.roomId = roomId;
+    this._setStatus('Connecting...');
+
+    const url = `${this._getServerUrl()}/room/${roomId}`;
+    try {
+      this.ws = new WebSocket(url);
+    } catch (e) {
+      this._setStatus('Connection failed. Try again.', true);
+      return;
+    }
+
+    this.ws.onopen = () => {
+      this.active = true;
+      this.phase = 'lobby';
+      this._send({ type: 'join' });
+    };
+
+    this.ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        this._handleMessage(msg);
+      } catch {}
+    };
+
+    this.ws.onerror = () => {
+      this._setStatus('Connection error. Check your internet.', true);
+    };
+
+    this.ws.onclose = () => {
+      if (this.active && this.phase === 'playing') {
+        // Opponent disconnected mid-game
+        this._showMPGameOver(true, 0, 'Opponent disconnected');
+      }
+      this.active = false;
+    };
+  }
+
+  _disconnect() {
+    this.active = false;
+    this.phase = 'disconnected';
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+    this.roomId = null;
+    this._resetDebuffs();
+    // Clean up any visible MP overlays
+    document.getElementById('mp-countdown').classList.remove('show');
+    document.getElementById('mp-reveal').classList.remove('show');
+    document.getElementById('mp-vs-bar').classList.remove('show');
+  }
+
+  _send(msg) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(msg));
+    }
+  }
+
+  _setStatus(text, isError = false) {
+    const el = document.getElementById('mp-status');
+    el.textContent = text;
+    el.className = 'mp-status' + (isError ? ' error' : '');
+  }
+
+  _resetDebuffs() {
+    this.debuffs = {
+      hitboxScale: 1,
+      spawnRateMulti: 1,
+      projectileSpeedMulti: 1,
+      moveSpeedMulti: 1,
+      arenaInset: 0,
+      homingChance: 0,
+    };
+  }
+
+  _handleMessage(msg) {
+    switch (msg.type) {
+      case 'room_full':
+        this._setStatus('Room is full. Try a different code.', true);
+        break;
+
+      case 'room_state':
+        this.myId = null; // server assigns ID via connection
+        this._showLobbyRoom(msg.roomId, msg.playerCount);
+        break;
+
+      case 'player_joined':
+        this._updateSlots(msg.playerCount);
+        this._setStatus('Player joined!');
+        // Show ready button when 2 players
+        if (msg.playerCount >= 2) {
+          document.getElementById('mp-btn-ready').style.display = 'block';
+        }
+        break;
+
+      case 'player_left':
+        this._updateSlots(msg.playerCount);
+        if (this.phase === 'lobby') {
+          this._setStatus('Opponent left. Waiting for player...');
+          document.getElementById('mp-btn-ready').style.display = 'none';
+        }
+        break;
+
+      case 'player_ready':
+        this._setStatus('Opponent is ready!');
+        break;
+
+      case 'countdown':
+        this._showCountdown(msg.seconds);
+        break;
+
+      case 'start':
+        this._startMPGame();
+        break;
+
+      case 'upgrade_freeze':
+        this._handleUpgradeFreeze(msg.round);
+        break;
+
+      case 'upgrade_reveal':
+        this._handleUpgradeReveal(msg.opponentPick);
+        break;
+
+      case 'resume':
+        this._handleResume();
+        break;
+
+      case 'you_win':
+        this._showMPGameOver(true, msg.opponentTime);
+        break;
+
+      case 'you_lose':
+        this._showMPGameOver(false, msg.yourTime);
+        break;
+
+      case 'rematch_vote':
+        document.getElementById('mp-rematch-status').textContent =
+          `Rematch: ${msg.count}/${msg.needed}`;
+        break;
+
+      case 'rematch_start':
+        this._resetDebuffs();
+        document.getElementById('mp-gameover').classList.remove('show');
+        // Go back to lobby ready state
+        this.phase = 'lobby';
+        document.getElementById('mp-lobby').classList.add('show');
+        document.getElementById('mp-lobby-create').style.display = 'none';
+        document.getElementById('mp-lobby-room').style.display = 'flex';
+        document.getElementById('mp-btn-ready').style.display = 'block';
+        document.getElementById('mp-rematch-status').textContent = '';
+        document.getElementById('mp-btn-rematch').style.display = 'block';
+        this._setStatus('Rematch! Hit READY when you are.');
+        break;
+
+      case 'opponent_died':
+        // Handled by you_win
+        break;
+    }
+  }
+
+  _showLobbyRoom(roomId, playerCount) {
+    document.getElementById('mp-lobby-create').style.display = 'none';
+    const roomSection = document.getElementById('mp-lobby-room');
+    roomSection.style.display = 'flex';
+    document.getElementById('mp-room-code').textContent = roomId;
+
+    this._playerCount = playerCount || 1;
+    this._setStatus(this._playerCount < 2 ? 'Share the code with your friend!' : 'Both players in. Hit READY!');
+
+    if (this._playerCount >= 2) {
+      document.getElementById('mp-btn-ready').style.display = 'block';
+    }
+
+    this._updateSlotsByCount(this._playerCount);
+  }
+
+  _updateSlots(count) {
+    this._playerCount = count;
+    this._updateSlotsByCount(count);
+  }
+
+  _updateSlotsByCount(count) {
+    const slot1 = document.getElementById('mp-slot-1');
+    const slot2 = document.getElementById('mp-slot-2');
+
+    slot1.className = 'mp-player-slot filled';
+    slot1.querySelector('.slot-icon').textContent = '\u25CF';
+    slot1.querySelector('.slot-label').textContent = 'YOU';
+
+    if (count >= 2) {
+      slot2.className = 'mp-player-slot filled';
+      slot2.querySelector('.slot-icon').textContent = '\u25CF';
+      slot2.querySelector('.slot-label').textContent = 'OPPONENT';
+    } else {
+      slot2.className = 'mp-player-slot';
+      slot2.querySelector('.slot-icon').textContent = '\u25CB';
+      slot2.querySelector('.slot-label').textContent = 'WAITING';
+    }
+  }
+
+  _showCountdown(seconds) {
+    this.phase = 'countdown';
+    document.getElementById('mp-lobby').classList.remove('show');
+    const overlay = document.getElementById('mp-countdown');
+    const num = document.getElementById('mp-countdown-num');
+    overlay.classList.add('show');
+    num.textContent = seconds;
+    // Re-trigger animation
+    num.style.animation = 'none';
+    num.offsetHeight; // force reflow
+    num.style.animation = 'countdown-pop 0.8s ease-out';
+
+    if (seconds <= 0) {
+      overlay.classList.remove('show');
+    }
+  }
+
+  _startMPGame() {
+    this.phase = 'playing';
+    this._upgradePickSent = false;
+    document.getElementById('mp-countdown').classList.remove('show');
+    document.getElementById('mp-lobby').classList.remove('show');
+    document.getElementById('mp-vs-bar').classList.add('show');
+
+    // Start the game via the existing game object
+    if (window._game) {
+      window._game.mpMode = true;
+      window._game.mpClient = this;
+      window._game.start();
+    }
+  }
+
+  _handleUpgradeFreeze(round) {
+    this.phase = 'upgrading';
+    this._upgradePickSent = false;
+    // The game's own upgrade timer will handle the freeze visually
+    // But we need to FORCE a freeze now if the timer hasn't triggered yet
+    if (window._game && window._game.running) {
+      window._game.upgradeTimer = 0; // force trigger on next update tick
+    }
+  }
+
+  _handleUpgradeReveal(opponentPick) {
+    this.phase = 'reveal';
+    // Dismiss the upgrade overlay
+    const upgradeOverlay = document.getElementById('upgrade-overlay');
+    if (upgradeOverlay) upgradeOverlay.classList.remove('show');
+    if (!opponentPick) return;
+
+    const overlay = document.getElementById('mp-reveal');
+    const card = document.getElementById('mp-reveal-card');
+    document.getElementById('mp-reveal-icon').textContent = opponentPick.cardIcon;
+    document.getElementById('mp-reveal-name').textContent = opponentPick.cardName;
+    document.getElementById('mp-reveal-rarity').textContent = opponentPick.cardRarity.toUpperCase();
+    document.getElementById('mp-reveal-rarity').style.color = RARITY_COLORS[opponentPick.cardRarity] || '#888';
+
+    if (opponentPick.isOffensive) {
+      card.className = 'mp-reveal-card offensive';
+      document.getElementById('mp-reveal-effect').textContent =
+        opponentPick.offensiveDesc || 'Targeting YOU';
+      document.getElementById('mp-reveal-effect').style.display = 'block';
+      // Apply the debuff
+      this._applyOffensiveCard(opponentPick);
+    } else {
+      card.className = 'mp-reveal-card defensive';
+      document.getElementById('mp-reveal-effect').textContent = '';
+      document.getElementById('mp-reveal-effect').style.display = 'none';
+    }
+
+    overlay.classList.add('show');
+    // Re-trigger animation
+    card.style.animation = 'none';
+    card.offsetHeight;
+    card.style.animation = 'reveal-slide 0.5s ease-out';
+  }
+
+  _applyOffensiveCard(pick) {
+    // Find the offensive def
+    const def = MP_OFFENSIVE_DEFS.find(d => d.id === pick.cardId);
+    if (!def) return;
+
+    // Stack the debuff
+    switch (def.effect) {
+      case 'hitboxScale':
+        this.debuffs.hitboxScale *= def.value;
+        break;
+      case 'spawnRateMulti':
+        this.debuffs.spawnRateMulti *= def.value;
+        break;
+      case 'projectileSpeedMulti':
+        this.debuffs.projectileSpeedMulti *= def.value;
+        break;
+      case 'moveSpeedMulti':
+        this.debuffs.moveSpeedMulti *= def.value;
+        break;
+      case 'arenaInset':
+        this.debuffs.arenaInset = Math.min(0.4, this.debuffs.arenaInset + def.value);
+        break;
+      case 'homingChance':
+        this.debuffs.homingChance = Math.min(0.6, this.debuffs.homingChance + def.value);
+        break;
+    }
+  }
+
+  _handleResume() {
+    this.phase = 'playing';
+    document.getElementById('mp-reveal').classList.remove('show');
+    // Trigger the game's dismiss/return-to-dot flow
+    if (window._game) {
+      window._game.dismissUpgradeOverlay();
+    }
+  }
+
+  _showMPGameOver(isWin, time, subtitle) {
+    this.phase = 'gameover';
+
+    // Stop the game if still running
+    if (window._game && window._game.running) {
+      window._game.running = false;
+      window._game.canvas.classList.remove('active');
+      soundEngine.stopMusic();
+    }
+
+    document.getElementById('mp-vs-bar').classList.remove('show');
+    document.getElementById('mp-reveal').classList.remove('show');
+    document.getElementById('mp-countdown').classList.remove('show');
+    // Hide the single-player game over if showing
+    document.getElementById('gameover-screen').classList.remove('show');
+    // Hide upgrade overlay if showing
+    const upgradeOverlay = document.getElementById('upgrade-overlay');
+    if (upgradeOverlay) upgradeOverlay.classList.remove('show');
+
+    const resultEl = document.getElementById('mp-result');
+    resultEl.textContent = isWin ? 'YOU WIN' : 'YOU LOSE';
+    resultEl.className = 'mp-result ' + (isWin ? 'win' : 'lose');
+
+    document.getElementById('mp-result-sub').textContent =
+      subtitle || (isWin ? 'Opponent died first. Get rekt.' : 'You died. Tragic.');
+
+    if (time > 0) {
+      document.getElementById('mp-result-time').textContent =
+        isWin ? `They lasted ${time.toFixed(1)}s` : `You lasted ${time.toFixed(1)}s`;
+    } else {
+      document.getElementById('mp-result-time').textContent = '';
+    }
+
+    document.getElementById('mp-btn-rematch').style.display = 'block';
+    document.getElementById('mp-rematch-status').textContent = '';
+    document.getElementById('mp-gameover').classList.add('show');
+  }
+
+  // Called by game when player picks an upgrade in MP mode
+  sendUpgradePick(upgradeId) {
+    if (this._upgradePickSent) return;
+    this._upgradePickSent = true;
+
+    // Check if it's an offensive card
+    const offDef = MP_OFFENSIVE_DEFS.find(d => d.id === upgradeId);
+    const regDef = UPGRADE_DEFS.find(d => d.id === upgradeId);
+    const def = offDef || regDef;
+    if (!def) return;
+
+    const pick = {
+      cardId: def.id,
+      cardName: def.name,
+      cardIcon: def.icon,
+      cardRarity: def.rarity,
+      isOffensive: !!offDef,
+      offensiveDesc: offDef ? def.desc : undefined,
+    };
+
+    this._send({ type: 'upgrade_pick', pick });
+  }
+
+  // Called by game when player dies in MP mode
+  sendDeath(gameTime) {
+    this._send({ type: 'died', gameTime });
+  }
+
+  // Check if multiplayer is active
+  isActive() {
+    return this.active && this.phase !== 'disconnected';
+  }
+}
+
+// Global multiplayer client
+const mpClient = new MultiplayerClient();
+
+// Show DEATHMATCH button only with ?mp=1
+if (new URLSearchParams(window.location.search).get('mp') === '1') {
+  document.getElementById('btn-multiplayer').style.display = '';
+}
 
 // Boot
 const game = new Game();
