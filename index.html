@@ -2115,7 +2115,7 @@
   <div class="start-hint">Mouse or touch. Try not to cry.</div>
   <div class="menu-buttons">
     <button class="menu-btn primary" id="btn-start">PLAY</button>
-    <button class="menu-btn multiplayer" id="btn-multiplayer" style="display:none">MULTIPLAYER</button>
+    <button class="menu-btn multiplayer" id="btn-multiplayer">MULTIPLAYER <span style="font-size:9px;background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:4px;margin-left:6px;vertical-align:middle;letter-spacing:1px">BETA</span></button>
     <button class="menu-btn uniform" id="btn-howto">HOW TO PLAY</button>
     <button class="menu-btn uniform" id="btn-leaderboard">LEADERBOARD</button>
     <button class="menu-btn uniform" id="btn-stats">STATS</button>
@@ -10870,10 +10870,7 @@ class MultiplayerClient {
 // Global multiplayer client
 const mpClient = new MultiplayerClient();
 
-// Show MULTIPLAYER button only with ?mp=1
-if (new URLSearchParams(window.location.search).get('mp') === '1') {
-  document.getElementById('btn-multiplayer').style.display = '';
-}
+// Multiplayer is now available to all users
 
 // Boot
 const game = new Game();
