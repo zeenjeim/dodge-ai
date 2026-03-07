@@ -45,10 +45,11 @@
     "gamePlatform": ["Web Browser"],
     "operatingSystem": "Any",
     "applicationCategory": "Game",
-    "playMode": "SinglePlayer",
+    "playMode": ["SinglePlayer", "MultiPlayer"],
     "numberOfPlayers": {
       "@type": "QuantitativeValue",
-      "value": 1
+      "minValue": 1,
+      "maxValue": 2
     },
     "offers": {
       "@type": "Offer",
@@ -8919,7 +8920,10 @@ class Game {
     // CTA at bottom
     ctx.font = '18px "Courier New", monospace';
     ctx.fillStyle = '#444444';
-    ctx.fillText('Think you can survive longer?', 60, 580);
+    ctx.fillText('Think you can survive longer?', 60, 570);
+    ctx.font = 'bold 18px "Courier New", monospace';
+    ctx.fillStyle = '#00f0ff';
+    ctx.fillText('dodge-ai.com', 60, 598);
 
     return card;
   }
@@ -8941,7 +8945,7 @@ class Game {
       this.bossesDefeated > 0 ? `Bosses demolished: ${this.bossesDefeated}` : '',
       `The AI thinks it knows me (${this.brain.getConfidence()}% confident)`,
       '',
-      'Think you can last longer?',
+      'Think you can last longer? https://dodge-ai.com',
     ].filter(Boolean).join('\n');
 
     // Convert card to blob and share
