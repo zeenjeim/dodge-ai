@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://dodge-ai.com/sitemap.xml
