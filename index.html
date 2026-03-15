@@ -10752,21 +10752,23 @@ class MultiplayerClient {
       evoEl.querySelector('.evo-result')?.classList.remove('reveal', 'dismiss');
       evoEl.querySelector('.evo-particles') && (evoEl.querySelector('.evo-particles').innerHTML = '');
     }
-    // If player didn't return to dot during reveal, snap to their mouse position
-    if (window._game && window._game.returnToDot) {
-      const g = window._game;
-      const snapX = g._lastInputX != null ? g._lastInputX : g.player.x;
-      const snapY = g._lastInputY != null ? g._lastInputY : g.player.y;
-      g.returnToDot = false;
-      g.returnDotPos = null;
-      g.inputFrozenTimer = 0;
-      g.targetX = snapX;
-      g.targetY = snapY;
-      g.canvas.style.cursor = 'none';
-    }
-    // Unfreeze the game
+    // Unfreeze input and snap player position on resume
     if (window._game) {
-      window._game.dismissUpgradeOverlay();
+      const g = window._game;
+      if (g.returnToDot) {
+        // Player didn't return to dot during reveal — snap to their mouse position
+        const snapX = g._lastInputX != null ? g._lastInputX : g.player.x;
+        const snapY = g._lastInputY != null ? g._lastInputY : g.player.y;
+        g.returnToDot = false;
+        g.returnDotPos = null;
+        g.targetX = snapX;
+        g.targetY = snapY;
+      }
+      // Always reset input freeze — returning to dot in MP only clears the visual,
+      // not the timer, so we must reset it here regardless
+      g.inputFrozenTimer = 0;
+      g.canvas.style.cursor = 'none';
+      g.dismissUpgradeOverlay();
     }
   }
 
