@@ -2420,7 +2420,7 @@ async function submitScore(name, time_s, phase, dodges, bosses) {
   const row = {
     name: name.trim().slice(0, 20),
     time_s: parseFloat(time_s.toFixed(1)),
-    phase: Math.min(phase || 1, PHASE_DEFS.length),
+    phase: phase || 1,
     dodges: dodges || 0,
     bosses: bosses || 0
   };
