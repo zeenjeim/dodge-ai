@@ -2633,23 +2633,23 @@ const RARITY_COLORS = { common: '#9ca3af', rare: '#3b82f6', legendary: '#facc15'
 
 const UPGRADE_DEFS = [
   // --- COMMON (passive, simple stat boosts) ---
-  { id: 'echo',           name: 'ECHO',              rarity: 'common',    icon: '\u25CC', desc: "Every 10s, a ghost replays your last 2s of movement, destroying projectiles." },
-  { id: 'smolSupreme',    name: 'SMOL SUPREME',      rarity: 'common',    icon: '\u25CE', desc: "40% smaller hitbox. Hard to hit, harder to see." },
+  { id: 'echo',           name: 'ECHO',              rarity: 'common',    icon: '\u25CC', desc: "Every 7s, a ghost replays your movement, destroying anything it touches." },
+  { id: 'smolSupreme',    name: 'SMOL SUPREME',      rarity: 'common',    icon: '\u25CE', desc: "45% smaller hitbox + faster movement. Tiny and twitchy." },
   { id: 'lootGoblin',     name: 'LOOT GOBLIN',       rarity: 'common',    icon: '\u25C8', desc: "Power-ups spawn 40% faster." },
   { id: 'magnetize',      name: 'FORCE PULL',        rarity: 'common',    icon: '\u27D0', desc: "Pull power-ups toward you. Nearby ones glow." },
   { id: 'fortress',       name: 'FORTRESS',          rarity: 'common',    icon: '\u25B3', desc: "50% bigger shield, twice as strong." },
   { id: 'radiance',       name: 'RADIANCE',          rarity: 'common',    icon: '\u2600', desc: "Random projectiles spontaneously combust." },
   { id: 'cometTrail',     name: 'COMET TRAIL',       rarity: 'common',    icon: '\u2604', desc: "Leave a trail that burns projectiles." },
   { id: 'dodgeInstinct',  name: 'DODGE INSTINCT',    rarity: 'common',    icon: '\u25C6', desc: "20% chance to phase through a hit." },
-  { id: 'denseCore',      name: 'DENSE CORE',        rarity: 'common',    icon: '\u2299', desc: "Black holes pull 40% harder and last 1s longer." },
-  { id: 'burnout',         name: 'OVERDRIVE',          rarity: 'common',    icon: '\u2BC0', desc: "Move fast to build heat. Sharp turns release a blast around you." },
-  { id: 'decoy',           name: 'DECOY',             rarity: 'common',    icon: '\u2662', desc: "Spawn a hologram every 8s that attracts projectiles for 3s." },
+  { id: 'denseCore',      name: 'DENSE CORE',        rarity: 'common',    icon: '\u2299', desc: "Nearby projectiles curve away from you. Black holes pull harder too." },
+  { id: 'burnout',         name: 'OVERDRIVE',          rarity: 'common',    icon: '\u2BC0', desc: "Build heat while moving. Quick turns unleash a massive blast." },
+  { id: 'decoy',           name: 'DECOY',             rarity: 'common',    icon: '\u2662', desc: "Deploy a hologram every 5.5s that magnetically pulls all projectiles." },
   { id: 'gravityWell',     name: 'GRAVITY WELL',      rarity: 'common',    icon: '\u2316', desc: "Nearby projectiles curve away from you." },
 
   // --- RARE (powerful passives, gameplay-altering) ---
-  { id: 'timeWarpUpgrade', name: 'TIME DISTORTION',  rarity: 'rare',      icon: '\u25C7', desc: "Permanent 25% time slow. Everything except your heartbeat." },
+  { id: 'timeWarpUpgrade', name: 'TIME DISTORTION',  rarity: 'rare',      icon: '\u25C7', desc: "Permanent 15% time slow. Everything except your heartbeat." },
   { id: 'btMastery',      name: 'BULLET TIME PRO',   rarity: 'rare',      icon: '\u25CF', desc: "Bullet Time lasts 50% longer and spawns faster." },
-  { id: 'eventHorizon',   name: 'EVENT HORIZON',     rarity: 'rare',      icon: '\u229B', desc: "Black holes last 3s longer with 50% more reach." },
+  { id: 'eventHorizon',   name: 'EVENT HORIZON',     rarity: 'rare',      icon: '\u229B', desc: "Auto-spawns mini black holes. Real black holes get 50% more reach." },
   { id: 'dejaVu',         name: 'D\u00C9J\u00C0 VU', rarity: 'rare',      icon: '\u221E', desc: "40% chance power-ups auto-renew on expiry." },
   { id: 'chainReaction',  name: 'CHAIN REACTION',    rarity: 'rare',      icon: '\u2726', desc: "EMPs trigger a second blast 3s later." },
   { id: 'ricochet',       name: 'RICOCHET',          rarity: 'rare',      icon: '\u27A5', desc: "20% chance destroyed projectiles fire back at threats." },
@@ -5033,14 +5033,14 @@ class Game {
     this.chainReactionTimer = 0;
     // Echo
     this.echoBuffer = [];
-    this.echoTimer = 10;
+    this.echoTimer = 7;
     this.echoGhost = null;
     // Burnout (OVERDRIVE)
     this.burnoutCooldown = 0;
     this.burnoutHeat = 0;
     this._burnoutPrevDir = null;
     // Decoy
-    this.decoyTimer = 8;
+    this.decoyTimer = 5.5;
     this.decoys = [];
     // Storm Runner
     this.stormCharge = 0;
@@ -5063,6 +5063,7 @@ class Game {
     const evoMerge = document.getElementById('evolution-merge');
     if (evoMerge) evoMerge.classList.remove('show');
     this.miniVortices = [];
+    this.ehSpawnTimer = 0;
 
     // Singularity phase: shrinking arena + dead zones
     this.arenaInset = 0;
@@ -5642,12 +5643,12 @@ class Game {
     this.chainReactionPending = false;
     this.chainReactionTimer = 0;
     this.echoBuffer = [];
-    this.echoTimer = 10;
+    this.echoTimer = 7;
     this.echoGhost = null;
     this.burnoutCooldown = 0;
     this.burnoutHeat = 0;
     this._burnoutPrevDir = null;
-    this.decoyTimer = 8;
+    this.decoyTimer = 5.5;
     this.decoys = [];
     this.stormCharge = 0;
     this.stormCooldown = 0;
@@ -5666,6 +5667,7 @@ class Game {
     const evoMerge = document.getElementById('evolution-merge');
     if (evoMerge) evoMerge.classList.remove('show');
     this.miniVortices = [];
+    this.ehSpawnTimer = 0;
     this.arenaInset = 0;
     this.deadZones = [];
     const upgradeOverlay = document.getElementById('upgrade-overlay');
@@ -5750,10 +5752,10 @@ class Game {
     const t = this.effects.slowmo.blend || 0;
     let mod = 1 - t * 0.7; // lerp from 1.0 to 0.3
     if (this.abilities.timeWarp.active) mod *= 0.3;
-    // Upgrade: Time Distortion — permanent 25% slow (TIME LORD: 30%)
+    // Upgrade: Time Distortion — permanent slow (TIME LORD: stronger)
     if (this.upgrades.timeWarpUpgrade) {
-      const baseSlow = this.evolutions.timeLord ? 0.75 : 0.8;
-      const perLvl = this.evolutions.timeLord ? 0.12 : 0.1;
+      const baseSlow = this.evolutions.timeLord ? 0.78 : 0.85;
+      const perLvl = this.evolutions.timeLord ? 0.10 : 0.08;
       mod *= Math.max(0.5, baseSlow - perLvl * this.upgrades.timeWarpUpgrade);
     }
     // Upgrade freeze — ease projectiles to stop
@@ -6153,14 +6155,14 @@ class Game {
         return { timer: this.deathRayTimer, max: maxCd, active: false };
       }
       case 'decoy': {
-        const maxCd = Math.max(5, 9 - this.upgrades.decoy);
+        const maxCd = Math.max(3, 7 - 1.5 * this.upgrades.decoy);
         return { timer: this.decoyTimer, max: maxCd, active: false };
       }
       case 'echo': {
         if (this.echoGhost) {
           return { timer: this.echoGhost.life, max: 2, active: true };
         }
-        const maxCd = 12 - 2 * this.upgrades.echo;
+        const maxCd = 9 - 2 * this.upgrades.echo;
         return { timer: this.echoTimer, max: maxCd, active: false };
       }
       case 'burnout': {
@@ -6627,6 +6629,8 @@ class Game {
     const prevX = this.player.x;
     const prevY = this.player.y;
     let lerp = PLAYER_LERP;
+    // SMOL SUPREME: lighter = faster movement
+    if (this.upgrades.smolSupreme) lerp *= 1 + 0.08 * this.upgrades.smolSupreme;
     // ECHO: record position buffer and manage ghost replay
     if (this.upgrades.echo) {
       this.echoBuffer.push({ x: this.player.x, y: this.player.y });
@@ -6640,7 +6644,7 @@ class Game {
           speed: this.echoBuffer.length / 2,
           life: 2
         };
-        this.echoTimer = 12 - 2 * this.upgrades.echo; // Lv1:10s, Lv2:8s, Lv3:6s
+        this.echoTimer = 9 - 2 * this.upgrades.echo; // Lv1:7s, Lv2:5s, Lv3:3s
         this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 40, '#38bdf8', 0.3));
       }
     }
@@ -6655,7 +6659,7 @@ class Game {
       ghost.currentY = gy;
 
       // Destroy projectiles near ghost
-      const hitR = 18 + 4 * (this.upgrades.echo || 1);
+      const hitR = 26 + 6 * (this.upgrades.echo || 1);
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
         const p = this.projectiles[i];
         if (p._friendly) continue;
@@ -7716,21 +7720,50 @@ class Game {
       }
     }
 
+    // EVENT HORIZON: passively spawn mini black holes at random positions
+    if (this.upgrades.eventHorizon) {
+      this.ehSpawnTimer -= dt;
+      if (this.ehSpawnTimer <= 0) {
+        this.ehSpawnTimer = Math.max(8, 20 - 5 * this.upgrades.eventHorizon); // Lv1:15s, Lv2:10s, Lv3:8s
+        const sa = this.safeArea;
+        const mx = sa.left + 60 + Math.random() * (this.w - sa.left - sa.right - 120);
+        const my = sa.top + 60 + Math.random() * (this.h - sa.top - sa.bottom - 120);
+        this.miniVortices.push({ x: mx, y: my, life: 3 + this.upgrades.eventHorizon, maxLife: 3 + this.upgrades.eventHorizon, radius: 80 + 20 * this.upgrades.eventHorizon });
+        this.shockwaves.push(new Shockwave(mx, my, 60, '#8b5cf6', 0.3));
+      }
+    }
+
+    // DENSE CORE: passive gravity deflection — nearby projectiles curve away
+    if (this.upgrades.denseCore) {
+      const deflectRadius = 60 + 20 * this.upgrades.denseCore;
+      const deflectForce = 40 + 20 * this.upgrades.denseCore;
+      for (const p of this.projectiles) {
+        if (p._friendly) continue;
+        const pdx = p.x - this.player.x, pdy = p.y - this.player.y;
+        const pdist = Math.sqrt(pdx * pdx + pdy * pdy);
+        if (pdist < deflectRadius && pdist > 5) {
+          const str = (1 - pdist / deflectRadius) * deflectForce * dt;
+          p.vx += (pdx / pdist) * str;
+          p.vy += (pdy / pdist) * str;
+        }
+      }
+    }
+
     // OVERDRIVE: move fast to build heat, sharp turns release a blast
     if (this.upgrades.burnout) {
       if (this.burnoutCooldown > 0) this.burnoutCooldown -= dt;
       const speed = Math.sqrt(this.player.vx * this.player.vx + this.player.vy * this.player.vy);
 
       if (speed > 2) {
-        this.burnoutHeat = Math.min(1, this.burnoutHeat + dt * (0.3 + 0.15 * this.upgrades.burnout));
+        this.burnoutHeat = Math.min(1, this.burnoutHeat + dt * (0.5 + 0.2 * this.upgrades.burnout));
         const dirX = this.player.vx / speed, dirY = this.player.vy / speed;
 
-        if (this.burnoutCooldown <= 0 && this.burnoutHeat > 0.3) {
+        if (this.burnoutCooldown <= 0 && this.burnoutHeat > 0.2) {
           const prevDirX = this._burnoutPrevDir ? this._burnoutPrevDir.x : dirX;
           const prevDirY = this._burnoutPrevDir ? this._burnoutPrevDir.y : dirY;
           const dot = dirX * prevDirX + dirY * prevDirY;
-          if (dot < 0) {
-            const blastRange = (80 + 40 * this.upgrades.burnout) * (0.5 + 0.5 * this.burnoutHeat);
+          if (dot < 0.3) { // ~70° turn (was 90°)
+            const blastRange = (110 + 50 * this.upgrades.burnout) * (0.5 + 0.5 * this.burnoutHeat);
             for (let i = 0; i < 10 + Math.floor(this.burnoutHeat * 8); i++) {
               const a = Math.random() * Math.PI * 2;
               const sp = 80 + Math.random() * 120 * this.burnoutHeat;
@@ -7766,8 +7799,8 @@ class Game {
     if (this.upgrades.decoy) {
       this.decoyTimer -= dt;
       if (this.decoyTimer <= 0) {
-        this.decoyTimer = Math.max(5, 9 - this.upgrades.decoy);
-        const decoyLife = 2 + this.upgrades.decoy;
+        this.decoyTimer = Math.max(3, 7 - 1.5 * this.upgrades.decoy);
+        const decoyLife = 2.5 + this.upgrades.decoy;
         this.decoys.push({
           x: this.player.x, y: this.player.y,
           life: decoyLife, maxLife: decoyLife
@@ -7801,8 +7834,8 @@ class Game {
           }
           this.decoys.splice(d, 1); continue;
         }
-        const pullRadius = 120 + 30 * this.upgrades.decoy;
-        const pullForce = 80 + 30 * this.upgrades.decoy;
+        const pullRadius = 160 + 40 * this.upgrades.decoy;
+        const pullForce = 120 + 40 * this.upgrades.decoy;
         for (const p of this.projectiles) {
           if (p._friendly) continue;
           const ddx = decoy.x - p.x, ddy = decoy.y - p.y;
