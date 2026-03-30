@@ -1153,6 +1153,86 @@
 
     .start-hint { color: #444; font-size: 11px; margin-top: 10px; margin-bottom: 12px; }
 
+    /* --- Patch Notes --- */
+    .patch-notes {
+      margin-top: 24px;
+      max-width: 340px;
+      width: 100%;
+      border: 1px solid var(--np-outline);
+      padding: 12px 16px;
+      text-align: left;
+      position: relative;
+    }
+    .patch-notes-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .patch-notes-version {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--np-cyan);
+      letter-spacing: 0.1em;
+    }
+    .patch-notes-date {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: #555;
+      letter-spacing: 0.05em;
+    }
+    .patch-notes-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 11px;
+      color: var(--np-purple);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .patch-notes-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .patch-notes-list li {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--np-text-dim);
+      line-height: 1.6;
+      padding-left: 12px;
+      position: relative;
+    }
+    .patch-notes-list li::before {
+      content: '>';
+      position: absolute;
+      left: 0;
+      color: var(--np-cyan);
+      opacity: 0.5;
+    }
+
+    /* --- Mobile Banner --- */
+    .mobile-banner {
+      display: none;
+      max-width: 340px;
+      width: 100%;
+      padding: 10px 14px;
+      margin-top: 16px;
+      border: 1px solid rgba(251, 191, 36, 0.2);
+      background: rgba(251, 191, 36, 0.05);
+      text-align: center;
+    }
+    .mobile-banner-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: #fbbf24;
+      letter-spacing: 0.05em;
+      line-height: 1.5;
+    }
+    @media (max-width: 768px), (pointer: coarse) {
+      .mobile-banner { display: block; }
+    }
+
     /* --- Modals --- */
     .modal-overlay {
       position: fixed;
@@ -2217,6 +2297,24 @@
     <button class="menu-btn uniform" id="btn-toggle-brain">[AI BRAIN: OFF]</button>
     <button class="menu-btn uniform" id="btn-contact">[CONTACT]</button>
   </div>
+  <div class="mobile-banner">
+    <div class="mobile-banner-text">BEST PLAYED ON DESKTOP — still playable on mobile, but your mouse has better reflexes than your thumb.</div>
+  </div>
+  <div class="patch-notes">
+    <div class="patch-notes-header">
+      <span class="patch-notes-version">v1.4.0</span>
+      <span class="patch-notes-date">MAR 30, 2026</span>
+    </div>
+    <div class="patch-notes-name">// BALANCE PROTOCOL</div>
+    <ul class="patch-notes-list">
+      <li>DECOY now destroys projectiles + deploys ahead of you</li>
+      <li>ECHO ghost scales with level (2/3/4s) + bigger hit radius</li>
+      <li>DENSE CORE deflection buffed + visible distortion ring</li>
+      <li>DODGE INSTINCT now grants 0.3s invulnerability on dodge</li>
+      <li>Anti-cheat validation on leaderboard submissions</li>
+      <li>Retired SMOL SUPREME (rest in peace, tiny one)</li>
+    </ul>
+  </div>
 </div>
 
 <!-- How to Play Modal -->
@@ -2503,7 +2601,37 @@ async function fetchLeaderboard(forceRefresh = false) {
   }
 }
 
+// Anti-cheat: rate limit submissions (1 per 10s per session)
+let _lastSubmitTime = 0;
+const SUBMIT_COOLDOWN_MS = 10000;
+
+// Max possible survival time: sum of all phase durations before HIVEMIND (~385s)
+// plus generous HIVEMIND time. Cap at 1800s (30 min) as absolute max.
+const MAX_SURVIVAL_TIME = 1800;
+// Max phase = 10 defined phases + generous headroom for HIVEMIND scaling
+const MAX_PHASE = 50;
+
+function validateScore(time_s, phase, dodges, bosses) {
+  if (typeof time_s !== 'number' || isNaN(time_s) || time_s < 1 || time_s > MAX_SURVIVAL_TIME) return false;
+  if (typeof phase !== 'number' || phase < 1 || phase > MAX_PHASE) return false;
+  if (typeof dodges !== 'number' || dodges < 0) return false;
+  if (typeof bosses !== 'number' || bosses < 0) return false;
+  // Sanity: dodges per second shouldn't exceed ~30 (projectile density cap)
+  if (dodges / time_s > 30) return false;
+  // Sanity: bosses spawn every 40s, so max bosses ~ time/35 (with some margin)
+  if (bosses > 0 && bosses > time_s / 25) return false;
+  // Phase vs time: each phase is ~35-60s, minimum ~20s per phase
+  if (phase > 1 && time_s / phase < 10) return false;
+  return true;
+}
+
 async function submitScore(name, time_s, phase, dodges, bosses) {
+  // Rate limit
+  const now = Date.now();
+  if (now - _lastSubmitTime < SUBMIT_COOLDOWN_MS) {
+    throw new Error('Please wait before submitting again');
+  }
+
   // Re-init Supabase client if stale (long games can lose connection)
   if (!sb) {
     try {
@@ -2511,17 +2639,25 @@ async function submitScore(name, time_s, phase, dodges, bosses) {
     } catch (e) { /* ignore */ }
   }
   if (!sb) throw new Error('Leaderboard unavailable');
-  const row = {
-    name: name.trim().slice(0, 20),
-    time_s: parseFloat(time_s.toFixed(1)),
-    phase: phase || 1,
-    dodges: dodges || 0,
-    bosses: bosses || 0
-  };
+
+  const cleanName = name.trim().slice(0, 20);
+  if (containsProfanity(cleanName)) throw new Error('Please choose an appropriate name');
+
+  const t = parseFloat(time_s.toFixed(1));
+  const p = phase || 1;
+  const d = dodges || 0;
+  const b = bosses || 0;
+
+  if (!validateScore(t, p, d, b)) {
+    throw new Error('Invalid score data');
+  }
+
+  const row = { name: cleanName, time_s: t, phase: p, dodges: d, bosses: b };
+
   // Retry once on failure
   for (let attempt = 0; attempt < 2; attempt++) {
     const { error } = await sb.from('leaderboard').insert(row);
-    if (!error) { _lbCache = null; return; }
+    if (!error) { _lastSubmitTime = now; _lbCache = null; return; }
     if (attempt === 0) {
       // Re-create client and retry
       try { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch (e) { /* ignore */ }
@@ -2727,17 +2863,16 @@ const RARITY_COLORS = { common: '#9ca3af', rare: '#3b82f6', legendary: '#facc15'
 
 const UPGRADE_DEFS = [
   // --- COMMON (passive, simple stat boosts) ---
-  { id: 'echo',           name: 'ECHO',              rarity: 'common',    icon: '\u25CC', desc: "Every 7s, a ghost replays your movement, destroying anything it touches." },
-  { id: 'smolSupreme',    name: 'SMOL SUPREME',      rarity: 'common',    icon: '\u25CE', desc: "45% smaller hitbox + faster movement. Tiny and twitchy." },
+  { id: 'echo',           name: 'ECHO',              rarity: 'common',    icon: '\u25CC', desc: "A ghost replays your movement, destroying anything it touches. Lasts longer per level." },
   { id: 'lootGoblin',     name: 'LOOT GOBLIN',       rarity: 'common',    icon: '\u25C8', desc: "Power-ups spawn 40% faster." },
   { id: 'magnetize',      name: 'FORCE PULL',        rarity: 'common',    icon: '\u27D0', desc: "Pull power-ups toward you. Nearby ones glow." },
   { id: 'fortress',       name: 'FORTRESS',          rarity: 'common',    icon: '\u25B3', desc: "50% bigger shield, twice as strong." },
   { id: 'radiance',       name: 'RADIANCE',          rarity: 'common',    icon: '\u2600', desc: "Random projectiles spontaneously combust." },
   { id: 'cometTrail',     name: 'COMET TRAIL',       rarity: 'common',    icon: '\u2604', desc: "Leave a trail that burns projectiles." },
-  { id: 'dodgeInstinct',  name: 'DODGE INSTINCT',    rarity: 'common',    icon: '\u25C6', desc: "20% chance to phase through a hit." },
+  { id: 'dodgeInstinct',  name: 'DODGE INSTINCT',    rarity: 'common',    icon: '\u25C6', desc: "25% chance to phase through a hit. Successful dodge grants brief invulnerability." },
   { id: 'denseCore',      name: 'DENSE CORE',        rarity: 'common',    icon: '\u2299', desc: "Nearby projectiles curve away from you. Black holes pull harder too." },
   { id: 'burnout',         name: 'OVERDRIVE',          rarity: 'common',    icon: '\u2BC0', desc: "Build heat while moving. Quick turns unleash a massive blast." },
-  { id: 'decoy',           name: 'DECOY',             rarity: 'common',    icon: '\u2662', desc: "Deploy a hologram every 5.5s that magnetically pulls all projectiles." },
+  { id: 'decoy',           name: 'DECOY',             rarity: 'common',    icon: '\u2662', desc: "Deploy a hologram that pulls in and destroys projectiles." },
   { id: 'gravityWell',     name: 'GRAVITY WELL',      rarity: 'common',    icon: '\u2316', desc: "Nearby projectiles curve away from you." },
 
   // --- RARE (powerful passives, gameplay-altering) ---
@@ -2787,8 +2922,6 @@ const EVOLUTION_DEFS = [
     icon: '\u26CA', color: '#ef4444', desc: 'Death is just a suggestion. +2 extra lives on top of Second Wind.' },
   { id: 'mirrorArmy', name: 'MIRROR ARMY', ingredients: ['decoy', 'ricochet'],
     icon: '\u2726', color: '#a855f7', desc: 'Decoys go out with a bang — explode into ricochets on expiry.' },
-  { id: 'pocketDimension', name: 'POCKET DIMENSION', ingredients: ['smolSupreme', 'lootGoblin'],
-    icon: '\u25C8', color: '#ec4899', desc: 'Store a power-up in your pocket. Next pickup fires both at once.' },
   { id: 'extinction', name: 'EXTINCTION', ingredients: ['orbitalGuard', 'thinTheHerd'],
     icon: '\u2604', color: '#06b6d4', desc: '6 orbs of doom. Each kill chokes the spawn rate.' },
 ];
@@ -5068,6 +5201,7 @@ class Game {
     this.shockwaves = [];
     this.bosses = [];
     this.dodgedCount = 0;
+    this._dodgeInstinctIFrames = 0;
     this.dodgePopTimer = 0;
     this.bossesDefeated = 0;
     this.closestCall = Infinity;
@@ -5145,7 +5279,6 @@ class Game {
     this.omegaBeamTarget = null;
     this.omegaBeamZapTimer = 0;
     this._omegaBeams = [];
-    this._storedPowerup = null; // POCKET DIMENSION
     this._extinctionReduction = 0; // EXTINCTION
     // Card dismiss: return-to-dot
     this.returnToDot = false;
@@ -5688,6 +5821,7 @@ class Game {
     this.shockwaves = [];
     this.bosses = [];
     this.dodgedCount = 0;
+    this._dodgeInstinctIFrames = 0;
     this.dodgePopTimer = 0;
     this.bossesDefeated = 0;
     this.closestCall = Infinity;
@@ -5751,7 +5885,6 @@ class Game {
     this.omegaBeamTarget = null;
     this.omegaBeamZapTimer = 0;
     this._omegaBeams = [];
-    this._storedPowerup = null; // POCKET DIMENSION
     this._extinctionReduction = 0; // EXTINCTION
     this.returnToDot = false;
     this.returnDotPos = null;
@@ -5835,7 +5968,6 @@ class Game {
 
   getPlayerRadius() {
     let r = this.effects.shrink.active ? PLAYER_RADIUS * 0.5 : PLAYER_RADIUS;
-    if (this.upgrades.smolSupreme) r *= Math.max(0.35, 0.65 - 0.1 * this.upgrades.smolSupreme);
     // MP debuff: opponent's BIGGER TARGET card
     if (this.mpClient) r *= this.mpClient.debuffs.hitboxScale;
     return r;
@@ -6254,7 +6386,7 @@ class Game {
       }
       case 'echo': {
         if (this.echoGhost) {
-          return { timer: this.echoGhost.life, max: 2, active: true };
+          return { timer: this.echoGhost.life, max: 1 + (this.upgrades.echo || 1), active: true };
         }
         const maxCd = 9 - 2 * this.upgrades.echo;
         return { timer: this.echoTimer, max: maxCd, active: false };
@@ -6723,8 +6855,6 @@ class Game {
     const prevX = this.player.x;
     const prevY = this.player.y;
     let lerp = PLAYER_LERP;
-    // SMOL SUPREME: lighter = faster movement
-    if (this.upgrades.smolSupreme) lerp *= 1 + 0.08 * this.upgrades.smolSupreme;
     // ECHO: record position buffer and manage ghost replay
     if (this.upgrades.echo) {
       this.echoBuffer.push({ x: this.player.x, y: this.player.y });
@@ -6732,11 +6862,12 @@ class Game {
 
       this.echoTimer -= dt;
       if (this.echoTimer <= 0 && this.echoBuffer.length > 10 && !this.echoGhost) {
+        const echoLife = 1 + this.upgrades.echo; // Lv1:2s, Lv2:3s, Lv3:4s
         this.echoGhost = {
           trail: [...this.echoBuffer],
           idx: 0,
-          speed: this.echoBuffer.length / 2,
-          life: 2
+          speed: this.echoBuffer.length / echoLife,
+          life: echoLife
         };
         this.echoTimer = 9 - 2 * this.upgrades.echo; // Lv1:7s, Lv2:5s, Lv3:3s
         this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 40, '#38bdf8', 0.3));
@@ -6753,7 +6884,7 @@ class Game {
       ghost.currentY = gy;
 
       // Destroy projectiles near ghost
-      const hitR = 26 + 6 * (this.upgrades.echo || 1);
+      const hitR = 24 + 12 * (this.upgrades.echo || 1); // Lv1:36, Lv2:48, Lv3:60
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
         const p = this.projectiles[i];
         if (p._friendly) continue;
@@ -6780,11 +6911,12 @@ class Game {
     }
     // LIGHTSPEED: permanent ghost — immediately respawn when ghost expires
     if (this.evolutions.lightspeed && !this.echoGhost && this.echoBuffer.length > 10) {
+      const echoLife = 1 + (this.upgrades.echo || 1);
       this.echoGhost = {
         trail: [...this.echoBuffer],
         idx: 0,
-        speed: this.echoBuffer.length / 2,
-        life: 2
+        speed: this.echoBuffer.length / echoLife,
+        life: echoLife
       };
     }
     if (this.abilities.timeWarp.active) lerp *= 0.7;
@@ -7170,18 +7302,20 @@ class Game {
           }
           continue;
         }
-        // Dodge Instinct: chance to dodge a lethal hit
+        // Dodge Instinct: chance to dodge a lethal hit + i-frames
         // WRAITH: +15% passive dodge chance on top of base
+        if (this._dodgeInstinctIFrames > 0) continue; // invulnerable after dodge
         const wraithBonus = this.evolutions.wraith ? 0.15 : 0;
-        if (this.upgrades.dodgeInstinct && Math.random() < (0.1 + 0.1 * this.upgrades.dodgeInstinct + wraithBonus)) {
-          // Dodge! Remove the projectile and show popup
+        if (this.upgrades.dodgeInstinct && Math.random() < (0.15 + 0.1 * this.upgrades.dodgeInstinct + wraithBonus)) {
+          // Dodge! Remove the projectile, grant 0.3s i-frames
           this.projectiles.splice(i, 1);
           this.dodgedCount++;
+          this._dodgeInstinctIFrames = 0.3;
           this.scorePopups.push(new ScorePopup(this.player.x, this.player.y - 20, 'DODGED!', '#00f0ff'));
-          this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 40, '#00f0ff', 0.2));
-          for (let j = 0; j < 8; j++) {
+          this.shockwaves.push(new Shockwave(this.player.x, this.player.y, 50, '#00f0ff', 0.3));
+          for (let j = 0; j < 10; j++) {
             const a = Math.random() * Math.PI * 2;
-            this.particles.push(new Particle(this.player.x, this.player.y, Math.cos(a) * 60, Math.sin(a) * 60, 0.3, '#00f0ff', 2));
+            this.particles.push(new Particle(this.player.x, this.player.y, Math.cos(a) * 70, Math.sin(a) * 70, 0.35, '#00f0ff', 2.5));
           }
           continue;
         }
@@ -7341,7 +7475,6 @@ class Game {
       let puDelay = POWERUP_SPAWN_MIN + this.rng() * (POWERUP_SPAWN_MAX - POWERUP_SPAWN_MIN);
       if (this.upgrades.lootGoblin) puDelay *= Math.max(0.35, 0.65 - 0.1 * this.upgrades.lootGoblin);
       if (this.evolutions.timeLord) puDelay *= 0.7; // TIME LORD: power-ups spawn 30% faster
-      if (this.evolutions.pocketDimension) puDelay *= 0.8; // POCKET DIMENSION: 20% faster spawns
       this.powerupTimer = puDelay;
     }
 
@@ -7653,6 +7786,9 @@ class Game {
       }
     }
 
+    // Dodge Instinct: i-frame timer countdown
+    if (this._dodgeInstinctIFrames > 0) this._dodgeInstinctIFrames -= dt;
+
     // Shockwave upgrade: auto-blast every 10s (IRON CURTAIN: faster + destroys close projectiles)
     if (this.upgrades.shockwave) {
       this.shockwaveTimer -= dt;
@@ -7829,8 +7965,8 @@ class Game {
 
     // DENSE CORE: passive gravity deflection — nearby projectiles curve away
     if (this.upgrades.denseCore) {
-      const deflectRadius = 60 + 20 * this.upgrades.denseCore;
-      const deflectForce = 40 + 20 * this.upgrades.denseCore;
+      const deflectRadius = 70 + 30 * this.upgrades.denseCore; // Lv1:100, Lv2:130, Lv3:160
+      const deflectForce = 60 + 40 * this.upgrades.denseCore;  // Lv1:100, Lv2:140, Lv3:180
       for (const p of this.projectiles) {
         if (p._friendly) continue;
         const pdx = p.x - this.player.x, pdy = p.y - this.player.y;
@@ -7889,19 +8025,32 @@ class Game {
       }
     }
 
-    // Decoy: spawn holographic decoys that attract projectiles
+    // Decoy: spawn holographic decoys that pull and destroy projectiles
     if (this.upgrades.decoy) {
       this.decoyTimer -= dt;
       if (this.decoyTimer <= 0) {
         this.decoyTimer = Math.max(3, 7 - 1.5 * this.upgrades.decoy);
         const decoyLife = 2.5 + this.upgrades.decoy;
+        // Spawn 80px ahead of movement direction
+        let spawnX = this.player.x, spawnY = this.player.y;
+        const pvx = this.player.vx || 0, pvy = this.player.vy || 0;
+        const pspd = Math.sqrt(pvx * pvx + pvy * pvy);
+        if (pspd > 0.5) {
+          spawnX += (pvx / pspd) * 80;
+          spawnY += (pvy / pspd) * 80;
+        }
+        // Clamp to arena bounds
+        const sa = this.safeArea;
+        spawnX = Math.max(sa.left + 20, Math.min(this.w - sa.right - 20, spawnX));
+        spawnY = Math.max(sa.top + 20, Math.min(this.h - sa.bottom - 20, spawnY));
         this.decoys.push({
-          x: this.player.x, y: this.player.y,
+          x: spawnX, y: spawnY,
           life: decoyLife, maxLife: decoyLife
         });
         soundEngine.playCollect();
       }
-      // Update decoys and attract projectiles
+      // Update decoys: attract and destroy projectiles
+      const destroyRadius = 15 + 5 * this.upgrades.decoy; // Lv1:20, Lv2:25, Lv3:30
       for (let d = this.decoys.length - 1; d >= 0; d--) {
         const decoy = this.decoys[d];
         decoy.life -= dt;
@@ -7910,12 +8059,10 @@ class Game {
           if (this.evolutions.mirrorArmy) {
             this.shockwaves.push(new Shockwave(decoy.x, decoy.y, 80, '#a855f7', 0.4));
             soundEngine.playNearMiss();
-            // Explosion particles
             for (let ep = 0; ep < 12; ep++) {
               const a = Math.random() * Math.PI * 2;
               this.particles.push(new Particle(decoy.x, decoy.y, Math.cos(a) * 100, Math.sin(a) * 100, 0.4, '#a855f7', 2.5));
             }
-            // Fire 8 ricochet projectiles outward
             const ricoCount = 8;
             for (let r = 0; r < ricoCount; r++) {
               const a = (r / ricoCount) * Math.PI * 2;
@@ -7929,11 +8076,23 @@ class Game {
           this.decoys.splice(d, 1); continue;
         }
         const pullRadius = 160 + 40 * this.upgrades.decoy;
-        const pullForce = 120 + 40 * this.upgrades.decoy;
-        for (const p of this.projectiles) {
+        const pullForce = 160 + 50 * this.upgrades.decoy; // Buffed from 120+40
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+          const p = this.projectiles[i];
           if (p._friendly) continue;
           const ddx = decoy.x - p.x, ddy = decoy.y - p.y;
           const ddist = Math.sqrt(ddx * ddx + ddy * ddy);
+          // Destroy projectiles that reach the decoy core
+          if (ddist < destroyRadius) {
+            for (let j = 0; j < 4; j++) {
+              const a = Math.random() * Math.PI * 2;
+              this.particles.push(new Particle(p.x, p.y, Math.cos(a) * 40, Math.sin(a) * 40, 0.25, '#c084fc', 1.5));
+            }
+            this.tryRicochet(p.x, p.y);
+            this.projectiles.splice(i, 1);
+            this.dodgedCount++;
+            continue;
+          }
           if (ddist < pullRadius && ddist > 5) {
             const str = (1 - ddist / pullRadius) * pullForce * dt;
             p.vx += (ddx / ddist) * str;
@@ -8145,39 +8304,6 @@ class Game {
     const lbExtra = this.evolutions.luckyBreak ? 0.6 : 0; // LUCKY BREAK: +60% duration
     const lsBonus = 1 + 0.2 * (this.upgrades.luckyStar || 0) + lbExtra;
 
-    // POCKET DIMENSION: store first non-EMP power-up, double-activate on next
-    if (this.evolutions.pocketDimension && pu.type !== 'emp' && !this._pocketActivating) {
-      if (!this._storedPowerup) {
-        // Store this power-up for later
-        this._storedPowerup = pu.type;
-        el.textContent = 'STORED: ' + def.name;
-        el.style.color = '#ec4899';
-        el.style.textShadow = '0 0 20px #ec4899';
-        // Pink swirl particles
-        for (let i = 0; i < 8; i++) {
-          const a = (i / 8) * Math.PI * 2;
-          this.particles.push(new Particle(pu.x, pu.y, Math.cos(a) * 50, Math.sin(a) * 50, 0.5, '#ec4899', 2));
-        }
-        return;
-      } else {
-        // Double activate: fire stored + current
-        const storedType = this._storedPowerup;
-        this._storedPowerup = null;
-        el.textContent = 'DOUBLE ACTIVATE!';
-        el.style.color = '#ec4899';
-        el.style.textShadow = '0 0 20px #ec4899';
-        this.shockwaves.push(new Shockwave(pu.x, pu.y, 120, '#ec4899', 0.5));
-        // Activate stored power-up via a fake pu object
-        const storedDef = POWERUP_TYPES[storedType];
-        if (storedDef) {
-          const fakePu = { x: pu.x, y: pu.y, type: storedType, def: storedDef };
-          this._pocketActivating = true; // prevent re-entry
-          this.collectPowerup(fakePu);
-          this._pocketActivating = false;
-        }
-        // Fall through to activate current power-up normally
-      }
-    }
 
     if (pu.type === 'emp') {
       // === EMP ANIMATION ===
@@ -9925,6 +10051,66 @@ class Game {
         ctx.arc(this.player.x, this.player.y, wellR, 0, Math.PI * 2);
         ctx.stroke();
         ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+      }
+
+      // DODGE INSTINCT: shimmer aura + flash during i-frames
+      if (this.upgrades.dodgeInstinct) {
+        if (this._dodgeInstinctIFrames > 0) {
+          // Active i-frame flash
+          ctx.globalAlpha = 0.25 + Math.sin(this.gameTime * 30) * 0.15;
+          ctx.fillStyle = '#00f0ff';
+          ctx.shadowColor = '#00f0ff';
+          ctx.shadowBlur = 20;
+          ctx.beginPath();
+          ctx.arc(this.player.x, this.player.y, pr + 12, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+          ctx.globalAlpha = 1;
+        } else {
+          // Passive shimmer — subtle rotating diamond shapes
+          const shimmerAlpha = 0.06 + 0.02 * this.upgrades.dodgeInstinct;
+          ctx.globalAlpha = shimmerAlpha;
+          ctx.strokeStyle = '#00f0ff';
+          ctx.lineWidth = 1;
+          const shimR = pr + 14 + Math.sin(this.gameTime * 2) * 3;
+          for (let s = 0; s < 4; s++) {
+            const a = this.gameTime * 1.5 + (s * Math.PI / 2);
+            const sx = this.player.x + Math.cos(a) * shimR;
+            const sy = this.player.y + Math.sin(a) * shimR;
+            ctx.beginPath();
+            ctx.moveTo(sx, sy - 3);
+            ctx.lineTo(sx + 2, sy);
+            ctx.lineTo(sx, sy + 3);
+            ctx.lineTo(sx - 2, sy);
+            ctx.closePath();
+            ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      // DENSE CORE: visible distortion ring around player
+      if (this.upgrades.denseCore) {
+        const dcR = 70 + 30 * this.upgrades.denseCore;
+        const pulse = 0.7 + Math.sin(this.gameTime * 3) * 0.3;
+        ctx.globalAlpha = (0.06 + 0.03 * this.upgrades.denseCore) * pulse;
+        ctx.strokeStyle = '#a78bfa';
+        ctx.shadowColor = '#a78bfa';
+        ctx.shadowBlur = 8;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([3, 5]);
+        ctx.beginPath();
+        ctx.arc(this.player.x, this.player.y, dcR, 0, Math.PI * 2);
+        ctx.stroke();
+        // Inner glow ring
+        ctx.globalAlpha = 0.04 * this.upgrades.denseCore;
+        ctx.lineWidth = dcR * 0.4;
+        ctx.beginPath();
+        ctx.arc(this.player.x, this.player.y, dcR * 0.7, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.shadowBlur = 0;
         ctx.globalAlpha = 1;
       }
 
