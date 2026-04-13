@@ -298,6 +298,9 @@
     #brain-panel.visible {
       display: block;
     }
+    @media (max-width: 768px), (pointer: coarse) {
+      #brain-panel.visible { display: none; }
+    }
 
     #brain-panel h3 {
       font-size: 10px;
@@ -1231,6 +1234,51 @@
     }
     @media (max-width: 768px), (pointer: coarse) {
       .mobile-banner { display: block; }
+    }
+
+    /* --- Rotate device prompt (portrait phones only) --- */
+    #rotate-prompt {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(10, 10, 20, 0.96);
+      backdrop-filter: blur(10px);
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      text-align: center;
+      padding: 24px;
+      font-family: 'JetBrains Mono', monospace;
+      color: #fbbf24;
+    }
+    #rotate-prompt .rp-icon {
+      font-size: 56px;
+      margin-bottom: 18px;
+      animation: rp-spin 2.2s ease-in-out infinite;
+      display: inline-block;
+    }
+    #rotate-prompt .rp-title {
+      font-size: 16px;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+    }
+    #rotate-prompt .rp-sub {
+      font-size: 11px;
+      color: rgba(251, 191, 36, 0.6);
+      letter-spacing: 1px;
+      line-height: 1.6;
+      max-width: 280px;
+    }
+    @keyframes rp-spin {
+      0%, 40%   { transform: rotate(0deg); }
+      60%, 100% { transform: rotate(90deg); }
+    }
+    @media (orientation: portrait) and (pointer: coarse) and (max-height: 600px) {
+      #rotate-prompt { display: flex; }
+    }
+    @media (orientation: portrait) and (max-width: 500px) {
+      #rotate-prompt { display: flex; }
     }
 
     /* --- Modals --- */
@@ -2299,6 +2347,11 @@
   </div>
   <div class="mobile-banner">
     <div class="mobile-banner-text">BEST PLAYED ON DESKTOP — still playable on mobile, but your mouse has better reflexes than your thumb.</div>
+  </div>
+  <div id="rotate-prompt">
+    <div class="rp-icon">&#8631;</div>
+    <div class="rp-title">ROTATE YOUR DEVICE</div>
+    <div class="rp-sub">This game needs landscape mode. Turn your phone sideways to play.</div>
   </div>
   <div class="patch-notes">
     <div class="patch-notes-header">
@@ -5365,10 +5418,15 @@ class Game {
   }
 
   resize() {
-    this.canvas.width = window.innerWidth;
-    this.canvas.height = window.innerHeight;
-    this.w = this.canvas.width;
-    this.h = this.canvas.height;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    this.w = window.innerWidth;
+    this.h = window.innerHeight;
+    this.canvas.width = Math.round(this.w * dpr);
+    this.canvas.height = Math.round(this.h * dpr);
+    this.canvas.style.width = this.w + 'px';
+    this.canvas.style.height = this.h + 'px';
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.touchOffsetY = Math.max(40, Math.min(90, this.h * 0.08));
 
     // Read safe area insets for canvas-side clamping
     const style = getComputedStyle(document.documentElement);
