@@ -2612,7 +2612,8 @@ const _profanityList = [
   'shithead','dickhead','fuckhead','cocksucker','penis','vagina',
   'tits','boob','porn','anal','cum','jizz','dildo','nazi','hitler',
   'rape','molest','pedo','pedophile','kike','spic','chink','gook',
-  'wetback','beaner','cracker','honky','tranny','dyke','homo'
+  'wetback','beaner','cracker','honky','tranny','dyke','homo',
+  'epstein','jeffreyepstein','putin','stalin','isis'
 ];
 const _profanityRegex = new RegExp(
   _profanityList.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'),
@@ -9151,10 +9152,31 @@ class Game {
     document.getElementById('go-lb-status').textContent = '';
     document.getElementById('go-lb-status').className = 'lb-status';
 
-    // Load leaderboard asynchronously
+    // Load leaderboard asynchronously + show rank preview to motivate submit
     document.getElementById('go-lb-body').innerHTML = '<div class="lb-loading">Loading...</div>';
     fetchLeaderboard().then(rows => {
       renderLeaderboard('go-lb-body', rows, getPlayerName());
+      const t = this._pendingScore.time;
+      const rank = rows.filter(r => r.time_s > t).length + 1;
+      const statusEl = document.getElementById('go-lb-status');
+      if (statusEl.textContent) return; // submit already in-flight; don't clobber
+      if (!rows || rows.length === 0) {
+        statusEl.textContent = 'Be the first on the board!';
+        statusEl.className = 'lb-status success';
+      } else if (rank === 1) {
+        statusEl.textContent = `WORLD #1 — submit to claim the top spot`;
+        statusEl.className = 'lb-status success';
+      } else if (rank <= 10) {
+        statusEl.textContent = `You'd rank #${rank} globally — submit to claim it`;
+        statusEl.className = 'lb-status success';
+      } else if (rank <= 100) {
+        statusEl.textContent = `You'd rank #${rank} in the top 100 — submit to save it`;
+        statusEl.className = 'lb-status';
+      } else if (rows.length >= 100) {
+        const gap = rows[99].time_s - t;
+        statusEl.textContent = `${gap.toFixed(1)}s from top 100 — submit or try again`;
+        statusEl.className = 'lb-status';
+      }
     });
 
     document.getElementById('gameover-screen').classList.add('show');
