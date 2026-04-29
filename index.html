@@ -1219,10 +1219,10 @@
       display: none;
       max-width: 340px;
       width: 100%;
-      padding: 10px 14px;
-      margin-top: 16px;
-      border: 1px solid rgba(251, 191, 36, 0.2);
-      background: rgba(251, 191, 36, 0.05);
+      padding: 8px 12px;
+      margin: 4px 0 14px;
+      border: 1px solid rgba(251, 191, 36, 0.25);
+      background: rgba(251, 191, 36, 0.06);
       text-align: center;
     }
     .mobile-banner-text {
@@ -2336,6 +2336,9 @@
   <div class="np-glow"></div>
   <h1>DODGE_AI</h1>
   <div class="start-hint">The AI that learns how you dodge.</div>
+  <div class="mobile-banner">
+    <div class="mobile-banner-text">BEST PLAYED ON DESKTOP — still playable on mobile, but your mouse has better reflexes than your thumb.</div>
+  </div>
   <div class="menu-buttons">
     <button class="menu-btn primary" id="btn-start">[PLAY]</button>
     <button class="menu-btn multiplayer" id="btn-multiplayer">[MULTIPLAYER] <span style="font-size:9px;background:rgba(236,177,255,0.15);padding:2px 6px;margin-left:6px;vertical-align:middle;letter-spacing:1px;color:var(--np-purple)">BETA</span></button>
@@ -2344,9 +2347,6 @@
     <button class="menu-btn uniform" id="btn-stats">[STATS]</button>
     <button class="menu-btn uniform" id="btn-toggle-brain">[AI BRAIN: OFF]</button>
     <button class="menu-btn uniform" id="btn-contact">[CONTACT]</button>
-  </div>
-  <div class="mobile-banner">
-    <div class="mobile-banner-text">BEST PLAYED ON DESKTOP — still playable on mobile, but your mouse has better reflexes than your thumb.</div>
   </div>
   <div id="rotate-prompt">
     <div class="rp-icon">&#8631;</div>
@@ -7345,6 +7345,27 @@ class Game {
       if (dist < hitDist) {
         // Friendly projectiles (ricochet) don't hurt player
         if (p._friendly) continue;
+        // Pull-shield: a projectile currently inside the player's own decoy or
+        // black hole pull radius is under that ability's control — it shouldn't
+        // funnel through the player on its way to the sink and kill them.
+        if (this.effects.vortex.active && this.effects.vortex.delay <= 0) {
+          const _vdx = this.effects.vortex.x - p.x;
+          const _vdy = this.effects.vortex.y - p.y;
+          const _ehLvl = this.upgrades.eventHorizon || 0;
+          const _gR = 550 + _ehLvl * 140;
+          if (_vdx * _vdx + _vdy * _vdy < _gR * _gR) continue;
+        }
+        if (this.decoys && this.decoys.length > 0) {
+          const _dpR = 160 + 40 * (this.upgrades.decoy || 0);
+          const _dpR2 = _dpR * _dpR;
+          let _inDecoy = false;
+          for (let _di = 0; _di < this.decoys.length; _di++) {
+            const _d = this.decoys[_di];
+            const _ddx = _d.x - p.x, _ddy = _d.y - p.y;
+            if (_ddx * _ddx + _ddy * _ddy < _dpR2) { _inDecoy = true; break; }
+          }
+          if (_inDecoy) continue;
+        }
         // Dash Burst: brief invulnerability during teleport
         if (this.abilities.dashBurst.active) continue;
         // Phase Shift: projectiles pass through
